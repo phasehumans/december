@@ -6,12 +6,16 @@ import jwt from 'jsonwebtoken'
 import { Server, Socket } from 'socket.io'
 
 import { env } from './env'
+import { checkSignedInSession } from './middleware/auth.middleware'
 import { attachmentService } from './modules/attachment/attachment.service'
+import { getTokenIssuedAtMs } from './modules/auth/auth.utils'
 import { secretsService } from './modules/secrets/secrets.service'
 import { sessionService } from './modules/session/session.service'
 import { mergeHeldRun } from './modules/session/session.utils'
 import { usageService } from './modules/usage/usage.service'
 import { AppError } from './shared/appError'
+
+import type { TokenPayload } from './modules/auth/auth.types'
 
 const pubClient = new Redis(env.REDIS_URL || 'redis://localhost:6379', {
     maxRetriesPerRequest: null,
@@ -134,7 +138,7 @@ export function initSocket(httpServer: any) {
         }
     })
 
-    io.use((socket, next) => {
+    io.use(async (socket, next) => {
         let token = socket.handshake.auth.token
         if (!token && socket.request.headers.cookie) {
             const cookies = socket.request.headers.cookie.split(';').reduce((acc: any, cookie) => {
@@ -149,7 +153,22 @@ export function initSocket(httpServer: any) {
             return next(new Error('Authentication error'))
         }
         try {
-            const decoded = jwt.verify(token, env.ACCESS_TOKEN_SECRET) as any
+            const decoded = jwt.verify(token, env.ACCESS_TOKEN_SECRET) as TokenPayload | string
+            if (typeof decoded === 'string' || !decoded.userId || !decoded.sessionId) {
+                return next(new Error('Authentication error'))
+            }
+
+            // the same session check as HTTP requests: a signed-out, replaced or deleted
+            // sign-in cannot open a socket
+            const sessionError = await checkSignedInSession({
+                userId: decoded.userId,
+                sessionId: decoded.sessionId,
+                issuedAtMs: getTokenIssuedAtMs(decoded),
+            })
+            if (sessionError) {
+                return next(new Error('Authentication error'))
+            }
+
             socket.data.userId = decoded.userId
             next()
         } catch (err) {

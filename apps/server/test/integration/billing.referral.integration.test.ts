@@ -11,7 +11,7 @@ import app from '../../src/app'
 import { razorpay } from '../../src/config/razorpay'
 import { env } from '../../src/env'
 import { emailService } from '../../src/modules/email/email.service'
-import { cleanupTestUser, createSignedInUser, getRandomIP } from '../helpers'
+import { authCookieToken, cleanupTestUser, createSignedInUser, getRandomIP } from '../helpers'
 
 // #638 section 3, referrals. the tests read and write through the http routes. razorpay,
 // google and github are replaced at their edge: no call leaves the test.
@@ -166,7 +166,7 @@ const newReferral = async (name: string, inviter?: { userId: string; token: stri
     const invitee = await prisma.user.findUniqueOrThrow({ where: { email: address } })
     return {
         inviter: from,
-        invitee: { userId: invitee.id, token: signUp.body.data.accessToken as string },
+        invitee: { userId: invitee.id, token: authCookieToken(signUp) as string },
     }
 }
 

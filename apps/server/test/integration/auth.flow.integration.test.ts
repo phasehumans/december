@@ -3,7 +3,7 @@ import { describe, it, expect, afterAll } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Auth Flow Integration Tests (Email code sign up, Log in, Signout)', () => {
     const testEmail = `flowtest-${Date.now()}@example.com`
@@ -51,9 +51,10 @@ describe('Auth Flow Integration Tests (Email code sign up, Log in, Signout)', ()
             .send({ email: testEmail, otp: '654321' })
 
         expect(res.status).toBe(200)
-        expect(res.body.data.accessToken).toBeDefined()
+        // the token is only in the httpOnly cookie
+        expect(res.body.data.accessToken).toBeUndefined()
 
-        accessToken = res.body.data.accessToken
+        accessToken = authCookieToken(res)
 
         const user = await prisma.user.findUnique({ where: { id: testUserId } })
         expect(user?.emailVerified).toBe(true)
@@ -63,9 +64,10 @@ describe('Auth Flow Integration Tests (Email code sign up, Log in, Signout)', ()
         const res = await signInWithEmailCode(app, testEmail)
 
         expect(res.status).toBe(200)
-        expect(res.body.data.accessToken).toBeDefined()
+        // the token is only in the httpOnly cookie
+        expect(res.body.data.accessToken).toBeUndefined()
 
-        accessToken = res.body.data.accessToken
+        accessToken = authCookieToken(res)
     })
 
     it('4. GET /api/v1/auth/cli-token - route is removed (404)', async () => {

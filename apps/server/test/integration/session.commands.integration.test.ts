@@ -6,7 +6,7 @@ import app from '../../src/app'
 import { cliDispatcher } from '../../src/modules/cli/cli.dispatcher'
 import { setMockSandboxRunner } from '../../src/modules/platform/platform.utils'
 import { sessionService } from '../../src/modules/session/session.service'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 import type { SandboxCommandOptions } from '../../src/modules/platform/platform.utils'
 
@@ -96,8 +96,8 @@ describe('Session commands (#632)', () => {
         await prisma.user.create({
             data: { email: otherEmail, name: 'Cmd Other', emailVerified: true },
         })
-        ownerToken = (await signInWithEmailCode(app, ownerEmail)).body.data.accessToken
-        otherToken = (await signInWithEmailCode(app, otherEmail)).body.data.accessToken
+        ownerToken = authCookieToken(await signInWithEmailCode(app, ownerEmail))
+        otherToken = authCookieToken(await signInWithEmailCode(app, otherEmail))
     })
 
     beforeEach(() => {

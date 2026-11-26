@@ -3,7 +3,9 @@ import { describe, it, expect, afterAll } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { sessionCache } from '../../src/modules/auth/auth.cache'
+import { generateAccessToken } from '../../src/modules/auth/auth.utils'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Auth Refresh Token & Rotation Integration Tests', () => {
     const testEmail = `refreshtest-${Date.now()}@example.com`
@@ -15,6 +17,41 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
             await cleanupTestUser({ id: testUserId })
         }
     })
+
+    const sessionIdOf = (token: string) => JSON.parse(atob(token.split('.')[1]!)).sessionId
+
+    // a token for the session of a new sign-in, made some time ago
+    const signInWithOldToken = async (ageMs: number) => {
+        const loginRes = await signInWithEmailCode(app, testEmail)
+        expect(loginRes.status).toBe(200)
+        const sessionId = sessionIdOf(authCookieToken(loginRes))
+        const token = generateAccessToken(
+            { userId: testUserId, sessionId },
+            { issuedAt: new Date(Date.now() - ageMs) }
+        )
+        return { sessionId, token }
+    }
+
+    // makes the last refresh of a session look this long ago
+    const ageLastRefresh = async (sessionId: string, ageMs: number) => {
+        await prisma.authSession.update({
+            where: { id: sessionId },
+            data: { rotatedAt: new Date(Date.now() - ageMs) },
+        })
+        await sessionCache.invalidate(sessionId)
+    }
+
+    const refreshWithBody = (token: string) =>
+        request(app)
+            .post('/api/v1/auth/refresh')
+            .set('x-forwarded-for', getRandomIP())
+            .send({ refreshToken: token })
+
+    const getSettings = (token: string) =>
+        request(app)
+            .get('/api/v1/setting')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${token}`)
 
     it('setup: signup & verify user', async () => {
         const user = await prisma.user.create({
@@ -29,7 +66,7 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
         const loginRes = await signInWithEmailCode(app, testEmail)
 
         expect(loginRes.status).toBe(200)
-        refreshToken = loginRes.body.data.accessToken
+        refreshToken = authCookieToken(loginRes)
     })
 
     it('1. POST /api/v1/auth/refresh - refreshes session and returns 30-day session token', async () => {
@@ -69,7 +106,7 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
         const loginRes = await signInWithEmailCode(app, testEmail)
 
         expect(loginRes.status).toBe(200)
-        const activeToken = loginRes.body.data.accessToken
+        const activeToken = authCookieToken(loginRes)
 
         const refreshRes = await request(app)
             .post('/api/v1/auth/refresh')
@@ -95,7 +132,7 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
         const loginRes = await signInWithEmailCode(app, testEmail)
 
         expect(loginRes.status).toBe(200)
-        const sharedTabToken = loginRes.body.data.accessToken
+        const sharedTabToken = authCookieToken(loginRes)
 
         // Simulate Tab 1 and Tab 2 refreshing simultaneously with the same token
         const [tab1Res, tab2Res] = await Promise.all([
@@ -115,50 +152,30 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
         expect(tab1Res.body.data.accessToken).toBeDefined()
         expect(tab2Res.body.data.accessToken).toBeDefined()
 
-        // Verify session remains active and not revoked
-        const session = await prisma.authSession.findFirst({
-            where: { userId: testUserId, isRevoked: false },
+        // both tabs got a token that can refresh again later
+        expect((await refreshWithBody(tab1Res.body.data.accessToken)).status).toBe(200)
+        expect((await refreshWithBody(tab2Res.body.data.accessToken)).status).toBe(200)
+
+        const session = await prisma.authSession.findUnique({
+            where: { id: sessionIdOf(sharedTabToken) },
         })
-        expect(session).not.toBeNull()
         expect(session?.isRevoked).toBe(false)
     })
 
     it('5. POST /api/v1/auth/refresh - detects token reuse outside 30-second grace window and revokes session', async () => {
-        // Log in to get fresh active session
-        const loginRes = await signInWithEmailCode(app, testEmail)
+        const { sessionId, token: oldToken } = await signInWithOldToken(2 * 60 * 1000)
 
-        expect(loginRes.status).toBe(200)
-        const oldToken = loginRes.body.data.accessToken
-
-        // Rotate once
-        const refreshRes = await request(app)
-            .post('/api/v1/auth/refresh')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ refreshToken: oldToken })
-
+        const refreshRes = await refreshWithBody(oldToken)
         expect(refreshRes.status).toBe(200)
 
-        // Age rotatedAt beyond 30-second grace window (set to 40 seconds ago)
-        await prisma.authSession.updateMany({
-            where: { userId: testUserId, isRevoked: false },
-            data: { rotatedAt: new Date(Date.now() - 40 * 1000) },
-        })
+        // the old token again 40 seconds after the refresh
+        await ageLastRefresh(sessionId, 40 * 1000)
 
-        // Attempt reuse of the old rotated token outside grace period
-        const reuseRes = await request(app)
-            .post('/api/v1/auth/refresh')
-            .set('x-forwarded-for', getRandomIP())
-            .send({ refreshToken: oldToken })
-
+        const reuseRes = await refreshWithBody(oldToken)
         expect(reuseRes.status).toBe(401)
         expect(reuseRes.body.message).toBe('token reuse detected')
 
-        // Verify session was revoked immediately in DB
-        const jwt = await import('jsonwebtoken')
-        const decoded = jwt.default.decode(oldToken) as any
-        const revokedSession = await prisma.authSession.findUnique({
-            where: { id: decoded.sessionId },
-        })
+        const revokedSession = await prisma.authSession.findUnique({ where: { id: sessionId } })
         expect(revokedSession?.isRevoked).toBe(true)
     })
 
@@ -180,5 +197,56 @@ describe('Auth Refresh Token & Rotation Integration Tests', () => {
 
         expect(res.status).toBe(200)
         expect(res.body.data.email).toBe(testEmail)
+    })
+
+    it('7. POST /api/v1/auth/refresh - renews an expired token while its session is active', async () => {
+        const loginRes = await signInWithEmailCode(app, testEmail)
+        const sessionId = sessionIdOf(authCookieToken(loginRes))
+        const expiredToken = generateAccessToken(
+            { userId: testUserId, sessionId },
+            { expiresIn: -60 }
+        )
+
+        const expiredRes = await getSettings(expiredToken)
+        expect(expiredRes.status).toBe(401)
+        expect(expiredRes.body.message).toBe('Access token expired')
+
+        const refreshRes = await refreshWithBody(expiredToken)
+        expect(refreshRes.status).toBe(200)
+
+        const settingsRes = await getSettings(refreshRes.body.data.accessToken)
+        expect(settingsRes.status).toBe(200)
+    })
+
+    it('8. POST /api/v1/auth/refresh - a cookie refresh puts the new token only in the cookie', async () => {
+        const loginRes = await signInWithEmailCode(app, testEmail)
+        const token = authCookieToken(loginRes)
+
+        const res = await request(app)
+            .post('/api/v1/auth/refresh')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Cookie', `accessToken=${token}`)
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.accessToken).toBeUndefined()
+        expect(res.body.data.token).toBeUndefined()
+        expect(authCookieToken(res)).not.toBe(token)
+    })
+
+    it('9. authMiddleware - a token replaced by a refresh stops working after the grace period', async () => {
+        const { sessionId, token: oldToken } = await signInWithOldToken(2 * 60 * 1000)
+
+        const refreshRes = await refreshWithBody(oldToken)
+        const newToken = refreshRes.body.data.accessToken
+
+        // other tabs can still finish requests sent with the old token
+        expect((await getSettings(oldToken)).status).toBe(200)
+
+        await ageLastRefresh(sessionId, 40 * 1000)
+
+        const replacedRes = await getSettings(oldToken)
+        expect(replacedRes.status).toBe(401)
+        expect(replacedRes.body.message).toBe('Token replaced')
+        expect((await getSettings(newToken)).status).toBe(200)
     })
 })

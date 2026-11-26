@@ -3,7 +3,7 @@ import { describe, it, expect, afterAll } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Auth Device CLI Flow Integration Tests', () => {
     const testEmail = `devicetest-${Date.now()}@example.com`
@@ -30,7 +30,7 @@ describe('Auth Device CLI Flow Integration Tests', () => {
 
         const loginRes = await signInWithEmailCode(app, testEmail)
 
-        userAccessToken = loginRes.body.data.accessToken
+        userAccessToken = authCookieToken(loginRes)
     })
 
     it('1. POST /api/v1/auth/device/code - generates deviceCode & userCode', async () => {
@@ -162,5 +162,39 @@ describe('Auth Device CLI Flow Integration Tests', () => {
             kind: 'cli',
             isCurrent: true,
         })
+    })
+
+    it('gives no token to an account deleted after it approved the code', async () => {
+        const deletedEmail = `devicedeleted-${Date.now()}@example.com`
+        const deletedUser = await prisma.user.create({
+            data: { email: deletedEmail, name: 'Deleted Device User', emailVerified: true },
+        })
+
+        try {
+            const codeRes = await request(app)
+                .post('/api/v1/auth/device/code')
+                .set('x-forwarded-for', getRandomIP())
+            const { deviceCode, userCode } = codeRes.body.data
+
+            await prisma.deviceCode.update({
+                where: { userCode },
+                data: { status: 'APPROVED', userId: deletedUser.id },
+            })
+            await prisma.user.update({
+                where: { id: deletedUser.id },
+                data: { isDeleted: true, deletedAt: new Date() },
+            })
+
+            const tokenRes = await request(app)
+                .post('/api/v1/auth/device/token')
+                .set('x-forwarded-for', getRandomIP())
+                .send({ deviceCode })
+
+            expect(tokenRes.status).toBe(403)
+            expect(tokenRes.body.data?.token).toBeUndefined()
+            expect(await prisma.authSession.count({ where: { userId: deletedUser.id } })).toBe(0)
+        } finally {
+            await cleanupTestUser({ id: deletedUser.id })
+        }
     })
 })

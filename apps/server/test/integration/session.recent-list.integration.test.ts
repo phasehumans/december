@@ -5,7 +5,7 @@ import request from 'supertest'
 import app from '../../src/app'
 import { sessionService } from '../../src/modules/session/session.service'
 import { appCache } from '../../src/shared/cache'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 import type { Prisma } from '@december/database'
 
@@ -76,8 +76,8 @@ describe('Session recent list (pin, needs answer, archive merged)', () => {
         })
         otherId = other.id
 
-        ownerToken = (await signInWithEmailCode(app, ownerEmail)).body.data.accessToken
-        otherToken = (await signInWithEmailCode(app, otherEmail)).body.data.accessToken
+        ownerToken = authCookieToken(await signInWithEmailCode(app, ownerEmail))
+        otherToken = authCookieToken(await signInWithEmailCode(app, otherEmail))
     })
 
     afterAll(async () => {

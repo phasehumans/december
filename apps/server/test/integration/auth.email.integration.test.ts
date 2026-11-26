@@ -68,7 +68,8 @@ describe('Email code auth (one flow for sign up and log in)', () => {
         const res = await verify(newEmail, CODE)
 
         expect(res.status).toBe(200)
-        expect(res.body.data.accessToken).toBeDefined()
+        expect(res.body.data.accessToken).toBeUndefined()
+        expect(res.body.data.token).toBeUndefined()
         expect(res.body.data.isNewUser).toBe(true)
         expect(res.headers['set-cookie']).toBeDefined()
 

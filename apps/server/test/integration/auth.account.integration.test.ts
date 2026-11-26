@@ -3,7 +3,7 @@ import { describe, it, expect, afterAll } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Auth Account Management & Signout All Integration Tests', () => {
     const testEmail = `accounttest-${Date.now()}@example.com`
@@ -28,7 +28,7 @@ describe('Auth Account Management & Signout All Integration Tests', () => {
 
         // Login twice to create 2 sessions
         const loginRes1 = await signInWithEmailCode(app, testEmail)
-        accessToken = loginRes1.body.data.accessToken
+        accessToken = authCookieToken(loginRes1)
 
         await signInWithEmailCode(app, testEmail)
 
@@ -56,7 +56,7 @@ describe('Auth Account Management & Signout All Integration Tests', () => {
     it('2. DELETE /api/v1/auth/account - soft deletes user account and clears OAuth tokens', async () => {
         // Relogin to get fresh token
         const loginRes = await signInWithEmailCode(app, testEmail)
-        const freshAccessToken = loginRes.body.data.accessToken
+        const freshAccessToken = authCookieToken(loginRes)
 
         const deleteRes = await request(app)
             .delete('/api/v1/auth/account')

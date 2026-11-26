@@ -3,7 +3,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 const realFetch = globalThis.fetch
 const githubCalls: { url: string; authorization: string | null }[] = []
@@ -51,8 +51,8 @@ describe('GET /platform/repos/branch (#637)', () => {
         await prisma.user.create({
             data: { email: noGitEmail, name: 'No Git', emailVerified: true },
         })
-        token = (await signInWithEmailCode(app, email)).body.data.accessToken
-        noGitToken = (await signInWithEmailCode(app, noGitEmail)).body.data.accessToken
+        token = authCookieToken(await signInWithEmailCode(app, email))
+        noGitToken = authCookieToken(await signInWithEmailCode(app, noGitEmail))
     })
 
     afterEach(() => {

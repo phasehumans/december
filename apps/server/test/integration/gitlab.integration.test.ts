@@ -5,7 +5,7 @@ import request from 'supertest'
 
 import app from '../../src/app'
 import { env } from '../../src/env'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 const realFetch = globalThis.fetch
 const gitlabCalls: { url: string; init?: RequestInit }[] = []
@@ -32,7 +32,7 @@ const signedInUser = async (label: string) => {
         data: { email, name: 'GitLab Test', emailVerified: true },
     })
     const res = await signInWithEmailCode(app, email)
-    return { user, auth: `Bearer ${res.body.data.accessToken as string}` }
+    return { user, auth: `Bearer ${authCookieToken(res)}` }
 }
 
 const stateCookie = (res: request.Response) => {

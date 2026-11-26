@@ -6,6 +6,7 @@ import Redis from 'ioredis'
 import { io as connect } from 'socket.io-client'
 
 import { env } from '../../src/env'
+import { sessionCache } from '../../src/modules/auth/auth.cache'
 import { sessionService } from '../../src/modules/session/session.service'
 import { initSocket } from '../../src/socket'
 import { cleanupTestUser, createSignedInUser } from '../helpers'
@@ -198,5 +199,38 @@ describe('socket session ownership', () => {
         expect(await ownerData).toBe('secret output')
         await settle(strangerSocket)
         expect(strangerData).toEqual([])
+    })
+
+    it('a signed-out sign-in or a deleted account cannot open a socket', async () => {
+        const signedOut = await createSignedInUser({
+            email: `socket-signed-out-${stamp}@example.com`,
+        })
+        const deleted = await createSignedInUser({ email: `socket-deleted-${stamp}@example.com` })
+
+        try {
+            const signedOutSocket = await open(signedOut.token)
+            signedOutSocket.disconnect()
+
+            await prisma.authSession.updateMany({
+                where: { userId: signedOut.userId },
+                data: { isRevoked: true, revokedAt: new Date() },
+            })
+            await prisma.user.update({
+                where: { id: deleted.userId },
+                data: { isDeleted: true, deletedAt: new Date() },
+            })
+            for (const user of [signedOut, deleted]) {
+                const authSession = await prisma.authSession.findFirstOrThrow({
+                    where: { userId: user.userId },
+                })
+                await sessionCache.invalidate(authSession.id)
+            }
+
+            await expect(open(signedOut.token)).rejects.toThrow('Authentication error')
+            await expect(open(deleted.token)).rejects.toThrow('Authentication error')
+        } finally {
+            await cleanupTestUser({ id: signedOut.userId })
+            await cleanupTestUser({ id: deleted.userId })
+        }
     })
 })

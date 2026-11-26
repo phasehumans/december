@@ -91,8 +91,23 @@ export function getRandomIP(): string {
 const TEST_OTP = '135790'
 
 /**
+ * The token a sign-in or refresh set in the accessToken cookie. Web responses never have the
+ * token in the body.
+ */
+export function authCookieToken(res: { headers: Record<string, any> }): string {
+    const raw = res.headers['set-cookie']
+    const cookies: string[] = Array.isArray(raw) ? raw : raw ? [raw] : []
+    for (const cookie of cookies) {
+        const match = /^accessToken=([^;]+)/.exec(cookie)
+        if (match?.[1]) return decodeURIComponent(match[1])
+    }
+    throw new Error('no accessToken cookie in the response')
+}
+
+/**
  * Sign an existing user in the way the app does: set a known email code, then verify it.
- * Returns the supertest response (token in body.data.accessToken, auth cookies in set-cookie).
+ * Returns the supertest response. The token is only in the accessToken cookie: read it with
+ * authCookieToken.
  */
 export async function signInWithEmailCode(app: Express, email: string) {
     await prisma.user.update({

@@ -3,7 +3,7 @@ import { describe, it, expect, afterAll, beforeAll } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 // issue 632: /permissions for cloud sessions, deny rules saved on the account
 describe('Tool deny rules (#632)', () => {
@@ -19,7 +19,7 @@ describe('Tool deny rules (#632)', () => {
 
     beforeAll(async () => {
         await prisma.user.create({ data: { email, name: 'Perm User', emailVerified: true } })
-        token = (await signInWithEmailCode(app, email)).body.data.accessToken
+        token = authCookieToken(await signInWithEmailCode(app, email))
     })
 
     afterAll(async () => {

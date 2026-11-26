@@ -3,7 +3,6 @@ import React from 'react'
 import { AuthModalBrand } from './AuthModalBrand'
 import { AuthModalGithubIcon } from './AuthModalGithubIcon'
 import { AuthModalGoogleIcon } from './AuthModalGoogleIcon'
-import { AuthModalOpenAIIcon } from './AuthModalOpenAIIcon'
 import {
     authButtonClass,
     authInputClass,
@@ -14,8 +13,6 @@ import {
 import type { AuthModalAuthStepProps } from '@/features/auth/types'
 
 import { getWebUrl } from '@/shared/config/env'
-
-const CHATGPT_SOON_MS = 2500
 
 const legalLinkClass = 'text-white hover:text-[#EDEDED] transition-colors'
 
@@ -32,15 +29,7 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
     onSubmit,
     onToggleAuthMode,
 }) => {
-    const [showChatgptSoon, setShowChatgptSoon] = React.useState(false)
     const isSignup = authMode === 'signup'
-
-    // ChatGPT sign-in is not live yet: the button only shows a short "coming soon" note.
-    React.useEffect(() => {
-        if (!showChatgptSoon) return
-        const timer = window.setTimeout(() => setShowChatgptSoon(false), CHATGPT_SOON_MS)
-        return () => window.clearTimeout(timer)
-    }, [showChatgptSoon])
 
     return (
         <div className="flex flex-col">
@@ -65,22 +54,6 @@ export const AuthModalAuthStep: React.FC<AuthModalAuthStepProps> = ({
                         <AuthModalGithubIcon />
                     </div>
                     <span>Continue with GitHub</span>
-                </button>
-
-                <button
-                    type="button"
-                    onClick={() => setShowChatgptSoon(true)}
-                    disabled={isAuthPending}
-                    className={authButtonClass}
-                >
-                    <div className="absolute left-3.5 w-4 h-4 flex items-center justify-center">
-                        <AuthModalOpenAIIcon />
-                    </div>
-                    <span aria-live="polite">
-                        {showChatgptSoon
-                            ? 'ChatGPT sign-in is coming soon'
-                            : 'Continue with ChatGPT'}
-                    </span>
                 </button>
 
                 <button

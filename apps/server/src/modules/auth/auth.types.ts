@@ -2,6 +2,7 @@ export type TokenPayload = {
     userId: string
     sessionId: string
     iat?: number
+    iatMs?: number
     exp?: number
 }
 
@@ -20,6 +21,7 @@ export type VerifyEmailAuth = {
 
 export type IssueSession = {
     userId: string
+    method: 'email' | 'google' | 'github' | 'cli'
     userAgent?: string
     ipAddress?: string
 }
@@ -41,6 +43,17 @@ export type Github = {
     referralCode?: string
     userAgent?: string
     ipAddress?: string
+}
+
+export type EndSession = {
+    sessionId: string
+    message: string
+}
+
+export type IsCurrentToken = {
+    payload: TokenPayload
+    incomingHash: string
+    session: { rotatedAt: Date | null; refreshTokenHash: string }
 }
 
 export type RefreshSession = {
@@ -104,6 +117,7 @@ export type CachedSessionData = {
     userId: string
     isRevoked: boolean
     expiresAt: Date
+    rotatedAt?: Date | null
     user: {
         id: string
         isDeleted: boolean

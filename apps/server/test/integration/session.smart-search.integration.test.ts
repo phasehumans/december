@@ -5,7 +5,7 @@ import request from 'supertest'
 import app from '../../src/app'
 import { cliDispatcher } from '../../src/modules/cli/cli.dispatcher'
 import { appCache } from '../../src/shared/cache'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -77,8 +77,8 @@ describe('Smart session search (AI filters)', () => {
             data: { updatedAt: new Date(Date.now() - 30 * DAY_MS) },
         })
 
-        userToken = (await signInWithEmailCode(app, userEmail)).body.data.accessToken
-        brokeToken = (await signInWithEmailCode(app, brokeEmail)).body.data.accessToken
+        userToken = authCookieToken(await signInWithEmailCode(app, userEmail))
+        brokeToken = authCookieToken(await signInWithEmailCode(app, brokeEmail))
     })
 
     beforeEach(async () => {

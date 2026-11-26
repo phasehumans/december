@@ -16,9 +16,9 @@ import {
     sendWelcomeEmail,
     generateUserCode,
     generateAccessToken,
-    verifyAccessToken,
-    verifyRefreshToken,
+    verifyTokenIgnoringExpiry,
     hashRefreshToken,
+    TOKEN_GRACE_PERIOD_MS,
     describeUserAgent,
 } from './auth.utils'
 
@@ -42,6 +42,9 @@ import type {
     ListSignedInSessions,
     RevokeSignedInSession,
     SignedInSession,
+    IsCurrentToken,
+    EndSession,
+    TokenPayload,
 } from './auth.types'
 
 const OTP_TTL_MS = 10 * 60 * 1000
@@ -52,12 +55,15 @@ const clearedOtp = { otpHash: null, otpExpiresAt: null, otpAttempts: 0 }
 // an expired code is removed but its try count stays, so it cannot be reset by expiry
 const expiredOtp = { otpHash: null, otpExpiresAt: null }
 
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
+
+// the token is only in the httpOnly cookie for the web: the controller decides what goes in the body
 const issueSession = async (data: IssueSession) => {
-    const { userId, userAgent, ipAddress } = data
+    const { userId, method, userAgent, ipAddress } = data
 
     const sessionId = crypto.randomUUID()
     const accessToken = generateAccessToken({ userId, sessionId })
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    const expiresAt = new Date(Date.now() + SESSION_TTL_MS)
 
     await authRepository.createSession({
         id: sessionId,
@@ -67,20 +73,21 @@ const issueSession = async (data: IssueSession) => {
         ipAddress,
         expiresAt,
     })
-    await auditService.recordSignIn({ userId, method: 'email', ip: ipAddress })
+    await auditService.recordSignIn({ userId, method, ip: ipAddress })
 
     await sessionCache.set(sessionId, {
         id: sessionId,
         userId,
         isRevoked: false,
         expiresAt,
+        rotatedAt: null,
         user: {
             id: userId,
             isDeleted: false,
         },
     })
 
-    return { accessToken, token: accessToken }
+    return { accessToken }
 }
 
 // Email sign-in and sign-up are one flow: send a 6-digit code, create the user if they are new.
@@ -183,7 +190,12 @@ const verifyEmailAuth = async (data: VerifyEmailAuth) => {
         throw new AppError('invalid or expired code, request a new one', 401)
     }
 
-    const tokens = await issueSession({ userId: user.id, userAgent, ipAddress })
+    const { accessToken } = await issueSession({
+        userId: user.id,
+        method: 'email',
+        userAgent,
+        ipAddress,
+    })
 
     if (isNewUser) {
         // a new account that came from an invite link (#638). an account that exists never gets one
@@ -212,7 +224,7 @@ const verifyEmailAuth = async (data: VerifyEmailAuth) => {
         }
     }
 
-    return { ...tokens, isNewUser }
+    return { accessToken, isNewUser }
 }
 
 const google = async (data: Google) => {
@@ -273,41 +285,14 @@ const google = async (data: Google) => {
         throw new AppError('google id mismatch', 400)
     }
 
-    const sessionId = crypto.randomUUID()
-
-    const accessToken = generateAccessToken({
+    const { accessToken } = await issueSession({
         userId: user.id,
-        sessionId,
+        method: 'google',
+        userAgent,
+        ipAddress,
     })
 
-    const tokenHash = hashRefreshToken(accessToken)
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-
-    await authRepository.createSession({
-        id: sessionId,
-        userId: user.id,
-        refreshTokenHash: tokenHash,
-        userAgent: userAgent,
-        ipAddress: ipAddress,
-        expiresAt,
-    })
-    await auditService.recordSignIn({ userId: user.id, method: 'google', ip: ipAddress })
-
-    await sessionCache.set(sessionId, {
-        id: sessionId,
-        userId: user.id,
-        isRevoked: false,
-        expiresAt,
-        user: {
-            id: user.id,
-            isDeleted: false,
-        },
-    })
-
-    return {
-        accessToken,
-        token: accessToken,
-    }
+    return { accessToken }
 }
 
 const github = async (data: Github) => {
@@ -379,70 +364,62 @@ const github = async (data: Github) => {
         })
     }
 
-    const sessionId = crypto.randomUUID()
-
-    const accessToken = generateAccessToken({
+    const { accessToken } = await issueSession({
         userId: user.id,
-        sessionId,
-    })
-
-    const tokenHash = hashRefreshToken(accessToken)
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-
-    await authRepository.createSession({
-        id: sessionId,
-        userId: user.id,
-        refreshTokenHash: tokenHash,
-        userAgent: userAgent,
-        ipAddress: ipAddress,
-        expiresAt,
-    })
-    await auditService.recordSignIn({ userId: user.id, method: 'github', ip: ipAddress })
-
-    await sessionCache.set(sessionId, {
-        id: sessionId,
-        userId: user.id,
-        isRevoked: false,
-        expiresAt,
-        user: {
-            id: user.id,
-            isDeleted: false,
-        },
+        method: 'github',
+        userAgent,
+        ipAddress,
     })
 
     // never return the user row: it holds stored tokens
-    return {
-        accessToken,
-        token: accessToken,
-        isNewUser,
-    }
+    return { accessToken, isNewUser }
 }
 
-const REFRESH_GRACE_PERIOD_MS = 30 * 1000 // 30 seconds grace window for concurrent multi-tab refreshes
+const endSession = async (data: EndSession): Promise<never> => {
+    const { sessionId, message } = data
 
+    await authRepository.deleteSessionsBySessionId(sessionId)
+    await sessionCache.invalidate(sessionId)
+    throw new AppError(message, 401)
+}
+
+/**
+ * A token is current when it was made at or after the last refresh of its session. A token
+ * from before ms issue times (no iatMs) is current only if it is the stored one.
+ */
+const isCurrentToken = (data: IsCurrentToken) => {
+    const { payload, incomingHash, session } = data
+    if (!session.rotatedAt) return true
+    if (typeof payload.iatMs !== 'number') return session.refreshTokenHash === incomingHash
+    return payload.iatMs >= session.rotatedAt.getTime()
+}
+
+/**
+ * Gives a new token for a session that is still signed in. The token sent may have expired:
+ * the session row decides. A session is active for 30 days after its last use.
+ */
 const refreshSession = async (data: RefreshSession) => {
     const { refreshToken } = data
-    const token = refreshToken
 
-    if (!token) {
+    if (!refreshToken) {
         throw new AppError('token is required', 401)
     }
 
-    let payload: { userId: string; sessionId: string }
+    let payload: TokenPayload
 
     try {
-        payload = verifyAccessToken(token)
+        payload = verifyTokenIgnoringExpiry(refreshToken)
     } catch {
-        try {
-            payload = verifyRefreshToken(token)
-        } catch {
-            throw new AppError('invalid or expired token', 401)
-        }
+        throw new AppError('invalid or expired token', 401)
     }
 
     const { userId, sessionId } = payload
 
-    const session = await authRepository.findSessionById(sessionId)
+    if (!userId || !sessionId) {
+        throw new AppError('invalid or expired token', 401)
+    }
+
+    let session = await authRepository.findSessionById(sessionId)
 
     if (!session) {
         throw new AppError('session not found', 401)
@@ -453,92 +430,85 @@ const refreshSession = async (data: RefreshSession) => {
     }
 
     if (session.userId !== userId) {
-        await authRepository.deleteSessionsBySessionId(session.id)
-        await sessionCache.invalidate(session.id)
-        throw new AppError('invalid session', 401)
+        return endSession({ sessionId: session.id, message: 'invalid session' })
     }
 
     if (session.expiresAt.getTime() <= Date.now()) {
-        await authRepository.deleteSessionsBySessionId(session.id)
-        await sessionCache.invalidate(session.id)
-        throw new AppError('session expired', 401)
+        return endSession({ sessionId: session.id, message: 'session expired' })
     }
 
     const user = await authRepository.findUserById(userId)
 
     if (!user) {
-        await authRepository.deleteSessionsBySessionId(session.id)
-        await sessionCache.invalidate(session.id)
-        throw new AppError('user not found', 401)
+        return endSession({ sessionId: session.id, message: 'user not found' })
     }
 
     if (user.deletedAt || user.isDeleted) {
-        await authRepository.deleteSessionsBySessionId(session.id)
-        await sessionCache.invalidate(session.id)
-        throw new AppError('account no longer exists', 401)
+        return endSession({ sessionId: session.id, message: 'account no longer exists' })
     }
 
-    const incomingHash = hashRefreshToken(token)
+    const incomingHash = hashRefreshToken(refreshToken)
 
-    // Case 1: Primary active refresh token match -> rotate token atomically
-    if (session.refreshTokenHash === incomingHash) {
-        const newAccessToken = generateAccessToken({
-            userId: user.id,
-            sessionId: session.id,
-        })
-        const newHash = hashRefreshToken(newAccessToken)
-        const newExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    // 1. a current token (made at or after the last refresh): replace it. only one of two
+    // refreshes sent at once can do this
+    if (isCurrentToken({ payload, incomingHash, session })) {
+        const rotatedAt = new Date()
+        const newAccessToken = generateAccessToken(
+            { userId: user.id, sessionId: session.id },
+            { issuedAt: rotatedAt }
+        )
+        const expiresAt = new Date(rotatedAt.getTime() + SESSION_TTL_MS)
 
-        await authRepository.updateSession(session.id, {
-            previousRefreshTokenHash: session.refreshTokenHash,
-            refreshTokenHash: newHash,
-            rotatedAt: new Date(),
-            expiresAt: newExpiresAt,
-        })
-
-        await sessionCache.set(session.id, {
+        const isRotated = await authRepository.rotateSessionToken({
             id: session.id,
-            userId: user.id,
-            isRevoked: false,
-            expiresAt: newExpiresAt,
-            user: {
-                id: user.id,
-                isDeleted: false,
-            },
+            lastRotatedAt: session.rotatedAt,
+            previousHash: session.refreshTokenHash,
+            newHash: hashRefreshToken(newAccessToken),
+            rotatedAt,
+            expiresAt,
         })
 
-        return {
-            accessToken: newAccessToken,
-            token: newAccessToken,
-        }
-    }
-
-    // Case 2: Matches previous refresh token within 30-second grace window (multi-tab concurrent refresh)
-    if (session.previousRefreshTokenHash === incomingHash) {
-        const isWithinGraceWindow =
-            session.rotatedAt && Date.now() - session.rotatedAt.getTime() <= REFRESH_GRACE_PERIOD_MS
-
-        if (isWithinGraceWindow) {
-            // Concurrent request from another tab - issue new valid token without revoking active session
-            const concurrentAccessToken = generateAccessToken({
+        if (isRotated) {
+            await sessionCache.set(session.id, {
+                id: session.id,
                 userId: user.id,
-                sessionId: session.id,
+                isRevoked: false,
+                expiresAt,
+                rotatedAt,
+                user: {
+                    id: user.id,
+                    isDeleted: false,
+                },
             })
 
-            return {
-                accessToken: concurrentAccessToken,
-                token: concurrentAccessToken,
-            }
+            return { accessToken: newAccessToken }
         }
 
-        // Token reuse detected outside grace window: invalidate session across DB and Redis
-        await authRepository.revokeSession(session.id)
-        await sessionCache.invalidate(session.id)
-        throw new AppError('token reuse detected', 401)
+        // another refresh replaced the token first: answer like the case below
+        session = await authRepository.findSessionById(session.id)
+        if (!session || session.isRevoked) {
+            throw new AppError('session revoked', 401)
+        }
     }
 
-    // Case 3: Token does not match current or previous hash
-    throw new AppError('invalid refresh token', 401)
+    // 2. a token the last refresh replaced, sent by another tab at about the same time
+    const rotatedAtMs = session.rotatedAt?.getTime() ?? 0
+
+    if (Date.now() - rotatedAtMs <= TOKEN_GRACE_PERIOD_MS) {
+        // made at or after the refresh, so it counts as current and can refresh later
+        const issuedAt = new Date(Math.max(Date.now(), rotatedAtMs))
+        const concurrentAccessToken = generateAccessToken(
+            { userId: user.id, sessionId: session.id },
+            { issuedAt }
+        )
+
+        return { accessToken: concurrentAccessToken }
+    }
+
+    // 3. a replaced token used again after the grace period: it may be stolen, end the session
+    await authRepository.revokeSession(session.id)
+    await sessionCache.invalidate(session.id)
+    throw new AppError('token reuse detected', 401)
 }
 
 /**
@@ -689,34 +659,17 @@ const pollDeviceToken = async (data: PollDeviceToken) => {
             throw new AppError('User not found', 404)
         }
 
-        const sessionId = crypto.randomUUID()
-        const accessToken = generateAccessToken(
-            { userId: user.id, sessionId },
-            { expiresIn: '30d' }
-        )
-        const tokenHash = hashRefreshToken(accessToken)
+        // the account was deleted after it approved this code: no sign-in for the CLI
+        if (user.deletedAt || user.isDeleted) {
+            await authRepository.deleteDeviceCode(codeRecord.id)
+            throw new AppError('account has been deleted', 403)
+        }
 
-        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-
-        await authRepository.createSession({
-            id: sessionId,
+        const { accessToken } = await issueSession({
             userId: user.id,
-            refreshTokenHash: tokenHash,
+            method: 'cli',
             userAgent: userAgent || 'device-cli',
             ipAddress: ipAddress || 'unknown',
-            expiresAt,
-        })
-        await auditService.recordSignIn({ userId: user.id, method: 'cli', ip: ipAddress })
-
-        await sessionCache.set(sessionId, {
-            id: sessionId,
-            userId: user.id,
-            isRevoked: false,
-            expiresAt,
-            user: {
-                id: user.id,
-                isDeleted: false,
-            },
         })
 
         consumedCodesFallback.set(codeRecord.userCode, Date.now() + 3600_000)

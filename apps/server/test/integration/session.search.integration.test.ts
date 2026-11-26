@@ -4,7 +4,7 @@ import request from 'supertest'
 
 import app from '../../src/app'
 import { cliDispatcher } from '../../src/modules/cli/cli.dispatcher'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Search Mode Integration Tests (#454, #455, #457)', () => {
     const userEmail = `searchtest-${Date.now()}@example.com`
@@ -75,11 +75,11 @@ describe('Search Mode Integration Tests (#454, #455, #457)', () => {
 
         // Login User 1
         const loginRes = await signInWithEmailCode(app, userEmail)
-        userToken = loginRes.body.data.accessToken
+        userToken = authCookieToken(loginRes)
 
         // Login Broke User
         const brokeLoginRes = await signInWithEmailCode(app, brokeUserEmail)
-        brokeUserToken = brokeLoginRes.body.data.accessToken
+        brokeUserToken = authCookieToken(brokeLoginRes)
     })
 
     afterAll(async () => {

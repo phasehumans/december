@@ -5,7 +5,7 @@ declare global {
     namespace Express {
         interface Request {
             user?: Pick<TokenPayload, 'userId' | 'sessionId'>
-            tokenUser?: Pick<TokenPayload, 'userId' | 'sessionId'>
+            tokenUser?: Pick<TokenPayload, 'userId' | 'sessionId'> & { issuedAtMs?: number }
             tokenError?: any
         }
     }

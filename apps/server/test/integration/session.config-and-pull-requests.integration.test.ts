@@ -7,7 +7,7 @@ import request from 'supertest'
 import app from '../../src/app'
 import { env } from '../../src/env'
 import { sessionService } from '../../src/modules/session/session.service'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 import type { Prisma } from '@december/database'
 
@@ -90,8 +90,8 @@ describe('Session configuration and the pull requests list (#632)', () => {
         })
         otherId = other.id
 
-        ownerToken = (await signInWithEmailCode(app, ownerEmail)).body.data.accessToken
-        otherToken = (await signInWithEmailCode(app, otherEmail)).body.data.accessToken
+        ownerToken = authCookieToken(await signInWithEmailCode(app, ownerEmail))
+        otherToken = authCookieToken(await signInWithEmailCode(app, otherEmail))
     })
 
     beforeEach(async () => {

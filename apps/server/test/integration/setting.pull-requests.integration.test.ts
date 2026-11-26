@@ -6,7 +6,7 @@ import request from 'supertest'
 
 import app from '../../src/app'
 import { env } from '../../src/env'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 import type { Prisma } from '@december/database'
 
@@ -94,7 +94,7 @@ describe('Pull request opening settings (#637)', () => {
             data: { email, name: 'PR Opening', emailVerified: true, creditBalance: 10_000 },
         })
         userId = user.id
-        token = (await signInWithEmailCode(app, email)).body.data.accessToken
+        token = authCookieToken(await signInWithEmailCode(app, email))
     })
 
     beforeEach(async () => {

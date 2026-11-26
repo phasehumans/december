@@ -33,10 +33,15 @@ const verifyEmailAuth = asyncHandler(async (req: Request, res: Response) => {
     const userAgent = req.get('user-agent') || 'unknown'
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
 
-    const result = await authService.verifyEmailAuth({ ...parseData, userAgent, ipAddress })
-    authCookie.setAuthCookies(res, result.accessToken)
+    const { accessToken, isNewUser } = await authService.verifyEmailAuth({
+        ...parseData,
+        userAgent,
+        ipAddress,
+    })
+    authCookie.setAuthCookies(res, accessToken)
 
-    return sendSuccess(res, 'login successful', result)
+    // the token is only in the httpOnly cookie: page scripts can never read it
+    return sendSuccess(res, 'login successful', { isNewUser })
 })
 
 const google = asyncHandler(async (req: Request, res: Response) => {
@@ -89,7 +94,7 @@ const google = asyncHandler(async (req: Request, res: Response) => {
     const userAgent = req.get('user-agent') || 'unknown'
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
 
-    const result = await authService.google({
+    const { accessToken } = await authService.google({
         email,
         name,
         sub,
@@ -97,9 +102,9 @@ const google = asyncHandler(async (req: Request, res: Response) => {
         ipAddress,
         referralCode: parseData.referralCode,
     })
-    authCookie.setAuthCookies(res, result.accessToken)
+    authCookie.setAuthCookies(res, accessToken)
 
-    return sendSuccess(res, 'login successful', result)
+    return sendSuccess(res, 'login successful', {})
 })
 
 const github = asyncHandler(async (req: Request, res: Response) => {
@@ -185,7 +190,7 @@ const github = asyncHandler(async (req: Request, res: Response) => {
     const userAgent = req.get('user-agent') || 'unknown'
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
 
-    const result = await authService.github({
+    const { accessToken, isNewUser } = await authService.github({
         email,
         name,
         sub,
@@ -194,25 +199,28 @@ const github = asyncHandler(async (req: Request, res: Response) => {
         ipAddress,
         referralCode: parseData.referralCode,
     })
-    authCookie.setAuthCookies(res, result.accessToken)
+    authCookie.setAuthCookies(res, accessToken)
 
-    return sendSuccess(res, 'login successful', result)
+    return sendSuccess(res, 'login successful', { isNewUser })
 })
 
 const refreshSession = asyncHandler(async (req: Request, res: Response) => {
     try {
-        const token =
-            req.body?.refreshToken ||
-            req.body?.token ||
-            req.cookies?.accessToken ||
-            req.cookies?.refreshToken
-        const result = await authService.refreshSession({
+        // the CLI sends its token in the body and gets the new one back the same way. the web
+        // sends only its cookie, and the new token goes only into the cookie
+        const bodyToken = req.body?.refreshToken || req.body?.token
+        const token = bodyToken || req.cookies?.accessToken || req.cookies?.refreshToken
+        const { accessToken } = await authService.refreshSession({
             refreshToken: token,
         })
 
-        authCookie.setAccessTokenCookie(res, result.accessToken)
+        authCookie.setAccessTokenCookie(res, accessToken)
 
-        return sendSuccess(res, 'session refreshed successfully', result)
+        return sendSuccess(
+            res,
+            'session refreshed successfully',
+            bodyToken ? { accessToken, token: accessToken } : {}
+        )
     } catch (error) {
         if (
             error instanceof AppError &&
@@ -222,6 +230,7 @@ const refreshSession = asyncHandler(async (req: Request, res: Response) => {
                 error.message === 'account has been deleted' ||
                 error.message === 'invalid refresh token' ||
                 error.message === 'token reuse detected' ||
+                error.message === 'invalid or expired token' ||
                 error.message === 'session not found')
         ) {
             authCookie.clearAuthCookies(res)

@@ -4,7 +4,7 @@ import request from 'supertest'
 
 import app from '../../src/app'
 import { hashRefreshToken } from '../../src/modules/auth/auth.utils'
-import { signInWithEmailCode } from '../helpers'
+import { authCookieToken, signInWithEmailCode } from '../helpers'
 
 describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
     let testUserId: string
@@ -61,10 +61,10 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
             .send({ email: testEmail, otp: '123456' })
 
         expect(res.status).toBe(200)
-        expect(res.body.data.accessToken).toBeDefined()
+        expect(res.body.data.accessToken).toBeUndefined()
 
-        accessToken = res.body.data.accessToken
-        refreshToken = res.body.data.accessToken
+        accessToken = authCookieToken(res)
+        refreshToken = accessToken
 
         const expectedHash = hashRefreshToken(refreshToken)
         const session = await prisma.authSession.findFirst({ where: { userId: testUserId } })
@@ -118,7 +118,7 @@ describe('Auth Module Hardening & SHA-256 Token Hashing', () => {
         const loginRes = await signInWithEmailCode(app, testEmail)
 
         expect(loginRes.status).toBe(200)
-        accessToken = loginRes.body.data.accessToken
+        accessToken = authCookieToken(loginRes)
 
         const res1 = await request(app)
             .get('/api/v1/setting')

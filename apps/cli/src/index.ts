@@ -301,6 +301,13 @@ async function main() {
             purgeProjectEnvApiKeys(parsedArgs.scope)
         }
 
+        // an expired December token is renewed here, so a sign-in in use never ends
+        await import('./auth/renew')
+            .then(({ renewDecemberTokenIfExpired }) => renewDecemberTokenIfExpired())
+            .catch(() => {
+                // Intentionally swallowed: a failed renewal leaves the old token, and /login still works
+            })
+
         const providerConfig = await getProviderConfig()
         let llm: any
         if (providerConfig) {
@@ -470,6 +477,13 @@ async function main() {
 
     // Suppress noisy sdk console logs that corrupt the tui layout
     suppressConsole()
+
+    // an expired December token is renewed here, so a sign-in in use never ends
+    await import('./auth/renew')
+        .then(({ renewDecemberTokenIfExpired }) => renewDecemberTokenIfExpired())
+        .catch(() => {
+            // Intentionally swallowed: a failed renewal leaves the old token, and /login still works
+        })
 
     const providerConfig = await getProviderConfig()
     const authStatus = await getAuthStatus()

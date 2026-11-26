@@ -80,14 +80,12 @@ describe('Auth Flow Typography & Landing Page Font Alignment', () => {
         ).toBeTruthy()
     })
 
-    it('AuthModalAuthStep orders GitHub, ChatGPT, Google with one compact style', () => {
+    it('AuthModalAuthStep orders GitHub, Google with one compact style', () => {
         renderAuthStep()
 
-        const buttons = [
-            /Continue with GitHub/i,
-            /Continue with ChatGPT/i,
-            /Continue with Google/i,
-        ].map((name) => screen.getByRole('button', { name }))
+        const buttons = [/Continue with GitHub/i, /Continue with Google/i].map((name) =>
+            screen.getByRole('button', { name })
+        )
         for (let i = 0; i < buttons.length - 1; i++) {
             expect(
                 buttons[i]!.compareDocumentPosition(buttons[i + 1]!) &
@@ -114,16 +112,10 @@ describe('Auth Flow Typography & Landing Page Font Alignment', () => {
         expect(screen.getByText(/By continuing, you agree to our/i)).toBeDefined()
     })
 
-    it('Continue with ChatGPT says coming soon and does not start a sign-in', () => {
-        const onGoogleLogin = mock(() => {})
-        const onGithubLogin = mock(() => {})
-        renderAuthStep({ onGoogleLogin, onGithubLogin })
+    it('AuthModalAuthStep has no ChatGPT sign-in', () => {
+        renderAuthStep()
 
-        const chatgptBtn = screen.getByRole('button', { name: /Continue with ChatGPT/i })
-        fireEvent.click(chatgptBtn)
-        expect(chatgptBtn.textContent).toContain('coming soon')
-        expect(onGoogleLogin).not.toHaveBeenCalled()
-        expect(onGithubLogin).not.toHaveBeenCalled()
+        expect(screen.queryByRole('button', { name: /ChatGPT/i })).toBeNull()
     })
 
     it('AuthModalOtpStep shows the email and offers resend and a different email', () => {

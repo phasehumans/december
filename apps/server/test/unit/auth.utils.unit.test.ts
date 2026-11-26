@@ -5,9 +5,11 @@ import {
     getNameFromEmail,
     generateUserCode,
     generateAccessToken,
-    generateRefreshToken,
     verifyAccessToken,
-    verifyRefreshToken,
+    verifyTokenIgnoringExpiry,
+    getTokenIssuedAtMs,
+    isTokenReplaced,
+    TOKEN_GRACE_PERIOD_MS,
     extractToken,
     sendOTP,
     sendWelcomeEmail,
@@ -74,21 +76,54 @@ describe('Auth Utils - Unit Tests', () => {
             expect(decoded.sessionId).toBe(payload.sessionId)
         })
 
-        it('should generate and verify a valid refresh token', () => {
-            const token = generateRefreshToken(payload)
-            expect(typeof token).toBe('string')
+        it('puts the issue time in ms in the token', () => {
+            const issuedAt = new Date('2026-11-26T10:00:00.123Z')
+            const decoded = verifyAccessToken(generateAccessToken(payload, { issuedAt }))
+            expect(getTokenIssuedAtMs(decoded)).toBe(issuedAt.getTime())
+        })
 
-            const decoded = verifyRefreshToken(token)
-            expect(decoded.userId).toBe(payload.userId)
-            expect(decoded.sessionId).toBe(payload.sessionId)
+        it('reads the issue time of an older token from iat in seconds', () => {
+            expect(getTokenIssuedAtMs({ iat: 1_700_000_000 })).toBe(1_700_000_000_000)
+        })
+
+        it('verifyTokenIgnoringExpiry takes an expired token but not a bad signature', () => {
+            const expired = generateAccessToken(payload, { expiresIn: -60 })
+            expect(() => verifyAccessToken(expired)).toThrow()
+            expect(verifyTokenIgnoringExpiry(expired).sessionId).toBe(payload.sessionId)
+            expect(() => verifyTokenIgnoringExpiry(`${expired}x`)).toThrow()
         })
 
         it('should throw error when verifying invalid or tampered access token', () => {
             expect(() => verifyAccessToken('invalid.jwt.token')).toThrow()
         })
+    })
 
-        it('should throw error when verifying invalid or tampered refresh token', () => {
-            expect(() => verifyRefreshToken('invalid.jwt.token')).toThrow()
+    describe('isTokenReplaced', () => {
+        const rotatedAt = new Date('2026-11-26T10:00:00.000Z')
+        const rotatedAtMs = rotatedAt.getTime()
+
+        it('takes every token of a session with no refresh', () => {
+            expect(isTokenReplaced({ issuedAtMs: 0, rotatedAt: null })).toBe(false)
+        })
+
+        it('takes a token made at or after the last refresh', () => {
+            const now = rotatedAtMs + 60_000
+            expect(isTokenReplaced({ issuedAtMs: rotatedAtMs, rotatedAt, now })).toBe(false)
+            expect(isTokenReplaced({ issuedAtMs: rotatedAtMs + 1, rotatedAt, now })).toBe(false)
+        })
+
+        it('takes an older token only in the grace period', () => {
+            const issuedAtMs = rotatedAtMs - 1
+            const inGrace = rotatedAtMs + TOKEN_GRACE_PERIOD_MS
+            expect(isTokenReplaced({ issuedAtMs, rotatedAt, now: inGrace })).toBe(false)
+            expect(isTokenReplaced({ issuedAtMs, rotatedAt, now: inGrace + 1 })).toBe(true)
+        })
+
+        it('reads a rotatedAt that came back from the cache as a string', () => {
+            const now = rotatedAtMs + 60_000
+            expect(
+                isTokenReplaced({ issuedAtMs: 0, rotatedAt: rotatedAt.toISOString(), now })
+            ).toBe(true)
         })
     })
 

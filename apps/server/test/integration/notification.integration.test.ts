@@ -4,7 +4,7 @@ import request from 'supertest'
 
 import app from '../../src/app'
 import { notificationService } from '../../src/modules/notification/notification.service'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Notification Integration Tests', () => {
     const testEmail = `notiftest-${Date.now()}@example.com`
@@ -25,7 +25,7 @@ describe('Notification Integration Tests', () => {
 
         const loginRes = await signInWithEmailCode(app, testEmail)
 
-        accessToken = loginRes.body.data.accessToken
+        accessToken = authCookieToken(loginRes)
 
         // Seed notifications
         const n1 = await notificationService.sendNotificationToUser({

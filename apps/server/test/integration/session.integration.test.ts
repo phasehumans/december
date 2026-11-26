@@ -3,7 +3,7 @@ import { describe, it, expect, afterAll, beforeAll } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 describe('Session Integration Tests', () => {
     const user1Email = `sessiontest1-${Date.now()}@example.com`
@@ -41,11 +41,11 @@ describe('Session Integration Tests', () => {
 
         // Login User 1
         const loginRes1 = await signInWithEmailCode(app, user1Email)
-        user1Token = loginRes1.body.data.accessToken
+        user1Token = authCookieToken(loginRes1)
 
         // Login User 2
         const loginRes2 = await signInWithEmailCode(app, user2Email)
-        user2Token = loginRes2.body.data.accessToken
+        user2Token = authCookieToken(loginRes2)
     })
 
     afterAll(async () => {

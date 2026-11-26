@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 
 import { env } from '../env'
 import { sessionCache } from '../modules/auth/auth.cache'
-import { extractToken } from '../modules/auth/auth.utils'
+import { extractToken, getTokenIssuedAtMs, isTokenReplaced } from '../modules/auth/auth.utils'
 
 import type { TokenPayload } from '../modules/auth/auth.types'
 import type { Request, Response, NextFunction } from 'express'
@@ -18,9 +18,10 @@ export const parseAuthToken = (req: Request, _res: Response, next: NextFunction)
                 req.tokenUser = {
                     userId: decoded.userId,
                     sessionId: decoded.sessionId,
+                    issuedAtMs: getTokenIssuedAtMs(decoded),
                 }
                 if (!req.user) {
-                    req.user = req.tokenUser
+                    req.user = { userId: decoded.userId, sessionId: decoded.sessionId }
                 }
             }
         }
@@ -29,6 +30,81 @@ export const parseAuthToken = (req: Request, _res: Response, next: NextFunction)
         // Intentionally swallowed: optional pre-parsing for downstream rate limiting and routing
     }
     next()
+}
+
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
+const SESSION_EXTEND_BELOW_MS = 25 * 24 * 60 * 60 * 1000
+
+/**
+ * Checks the session a valid token points to: it must exist, belong to the token's user, not
+ * be revoked, expired or replaced, and the user must not be deleted. Returns the reason it
+ * fails, or null. HTTP requests and socket connections both use it. A session in use is
+ * extended to 30 days from now.
+ */
+export const checkSignedInSession = async (data: {
+    userId: string
+    sessionId: string
+    issuedAtMs?: number
+}): Promise<string | null> => {
+    const { userId, sessionId, issuedAtMs } = data
+
+    let session = await sessionCache.get(sessionId)
+
+    if (!session) {
+        session = await prisma.authSession.findUnique({
+            where: {
+                id: sessionId,
+            },
+            select: {
+                id: true,
+                userId: true,
+                isRevoked: true,
+                expiresAt: true,
+                rotatedAt: true,
+                user: {
+                    select: {
+                        id: true,
+                        isDeleted: true,
+                    },
+                },
+            },
+        })
+
+        if (session) {
+            await sessionCache.set(sessionId, session)
+        }
+    }
+
+    if (!session) return 'Session not found'
+    if (!session.user || session.user.isDeleted) return 'Unauthorized'
+    if (session.userId !== userId) return 'Invalid session'
+    if (session.isRevoked) return 'Session revoked'
+
+    const sessionExpiresAt = new Date(session.expiresAt)
+    if (sessionExpiresAt < new Date()) return 'Session expired'
+
+    // a refresh replaced this token: the client refreshes again with its current one
+    if (issuedAtMs !== undefined && isTokenReplaced({ issuedAtMs, rotatedAt: session.rotatedAt })) {
+        return 'Token replaced'
+    }
+
+    if (sessionExpiresAt.getTime() - Date.now() < SESSION_EXTEND_BELOW_MS) {
+        const newExpiresAt = new Date(Date.now() + SESSION_TTL_MS)
+        prisma.authSession
+            .update({
+                where: { id: session.id },
+                data: { expiresAt: newExpiresAt },
+            })
+            .catch(() => {
+                // Intentionally swallowed: async sliding session extension
+            })
+        session.expiresAt = newExpiresAt
+        sessionCache.set(session.id, session).catch(() => {
+            // Intentionally swallowed: async session cache update
+        })
+    }
+
+    return null
 }
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
@@ -76,75 +152,17 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             tokenUser = {
                 userId: decoded.userId,
                 sessionId: decoded.sessionId,
+                issuedAtMs: getTokenIssuedAtMs(decoded),
             }
             req.tokenUser = tokenUser
             if (!req.user) {
-                req.user = tokenUser
+                req.user = { userId: decoded.userId, sessionId: decoded.sessionId }
             }
         }
 
-        let session = await sessionCache.get(tokenUser.sessionId)
-
-        if (!session) {
-            session = await prisma.authSession.findUnique({
-                where: {
-                    id: tokenUser.sessionId,
-                },
-                select: {
-                    id: true,
-                    userId: true,
-                    isRevoked: true,
-                    expiresAt: true,
-                    user: {
-                        select: {
-                            id: true,
-                            isDeleted: true,
-                        },
-                    },
-                },
-            })
-
-            if (session) {
-                await sessionCache.set(tokenUser.sessionId, session)
-            }
-        }
-
-        if (!session) {
-            return sendAuthError(401, 'Session not found')
-        }
-
-        if (!session.user || session.user.isDeleted) {
-            return sendAuthError(401, 'Unauthorized')
-        }
-
-        if (session.userId !== tokenUser.userId) {
-            return sendAuthError(401, 'Invalid session')
-        }
-
-        if (session.isRevoked) {
-            return sendAuthError(401, 'Session revoked')
-        }
-
-        const sessionExpiresAt = new Date(session.expiresAt)
-        if (sessionExpiresAt < new Date()) {
-            return sendAuthError(401, 'Session expired')
-        }
-
-        // Sliding session extension: If session has less than 25 days remaining, extend in background
-        if (sessionExpiresAt.getTime() - Date.now() < 25 * 24 * 60 * 60 * 1000) {
-            const newExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-            prisma.authSession
-                .update({
-                    where: { id: session.id },
-                    data: { expiresAt: newExpiresAt },
-                })
-                .catch(() => {
-                    // Intentionally swallowed: async sliding session extension
-                })
-            session.expiresAt = newExpiresAt
-            sessionCache.set(session.id, session).catch(() => {
-                // Intentionally swallowed: async session cache update
-            })
+        const sessionError = await checkSignedInSession(tokenUser)
+        if (sessionError) {
+            return sendAuthError(401, sessionError)
         }
 
         req.user = {

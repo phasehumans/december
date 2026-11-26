@@ -75,11 +75,29 @@ async function deleteSessionsBySessionId(sessionId: string) {
     })
 }
 
-async function updateSession(id: string, data: Prisma.AuthSessionUpdateInput) {
-    return prisma.authSession.update({
-        where: { id },
-        data,
+/**
+ * Replaces the token of a session only if no other refresh did since the session was read.
+ * Two refreshes with the same token at once: one replaces it, the other gets false.
+ */
+async function rotateSessionToken(data: {
+    id: string
+    lastRotatedAt: Date | null
+    previousHash: string
+    newHash: string
+    rotatedAt: Date
+    expiresAt: Date
+}) {
+    const { id, lastRotatedAt, previousHash, newHash, rotatedAt, expiresAt } = data
+    const result = await prisma.authSession.updateMany({
+        where: { id, rotatedAt: lastRotatedAt, isRevoked: false },
+        data: {
+            previousRefreshTokenHash: previousHash,
+            refreshTokenHash: newHash,
+            rotatedAt,
+            expiresAt,
+        },
     })
+    return result.count === 1
 }
 
 async function revokeSession(sessionId: string) {
@@ -225,7 +243,7 @@ export const authRepository = {
     createSession,
     findSessionById,
     deleteSessionsBySessionId,
-    updateSession,
+    rotateSessionToken,
     revokeSession,
     revokeAllSessions,
     findUserByIdForDeleteCheck,

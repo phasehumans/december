@@ -24,7 +24,7 @@ export const generateUserCode = (): string => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
     let result = ''
     for (let i = 0; i < 8; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length))
+        result += chars.charAt(crypto.randomInt(chars.length))
     }
     return `${result.substring(0, 4)}-${result.substring(4, 8)}`
 }
@@ -39,7 +39,7 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
 
 export const generateAccessToken = (
     payload: TokenPayload,
-    options?: { expiresIn?: SignOptions['expiresIn'] }
+    options?: { expiresIn?: SignOptions['expiresIn']; issuedAt?: Date }
 ) => {
     const secret = env.ACCESS_TOKEN_SECRET
     const expiresIn = (options?.expiresIn ||
@@ -49,6 +49,9 @@ export const generateAccessToken = (
         {
             userId: payload.userId,
             sessionId: payload.sessionId,
+            // the standard iat claim is in whole seconds: this one is in ms, so a token made
+            // at a refresh can be told apart from a token made just before it
+            iatMs: (options?.issuedAt ?? new Date()).getTime(),
             jti: crypto.randomUUID(),
         },
         secret,
@@ -58,18 +61,42 @@ export const generateAccessToken = (
     )
 }
 
-export const generateRefreshToken = (payload: TokenPayload) => {
-    return generateAccessToken(payload)
-}
-
 export const verifyAccessToken = (token: string) => {
     const secret = env.ACCESS_TOKEN_SECRET
     return jwt.verify(token, secret) as unknown as TokenPayload
 }
 
-export const verifyRefreshToken = (token: string) => {
-    const secret = env.ACCESS_TOKEN_SECRET || env.REFRESH_TOKEN_SECRET || ''
-    return jwt.verify(token, secret) as unknown as TokenPayload
+/**
+ * Checks the signature only. /auth/refresh takes an expired token: the session row, not the
+ * token's own expiry, decides if the user is still signed in.
+ */
+export const verifyTokenIgnoringExpiry = (token: string) => {
+    const secret = env.ACCESS_TOKEN_SECRET
+    return jwt.verify(token, secret, { ignoreExpiration: true }) as unknown as TokenPayload
+}
+
+export const getTokenIssuedAtMs = (payload: Pick<TokenPayload, 'iat' | 'iatMs'>): number => {
+    if (typeof payload.iatMs === 'number') return payload.iatMs
+    return (payload.iat ?? 0) * 1000
+}
+
+// a token replaced by a refresh still works this long: requests and refreshes from other
+// tabs that were sent with it at the same time
+export const TOKEN_GRACE_PERIOD_MS = 30 * 1000
+
+/**
+ * A refresh replaces the token of a session. A token made before the last refresh stops
+ * working once the grace period is over. A session with no refresh yet takes all its tokens.
+ */
+export const isTokenReplaced = (data: {
+    issuedAtMs: number
+    rotatedAt?: Date | string | null
+    now?: number
+}) => {
+    const { issuedAtMs, rotatedAt, now = Date.now() } = data
+    if (!rotatedAt) return false
+    const rotatedAtMs = new Date(rotatedAt).getTime()
+    return issuedAtMs < rotatedAtMs && now - rotatedAtMs > TOKEN_GRACE_PERIOD_MS
 }
 
 export const extractToken = (req: {

@@ -4,7 +4,7 @@ import request from 'supertest'
 
 import app from '../../src/app'
 import { byokUtils } from '../../src/modules/byok/byok.utils'
-import { cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
+import { authCookieToken, cleanupTestUser, getRandomIP, signInWithEmailCode } from '../helpers'
 
 const GROQ_MODELS = ['llama-3.3-70b-versatile', 'qwen-qwq-32b']
 
@@ -40,7 +40,7 @@ describe('Defaults for new sessions (#637)', () => {
             data: { email, name: 'Defaults User', emailVerified: true, creditBalance: 10_000 },
         })
         userId = user.id
-        token = (await signInWithEmailCode(app, email)).body.data.accessToken
+        token = authCookieToken(await signInWithEmailCode(app, email))
     })
 
     beforeEach(async () => {
