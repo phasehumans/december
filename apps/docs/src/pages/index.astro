@@ -12,7 +12,7 @@ import { landingFaq, faqParagraphHtml, landingFaqJsonLd } from '../lib/landing-f
 
 // Short quotes from people who use December, shown under the cards in "Built in public"
 const userQuotes = [
-  { name: 'sachin chaudhari', text: 'Built my whole semester project and report in 30 min. Still can\'t believe it.' },
+  { name: 'sachin chaudhari', text: 'Built my whole semester project and report in 30 min. Still can\'t believe it.' },
   { name: 'bhavesh sonawane', text: 'One coding agent, all models, even my local ones. Sorted.' },
   { name: 'pranav jadhav', text: 'Used December for one week. Uninstalled Codex. Not going back.' },
 ];
@@ -698,7 +698,8 @@ const appUrl = import.meta.env.APP_URL || (import.meta.env.DEV ? 'http://localho
       <div class="mt-9 sm:mt-10 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
         {userQuotes.map((quote) => (
           <figure class="flex flex-col gap-2 min-w-0">
-            <blockquote class="text-[15px] leading-relaxed tracking-[-0.005em] text-[#090a0f]">"{quote.text}"</blockquote>
+            <span aria-hidden="true" class="block h-[18px] pt-2.5 text-[40px] leading-[0.6] font-medium text-[#87b2f4] select-none">“</span>
+            <blockquote class="text-[15px] leading-relaxed tracking-[-0.005em] text-[#090a0f]">{quote.text}</blockquote>
             <figcaption class="font-mono text-xs text-[#64748b]">- {quote.name}</figcaption>
           </figure>
         ))}
