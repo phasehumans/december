@@ -24,7 +24,14 @@ const work = [
   },
 ];
 
-const projects = [
+// mobileSummary: a shorter line for phones, when the summary is too long
+const projects: Array<{
+  name: string
+  summary: string
+  mobileSummary?: string
+  label: string
+  href: string
+}> = [
   {
     name: 'december',
     summary: 'a better coding agent',
