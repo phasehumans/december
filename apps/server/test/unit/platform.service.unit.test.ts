@@ -27,13 +27,15 @@ describe('Platform Service - Unit Tests', () => {
             }
         })
 
-        it('should return github archive download url when session is linked to github', async () => {
+        it('packs the live sandbox first, also when the session has a repository', async () => {
             const originalFind = platformRepository.findSessionByIdAndUser
             platformRepository.findSessionByIdAndUser = (async () => ({
                 id: 's1',
                 title: 'My Cool App',
                 githubRepoOwner: 'phasehumans',
                 githubRepoName: 'cool-app',
+                vmId: 'sb-12345',
+                sandboxStatus: 'RUNNING',
             })) as any
 
             try {
@@ -43,16 +45,14 @@ describe('Platform Service - Unit Tests', () => {
                 })
 
                 expect(res.fileName).toBe('My-Cool-App.zip')
-                expect(res.downloadUrl).toBe(
-                    'https://github.com/phasehumans/cool-app/archive/refs/heads/main.zip'
-                )
-                expect(res.zip).toBeUndefined()
+                expect(res.zip).toBeDefined()
+                expect(res.stream).toBeUndefined()
             } finally {
                 platformRepository.findSessionByIdAndUser = originalFind
             }
         })
 
-        it('should return git archive zip from sandbox when session is not linked to github', async () => {
+        it('answers 404 when the sandbox has stopped and there is no repository', async () => {
             const originalFind = platformRepository.findSessionByIdAndUser
             platformRepository.findSessionByIdAndUser = (async () => ({
                 id: 's1',
@@ -60,17 +60,18 @@ describe('Platform Service - Unit Tests', () => {
                 githubRepoOwner: null,
                 githubRepoName: null,
                 vmId: 'sb-12345',
+                sandboxStatus: 'STOPPED',
             })) as any
 
             try {
-                const res = await platformService.downloadSession({
-                    userId: 'u1',
-                    sessionId: 's1',
-                })
-
-                expect(res.fileName).toBe('Unlinked-App.zip')
-                expect(res.zip).toBeDefined()
-                expect(res.downloadUrl).toBeUndefined()
+                await expect(
+                    platformService.downloadSession({ userId: 'u1', sessionId: 's1' })
+                ).rejects.toThrow(
+                    new AppError(
+                        'Nothing to download: the sandbox of this session has stopped',
+                        404
+                    )
+                )
             } finally {
                 platformRepository.findSessionByIdAndUser = originalFind
             }

@@ -323,4 +323,84 @@ describe('stop and running sandboxes', () => {
             expect(await inboxTitles()).toEqual(['A session finished'])
         })
     })
+    // deleting one session must not leave its run or its sandbox going (E2B bills it)
+    describe('DELETE /session/:id', () => {
+        const del = (token: string, id: string) =>
+            request(app)
+                .delete(`/api/v1/session/${id}`)
+                .set('x-forwarded-for', getRandomIP())
+                .set('Authorization', `Bearer ${token}`)
+
+        it('stops the run and the live sandbox, then deletes the session', async () => {
+            const session = await workingSession('delete-live')
+
+            const res = await del(owner.token, session.id)
+
+            expect(res.status).toBe(200)
+            expect(queued).toEqual([
+                {
+                    name: 'sandbox_control',
+                    data: {
+                        taskType: 'sandbox_control',
+                        action: 'stop',
+                        sessionId: session.id,
+                        sandboxId: `vm-delete-live-${stamp}`,
+                    },
+                },
+            ])
+            expect(interrupts()).toEqual([
+                {
+                    channel: `session_interrupts:${session.id}`,
+                    message: { type: 'INTERRUPT', reason: 'user' },
+                },
+            ])
+            expect(await prisma.session.count({ where: { id: session.id } })).toBe(0)
+        })
+
+        it('queues no stop for a sandbox that is already stopped', async () => {
+            const session = await workingSession('delete-stopped')
+            await prisma.session.update({
+                where: { id: session.id },
+                data: { sandboxStatus: 'STOPPED', vmStatus: 'STOPPED' },
+            })
+
+            const res = await del(owner.token, session.id)
+
+            expect(res.status).toBe(200)
+            expect(queued).toEqual([])
+            expect(await prisma.session.count({ where: { id: session.id } })).toBe(0)
+        })
+
+        it('deletes nothing when the sandbox stop cannot be queued', async () => {
+            const session = await workingSession('delete-no-queue')
+            setAgentQueue({
+                add: async () => {
+                    throw new Error('redis is down')
+                },
+            } as any)
+            try {
+                const res = await del(owner.token, session.id)
+                expect(res.status).toBe(503)
+                expect(await prisma.session.count({ where: { id: session.id } })).toBe(1)
+            } finally {
+                setAgentQueue({
+                    add: async (name: string, data: any) => {
+                        queued.push({ name, data })
+                        return { id: `job-${queued.length}` }
+                    },
+                } as any)
+            }
+        })
+
+        it("answers 403 for another user's session and stops nothing", async () => {
+            const session = await workingSession('delete-not-yours')
+
+            const res = await del(stranger.token, session.id)
+
+            expect(res.status).toBe(403)
+            expect(queued).toEqual([])
+            expect(interrupts()).toEqual([])
+            expect(await prisma.session.count({ where: { id: session.id } })).toBe(1)
+        })
+    })
 })

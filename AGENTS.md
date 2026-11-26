@@ -65,5 +65,6 @@ Reference gold standard modules: `auth`, `notification`, `session`.
 
 ## Announcement & Product Marketing Standards
 
-- **Admin page (primary)**: Send announcements and feedback-request emails from `app.trydecember.com/admin` (Announcements). Write, send a test, then send to users from the database. It skips users with `receiveNotification = false`, adds an unsubscribe link, and keeps the history in the database.
-- **Fallback script**: Only if `/admin` fails: draft in `scripts/announcement.html` / `.txt`, users in `scripts/users.txt`, then run `python3 scripts/announce.py` (`--test <email>` or `--send`, 20s pacing, auto-logged history).
+- **Script (the only way)**: The admin panel does not send email. Draft in `scripts/announcement.html` / `.txt`, users in `scripts/users.txt` (only users who did not turn product emails off), then run `python3 scripts/announce.py` (`--test <email>` first, then `--send` only after the user says to send; 20s pacing, auto-logged history).
+- **Resend free plan**: 100 emails a day and 3,000 a month, shared with sign-in codes. Keep at least 30 a day free for sign-in codes.
+- **Personal notes**: Send from Gmail (chetan@trydecember.com), not through Resend.

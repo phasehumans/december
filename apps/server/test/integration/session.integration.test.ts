@@ -196,17 +196,6 @@ describe('Session Integration Tests', () => {
         expect(unarchRes.body.data.session.isArchived).toBe(false)
     })
 
-    it('9. GET /api/v1/session/:id/rehydrate - rehydrates session state', async () => {
-        const res = await request(app)
-            .get(`/api/v1/session/${createdSessionId}/rehydrate`)
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${user1Token}`)
-
-        expect(res.status).toBe(200)
-        expect(res.body.data.session.id).toBe(createdSessionId)
-        expect(res.body.data.messages).toBeArray()
-    })
-
     it('10. POST /api/v1/session/:id/disconnect - emits disconnect signal', async () => {
         const res = await request(app)
             .post(`/api/v1/session/${createdSessionId}/disconnect`)

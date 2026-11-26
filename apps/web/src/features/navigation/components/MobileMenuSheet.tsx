@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowUpRight, ChevronRight, Inbox, Trash2 } from 'lucide-react'
+import { ArrowUpRight, Inbox, Trash2 } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -193,13 +193,25 @@ const MenuLevel: React.FC<
         [sessionsData?.sessions]
     )
 
+    const focusTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+    React.useEffect(
+        () => () => {
+            if (focusTimerRef.current) clearTimeout(focusTimerRef.current)
+        },
+        []
+    )
+
     const startNew = () =>
         closeThen(() => {
             if (onNewThread) onNewThread()
             else if (onHomeClick) onHomeClick()
             else navigate('/')
             window.dispatchEvent(new CustomEvent('december:new-session'))
-            setTimeout(() => document.getElementById('home-prompt-textarea')?.focus(), 50)
+            if (focusTimerRef.current) clearTimeout(focusTimerRef.current)
+            focusTimerRef.current = setTimeout(() => {
+                focusTimerRef.current = null
+                document.getElementById('home-prompt-textarea')?.focus()
+            }, 50)
         })
 
     const requireAuth = (fn: () => void) => (isAuthenticated ? fn() : closeThen(onOpenAuth))
@@ -317,17 +329,7 @@ const MenuLevel: React.FC<
                             </button>
                         </div>
                     ) : (
-                        <>
-                            {recentRows}
-                            <button
-                                type="button"
-                                onClick={() => closeThen(onSessions)}
-                                className="w-full flex items-center justify-between h-9 px-2.5 rounded-[10px] text-[13px] text-[#919191] active:bg-[#242424] outline-none cursor-pointer"
-                            >
-                                All sessions
-                                <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
-                        </>
+                        recentRows
                     )}
                 </>
             )}
@@ -612,7 +614,10 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
         body = (
             <MenuLevel
                 {...props}
-                onOpenSearch={() => setIsSearchOpen(true)}
+                onOpenSearch={() => {
+                    useAppStore.getState().setIsSuperCrewOpen(false)
+                    setIsSearchOpen(true)
+                }}
                 onOpenInbox={() => setLevel('inbox')}
                 onOpenSettings={() => setLevel('settings')}
                 onHoldSession={(next) => {

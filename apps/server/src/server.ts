@@ -3,6 +3,7 @@ import { createServer } from 'http'
 import app from './app'
 import { ensureStorageBucket } from './config/s3'
 import { env } from './env'
+import { recordServerStart } from './shared/server-starts'
 import { initSocket } from './socket'
 import './background'
 
@@ -16,6 +17,7 @@ initSocket(httpServer)
 
 const server = httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`server is listening on PORT ${PORT} in ${NODE_ENV} mode`)
+    recordServerStart()
 })
 
 const shutdown = (signal: string) => {

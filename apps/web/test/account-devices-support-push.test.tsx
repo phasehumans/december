@@ -15,7 +15,7 @@ if (!globalThis.document) {
 
 const { render, cleanup, screen, fireEvent, waitFor } = await import('@testing-library/react')
 
-// #636: devices, support access and browser push on the Account page, against the server
+// #636: devices and browser push on the Account page, against the server
 
 const ENDPOINT = 'https://fcm.googleapis.com/fcm/send/this-browser'
 
@@ -148,12 +148,9 @@ beforeEach(() => {
             return json(200, { id: path.split('/').pop(), isCurrent: false })
         }
         if (path.endsWith('/auth/signout')) return json(200)
-        if (path.endsWith('/setting/support-access')) {
-            return json(200, { supportAccessUntil: '2026-12-02T10:00:00.000Z' })
-        }
         if (path.endsWith('/setting/export')) return json(200, { export: null })
         if (path.endsWith('/setting')) {
-            return json(200, { id: 'user-1', email: 'dev@example.com', supportAccessUntil: null })
+            return json(200, { id: 'user-1', email: 'dev@example.com' })
         }
         if (path.endsWith('/notification/push/key')) return json(200, { publicKey })
         if (path.endsWith('/notification/push/status')) {
@@ -177,7 +174,7 @@ afterEach(() => {
     useAppStore.setState({ isAuthenticated: false, isAuthRestored: false })
 })
 
-describe('account page: devices and support access', () => {
+describe('account page: devices', () => {
     const renderSections = (onSignOut = () => {}) =>
         wrap(
             <AccountSections
@@ -211,18 +208,10 @@ describe('account page: devices and support access', () => {
         expect(calls.filter((call) => call.method === 'DELETE')).toHaveLength(0)
     })
 
-    test('the support switch sends the PATCH', async () => {
+    test('there is no support access switch any more', async () => {
         renderSections()
         await screen.findByText('December CLI on Linux')
-
-        const toggle = screen.getByRole('switch', {
-            name: 'Let December support open my sessions',
-        })
-        expect(toggle.getAttribute('aria-checked')).toBe('false')
-        fireEvent.click(toggle)
-
-        await waitFor(() => expect(sent('PATCH', '/setting/support-access')).toHaveLength(1))
-        expect(sent('PATCH', '/setting/support-access')[0]?.body).toEqual({ enabled: true })
+        expect(screen.queryByText('Let December support open my sessions')).toBeNull()
     })
 })
 

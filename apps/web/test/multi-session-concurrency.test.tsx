@@ -157,9 +157,4 @@ describe('multi-session concurrency and afk background execution UI', () => {
         generationAPI.stopSessionStream('sess-1')
         expect(emittedStopEvent).toEqual({ sessionId: 'sess-1' })
     })
-
-    it('should provide rehydrateSession API on sessionAPI', async () => {
-        const { sessionAPI } = await import('../src/features/sessions/api/session')
-        expect(typeof sessionAPI.rehydrateSession).toBe('function')
-    })
 })

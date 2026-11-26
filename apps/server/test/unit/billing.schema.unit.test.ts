@@ -4,7 +4,6 @@ import {
     createRazorpayOrderSchema,
     verifyRazorpayPaymentSchema,
     creditsHistoryQuerySchema,
-    redeemCodeSchema,
     addCreditsSchema,
 } from '../../src/modules/billing/billing.schema'
 
@@ -101,23 +100,6 @@ describe('Billing Schema - Unit Tests', () => {
 
         it('should fail if offset is negative', () => {
             const result = creditsHistoryQuerySchema.safeParse({ offset: -1 })
-            expect(result.success).toBe(false)
-        })
-    })
-
-    describe('redeemCodeSchema', () => {
-        it('should pass with valid non-empty code', () => {
-            const result = redeemCodeSchema.safeParse({ code: 'DECEMBER2026' })
-            expect(result.success).toBe(true)
-        })
-
-        it('should fail with empty code', () => {
-            const result = redeemCodeSchema.safeParse({ code: '   ' })
-            expect(result.success).toBe(false)
-        })
-
-        it('should fail if code exceeds 100 characters', () => {
-            const result = redeemCodeSchema.safeParse({ code: 'A'.repeat(101) })
             expect(result.success).toBe(false)
         })
     })

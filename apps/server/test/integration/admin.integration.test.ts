@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
+import { buildUnsubscribeUrl } from '../../src/modules/admin/admin.utils'
 import { emailService } from '../../src/modules/email/email.service'
 import { cleanupTestUser, createSignedInUser, getRandomIP } from '../helpers'
 
@@ -15,6 +16,7 @@ describe('admin api', () => {
     const savedAdminEmails = process.env.ADMIN_EMAILS
     const savedSendMessage = emailService.sendMessageEmail
     const sentTo: string[] = []
+    const sentMessages: any[] = []
     const queued: Array<{ name: string; data: any }> = []
 
     let admin: { userId: string; token: string }
@@ -22,27 +24,37 @@ describe('admin api', () => {
     let member: { userId: string; token: string }
     const extraUserIds: string[] = []
 
-    const as = (token: string) => ({
+    const APP_ORIGIN = 'http://localhost:3000'
+
+    // the admin api takes only the web cookie from the web app's origin (S2, S3)
+    const as = (token: string, origin: string = APP_ORIGIN) => ({
         get: (path: string) =>
             request(app)
                 .get(`/api/v1/admin${path}`)
                 .set('x-forwarded-for', getRandomIP())
-                .set('Authorization', `Bearer ${token}`),
+                .set('Origin', origin)
+                .set('Cookie', `accessToken=${token}`),
         post: (path: string, body: object = {}) =>
             request(app)
                 .post(`/api/v1/admin${path}`)
                 .set('x-forwarded-for', getRandomIP())
-                .set('Authorization', `Bearer ${token}`)
+                .set('Origin', origin)
+                .set('Cookie', `accessToken=${token}`)
                 .send(body),
     })
+
+    const setCodeEnteredAt = (userId: string, at: Date | null) =>
+        prisma.authSession.updateMany({ where: { userId }, data: { adminVerifiedAt: at } })
 
     const auditRows = (action: string, targetId: string) =>
         prisma.adminAuditLog.count({ where: { action, targetId, adminUserId: admin.userId } })
 
     beforeAll(async () => {
         process.env.ADMIN_EMAILS = ` ${adminEmail.toUpperCase()} , ${unverifiedAdminEmail}`
-        emailService.sendMessageEmail = (async (data: { to: string }) => {
+        // a fake sender: tests never send a real email, they only record what would go out
+        emailService.sendMessageEmail = (async (data: any) => {
             sentTo.push(data.to)
+            sentMessages.push(data)
             return { id: `email-${sentTo.length}` }
         }) as any
         setAgentQueue({
@@ -58,6 +70,8 @@ describe('admin api', () => {
             emailVerified: false,
         })
         member = await createSignedInUser({ email: `member-${stamp}@example.com` })
+        // the admin entered an authenticator code in this sign-in just now
+        await setCodeEnteredAt(admin.userId, new Date())
     })
 
     afterAll(async () => {
@@ -67,9 +81,6 @@ describe('admin api', () => {
         const ids = [admin.userId, unverifiedAdmin.userId, member.userId, ...extraUserIds]
         await prisma.adminAuditLog.deleteMany({ where: { adminUserId: admin.userId } })
         await prisma.creditRequest.deleteMany({ where: { userId: { in: ids } } })
-        await prisma.redeemCode.deleteMany({
-            where: { metadata: { path: ['code'], string_starts_with: `TEST${stamp}` } },
-        })
         await prisma.githubAppInstallation.deleteMany({
             where: { installationId: `inst-${stamp}` },
         })
@@ -83,51 +94,154 @@ describe('admin api', () => {
     describe('access', () => {
         const routes: Array<[string, string]> = [
             ['get', '/me'],
-            ['get', '/credit-requests'],
+            ['post', '/totp/setup'],
+            ['post', '/totp/verify'],
+            ['get', '/overview'],
+            ['get', '/analytics/growth'],
+            ['get', '/system/health'],
             ['post', '/credit-requests/x/approve'],
             ['post', '/credit-requests/x/reject'],
-            ['get', '/feedback'],
+            ['get', '/credit-ledger'],
             ['get', '/users'],
-            ['get', '/users/x'],
             ['post', '/users/x/credits'],
-            ['post', '/users/x/restore'],
-            ['get', '/redeem-codes'],
-            ['post', '/redeem-codes'],
-            ['get', '/github-installations'],
-            ['post', '/github-installations/x/assign'],
-            ['get', '/announcements'],
-            ['post', '/announcements/test'],
-            ['post', '/announcements/send'],
             ['get', '/sandboxes'],
             ['post', '/sandboxes/x/pause'],
-            ['post', '/sandboxes/x/stop'],
-            ['get', '/usage/daily'],
-            ['get', '/audit-log'],
         ]
 
-        it('a signed-in user who is not an admin gets 403 on every admin route', async () => {
+        // S7: the same plain 404 an unknown path gets, so nobody can tell the api is there
+        const expectHidden = (res: request.Response) => {
+            expect(res.status).toBe(404)
+            expect(res.text).toContain('Cannot')
+        }
+
+        it('a signed-in user who is not an admin gets a plain 404 on every admin route', async () => {
             for (const [method, path] of routes) {
                 const res = await (as(member.token) as any)[method](path)
-                expect([method, path, res.status]).toEqual([method, path, 403])
+                expect([method, path, res.status]).toEqual([method, path, 404])
             }
         })
 
-        it('an admin email that is not verified gets 403', async () => {
-            const res = await as(unverifiedAdmin.token).get('/me')
-            expect(res.status).toBe(403)
+        it('an admin email that is not verified gets 404', async () => {
+            expectHidden(await as(unverifiedAdmin.token).get('/me'))
         })
 
-        it('signed out gets 401', async () => {
-            const res = await request(app)
-                .get('/api/v1/admin/me')
-                .set('x-forwarded-for', getRandomIP())
-            expect(res.status).toBe(401)
+        it('signed out gets 404', async () => {
+            expectHidden(
+                await request(app)
+                    .get('/api/v1/admin/me')
+                    .set('x-forwarded-for', getRandomIP())
+                    .set('Origin', APP_ORIGIN)
+            )
         })
 
-        it('the admin gets in', async () => {
+        it('the admin with a Bearer token (a CLI token) gets 404, even with the cookie too', async () => {
+            expectHidden(
+                await request(app)
+                    .get('/api/v1/admin/me')
+                    .set('x-forwarded-for', getRandomIP())
+                    .set('Origin', APP_ORIGIN)
+                    .set('Authorization', `Bearer ${admin.token}`)
+            )
+            expectHidden(
+                await request(app)
+                    .get('/api/v1/admin/me')
+                    .set('x-forwarded-for', getRandomIP())
+                    .set('Origin', APP_ORIGIN)
+                    .set('Cookie', `accessToken=${admin.token}`)
+                    .set('Authorization', `Bearer ${admin.token}`)
+            )
+        })
+
+        it('S1: a CLI sign-in of the admin gets 404 even when its token is sent as a cookie', async () => {
+            const { generateAccessToken } = await import('../../src/modules/auth/auth.utils')
+            const cli = await prisma.authSession.create({
+                data: {
+                    userId: admin.userId,
+                    refreshTokenHash: `cli-${stamp}-${Math.random()}`,
+                    // what pollDeviceToken saves for every device-flow sign-in
+                    userAgent: 'device-cli (curl/8.5.0)',
+                    expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+                    adminVerifiedAt: new Date(),
+                },
+            })
+            try {
+                const token = generateAccessToken({ userId: admin.userId, sessionId: cli.id })
+                expectHidden(await as(token).get('/me'))
+                expectHidden(await as(token).get('/users'))
+                expectHidden(await as(token).post('/totp/setup'))
+            } finally {
+                await prisma.authSession.delete({ where: { id: cli.id } })
+            }
+        })
+
+        it('an expired token gets 401 only for the admin; anyone else gets the 404', async () => {
+            const jwt = (await import('jsonwebtoken')).default
+            const { env } = await import('../../src/env')
+            const expired = (userId: string) =>
+                jwt.sign({ userId, sessionId: 'x' }, env.ACCESS_TOKEN_SECRET, { expiresIn: -10 })
+            const own = await as(expired(admin.userId)).get('/me')
+            expect(own.status).toBe(401)
+            expectHidden(await as(expired(member.userId)).get('/me'))
+        })
+
+        it('the admin cookie from another site gets 404', async () => {
+            expectHidden(await as(admin.token, 'https://trydecember.com').get('/me'))
+            expectHidden(await as(admin.token, 'https://evil.example').post('/users/x/credits'))
+        })
+
+        it('a revoked sign-in gets 404', async () => {
+            const other = await createSignedInUser({ email: `admin-revoked-${stamp}@example.com` })
+            extraUserIds.push(other.userId)
+            process.env.ADMIN_EMAILS = `${process.env.ADMIN_EMAILS},admin-revoked-${stamp}@example.com`
+            await prisma.authSession.updateMany({
+                where: { userId: other.userId },
+                data: { isRevoked: true },
+            })
+            expectHidden(await as(other.token).get('/me'))
+        })
+
+        it('the admin gets in, and is told the panel path and code state', async () => {
             const res = await as(admin.token).get('/me')
             expect(res.status).toBe(200)
             expect(res.body.data.email).toBe(adminEmail)
+            expect(res.body.data.adminPath).toMatch(/^\//)
+            expect(res.body.data.totp.verifiedUntil).not.toBeNull()
+        })
+
+        it('without a code in the last 12 hours, only /me and the code routes answer', async () => {
+            await setCodeEnteredAt(admin.userId, new Date(Date.now() - 13 * 60 * 60 * 1000))
+            try {
+                const me = await as(admin.token).get('/me')
+                expect(me.status).toBe(200)
+                expect(me.body.data.totp.verifiedUntil).toBeNull()
+                for (const path of ['/users', '/overview', '/credit-ledger', '/system/health']) {
+                    const res = await as(admin.token).get(path)
+                    expect([path, res.status, res.body.errors?.code]).toEqual([
+                        path,
+                        403,
+                        'admin_code_required',
+                    ])
+                }
+            } finally {
+                await setCodeEnteredAt(admin.userId, new Date())
+            }
+        })
+
+        it('only the admin is told the panel path in their profile', async () => {
+            const own = await request(app)
+                .get('/api/v1/setting')
+                .set('x-forwarded-for', getRandomIP())
+                .set('Authorization', `Bearer ${admin.token}`)
+            const other = await request(app)
+                .get('/api/v1/setting')
+                .set('x-forwarded-for', getRandomIP())
+                .set('Authorization', `Bearer ${member.token}`)
+            expect(own.status).toBe(200)
+            expect(own.body.data.isAdmin).toBe(true)
+            expect(own.body.data.adminPath).toMatch(/^\//)
+            expect(other.status).toBe(200)
+            expect(other.body.data.isAdmin).toBe(false)
+            expect(other.body.data.adminPath).toBeUndefined()
         })
     })
 
@@ -158,18 +272,31 @@ describe('admin api', () => {
             ).id
         })
 
-        it('a new request emails the admins', () => {
-            expect(sentTo.map((to) => to.toLowerCase())).toContain(adminEmail)
+        it('a new request goes to the admin inbox, not to their email', async () => {
+            expect(sentTo.map((to) => to.toLowerCase())).not.toContain(adminEmail)
+            const inbox = await prisma.notification.count({
+                where: { userId: admin.userId, title: 'New free credit request' },
+            })
+            expect(inbox).toBeGreaterThanOrEqual(1)
         })
 
-        it('lists pending requests with signals', async () => {
-            const res = await as(admin.token).get('/credit-requests?status=PENDING')
+        it('the Asked for credits view lists waiting requests with signals', async () => {
+            const res = await as(admin.token).get(`/users?filter=asked&q=rejected-${stamp}`)
             expect(res.status).toBe(200)
-            const row = res.body.data.items.find((item: any) => item.id === rejectId)
+            const row = res.body.data.items[0]
             expect(row.email).toBe(`rejected-${stamp}@yopmail.com`)
-            expect(row.signals.disposableEmail).toBe(true)
-            expect(row.signals.signupMethod).toBe('email')
-            expect(typeof row.signals.accountAgeDays).toBe('number')
+            expect(row.disposable).toBe(true)
+            expect(row.pendingRequest).toMatchObject({
+                id: rejectId,
+                buildPlan: 'a todo app',
+                heardFrom: 'twitter',
+            })
+            expect(row.pendingRequest.signals.signupMethod).toBe('email')
+            expect(typeof row.pendingRequest.signals.accountAgeDays).toBe('number')
+            expect(typeof row.pendingRequest.signals.otherRequestsSameIp).toBe('number')
+            expect(JSON.stringify(row)).not.toContain('ipAddress')
+            expect((await as(admin.token).get('/credit-requests')).status).toBe(404)
+            expect((await as(admin.token).get('/feedback')).status).toBe(404)
         })
 
         it('approving twice adds $5 once, with a notification and an audit row', async () => {
@@ -208,144 +335,244 @@ describe('admin api', () => {
         })
     })
 
-    describe('a3 credit changes and a5 users', () => {
-        it('adds and removes credits with a reason, and audits it', async () => {
+    describe('users tab', () => {
+        it('adds credits and audits it; taking credits away is not allowed', async () => {
             const add = await as(admin.token).post(`/users/${member.userId}/credits`, {
                 amountInCents: 300,
-                reason: 'bug report',
             })
             expect(add.status).toBe(200)
+            expect(add.body.data.creditBalance).toBe(300)
+
             const remove = await as(admin.token).post(`/users/${member.userId}/credits`, {
                 amountInCents: -100,
-                reason: 'correction',
             })
-            expect(remove.status).toBe(200)
-            expect(remove.body.data.creditBalance).toBe(200)
-
-            const tooMuch = await as(admin.token).post(`/users/${member.userId}/credits`, {
-                amountInCents: -1000,
-                reason: 'below zero',
+            expect(remove.status).toBe(400)
+            const withReason = await as(admin.token).post(`/users/${member.userId}/credits`, {
+                amountInCents: 100,
+                reason: 'not asked for any more',
             })
-            expect(tooMuch.status).toBe(400)
-
-            const detail = await as(admin.token).get(`/users/${member.userId}`)
-            expect(detail.body.data.walletTransactions.map((t: any) => t.provider)).toEqual([
-                'ADJUSTMENT',
-                'ADJUSTMENT',
-            ])
-            expect(await auditRows('credits.adjust', member.userId)).toBe(2)
+            expect(withReason.status).toBe(400)
+            expect(await auditRows('credits.adjust', member.userId)).toBe(1)
         })
 
-        it('finds users by email and restores a deleted account', async () => {
-            const search = await as(admin.token).get(`/users?q=member-${stamp}`)
-            expect(search.body.data.items.map((u: any) => u.id)).toEqual([member.userId])
-
-            await prisma.user.update({
-                where: { id: member.userId },
-                data: { isDeleted: true, deletedAt: new Date() },
+        it('the user gets an inbox note and an email when credits are added', async () => {
+            const target = await createSignedInUser({ email: `added-${stamp}@example.com` })
+            extraUserIds.push(target.userId)
+            sentTo.length = 0
+            const res = await as(admin.token).post(`/users/${target.userId}/credits`, {
+                amountInCents: 200,
             })
-            const res = await as(admin.token).post(`/users/${member.userId}/restore`)
             expect(res.status).toBe(200)
-            const user = await prisma.user.findUniqueOrThrow({ where: { id: member.userId } })
-            expect(user.isDeleted).toBe(false)
-            expect(await auditRows('user.restore', member.userId)).toBe(1)
-        })
-    })
-
-    describe('a4 redeem codes', () => {
-        it('creates a code a user can redeem, and audits it', async () => {
-            const code = `TEST${stamp}`
-            const res = await as(admin.token).post('/redeem-codes', {
-                code,
-                amountInCents: 250,
-                maxRedemptions: 5,
+            const note = await prisma.notification.findFirst({
+                where: { userId: target.userId, title: 'Credits added' },
             })
-            expect(res.status).toBe(201)
-            expect(await auditRows('redeem_code.create', res.body.data.id)).toBe(1)
-
-            const redeem = await request(app)
-                .post('/api/v1/billing/redeem-code')
-                .set('x-forwarded-for', getRandomIP())
-                .set('Authorization', `Bearer ${member.token}`)
-                .send({ code: code.toLowerCase() })
-            expect(redeem.status).toBe(200)
-
-            const list = await as(admin.token).get('/redeem-codes')
-            const row = list.body.data.items.find((item: any) => item.code === code)
-            expect(row.claims.map((c: any) => c.email)).toEqual([`member-${stamp}@example.com`])
+            expect(note?.message).toBe('$2.00 is in your wallet.')
+            expect(note?.link).toBe('/settings/billing')
+            expect(sentTo.map((to) => to.toLowerCase())).toContain(`added-${stamp}@example.com`)
         })
-    })
 
-    describe('a6 github installations', () => {
-        it('assigns an unclaimed installation to a user, and audits it', async () => {
-            const installation = await prisma.githubAppInstallation.create({
-                data: { installationId: `inst-${stamp}`, accountLogin: 'someone' },
+        it('added credits stop at the 24-hour cap, and the ledger shows the cap', async () => {
+            const target = await createSignedInUser({ email: `cap-${stamp}@example.com` })
+            extraUserIds.push(target.userId)
+            const before = await as(admin.token).get('/credit-ledger')
+            expect(before.status).toBe(200)
+            const { usedCents, capCents } = before.body.data.cap
+            const over = Math.max(1, capCents - usedCents + 1)
+            const res = await as(admin.token).post(`/users/${target.userId}/credits`, {
+                amountInCents: over,
             })
-            const res = await as(admin.token).post(
-                `/github-installations/${installation.id}/assign`,
-                {
-                    userId: member.userId,
-                }
+            expect(res.status).toBe(400)
+            expect(res.body.message).toContain('24-hour limit')
+        })
+
+        it('lists users newest signup first, a page at a time, with search', async () => {
+            const older = await createSignedInUser({
+                email: `page-old-${stamp}@example.com`,
+                createdAt: new Date(Date.now() - 60 * 1000),
+            })
+            const newer = await createSignedInUser({ email: `page-new-${stamp}@example.com` })
+            extraUserIds.push(older.userId, newer.userId)
+            await prisma.usageEvent.create({
+                data: {
+                    userId: older.userId,
+                    model: 'm',
+                    periodStart: new Date(),
+                    periodEnd: new Date(),
+                },
+            })
+
+            const first = await as(admin.token).get(`/users?q=page-&page=1&pageSize=1`)
+            expect(first.status).toBe(200)
+            expect(first.body.data).toMatchObject({ page: 1, pageSize: 1 })
+            expect(first.body.data.total).toBeGreaterThanOrEqual(2)
+            expect(first.body.data.items[0].email).toBe(`page-new-${stamp}@example.com`)
+            // only what the table shows
+            expect(Object.keys(first.body.data.items[0]).sort()).toEqual(
+                [
+                    'createdAt',
+                    'creditBalance',
+                    'disposable',
+                    'email',
+                    'id',
+                    'lastActiveAt',
+                    'latestFeedback',
+                    'name',
+                    'pendingRequest',
+                ].sort()
             )
+
+            const second = await as(admin.token).get(`/users?q=page-old-${stamp}`)
+            expect(second.body.data.items.map((u: any) => u.id)).toEqual([older.userId])
+            expect(second.body.data.items[0].lastActiveAt).not.toBeNull()
+        })
+
+        it('filters: asked for credits, active this week, feedback', async () => {
+            const idle = await createSignedInUser({ email: `filter-idle-${stamp}@example.com` })
+            const busy = await createSignedInUser({ email: `filter-busy-${stamp}@example.com` })
+            extraUserIds.push(idle.userId, busy.userId)
+            await prisma.user.update({ where: { id: busy.userId }, data: { creditBalance: 900 } })
+            await prisma.usageEvent.create({
+                data: {
+                    userId: busy.userId,
+                    model: 'm',
+                    periodStart: new Date(),
+                    periodEnd: new Date(),
+                },
+            })
+            await prisma.creditRequest.create({
+                data: {
+                    userId: idle.userId,
+                    normalizedEmail: `filter-idle-${stamp}@example.com`,
+                    buildPlan: 'a todo app',
+                    heardFrom: 'x',
+                },
+            })
+            const ids = async (filter: string) => {
+                const res = await as(admin.token).get(`/users?q=filter-&filter=${filter}`)
+                expect(res.status).toBe(200)
+                return res.body.data.items.map((u: any) => u.id).sort()
+            }
+            expect((await as(admin.token).get('/users?filter=never')).status).toBe(400)
+            expect((await as(admin.token).get('/users?filter=low')).status).toBe(400)
+            expect(await ids('asked')).toEqual([idle.userId])
+            // both signed in just now, so both count as active
+            expect(await ids('active')).toEqual([idle.userId, busy.userId].sort())
+            expect(await ids('all')).toEqual([idle.userId, busy.userId].sort())
+            expect((await as(admin.token).get('/users?filter=rich')).status).toBe(400)
+
+            // M4: users who sent feedback, newest feedback first, with the latest message
+            await prisma.feedback.create({
+                data: {
+                    userId: busy.userId,
+                    feedback: 'older note',
+                    createdAt: new Date(Date.now() - 60000),
+                },
+            })
+            await prisma.feedback.create({ data: { userId: idle.userId, feedback: 'newest note' } })
+            await prisma.feedback.create({
+                data: {
+                    userId: busy.userId,
+                    feedback: 'busy again',
+                    createdAt: new Date(Date.now() - 30000),
+                },
+            })
+            const sent = await as(admin.token).get('/users?q=filter-&filter=feedback')
+            expect(sent.status).toBe(200)
+            expect(sent.body.data.total).toBe(2)
+            expect(sent.body.data.items.map((u: any) => [u.id, u.latestFeedback.feedback])).toEqual(
+                [
+                    [idle.userId, 'newest note'],
+                    [busy.userId, 'busy again'],
+                ]
+            )
+            await prisma.creditRequest.deleteMany({ where: { userId: idle.userId } })
+        })
+
+        it('the details card shows real numbers and nothing secret', async () => {
+            const target = await createSignedInUser({ email: `card-${stamp}@mailinator.com` })
+            extraUserIds.push(target.userId)
+            await prisma.user.update({
+                where: { id: target.userId },
+                data: { githubConnected: true, githubUsername: 'octo', githubToken: 'gho_secret' },
+            })
+            await prisma.session.create({
+                data: {
+                    userId: target.userId,
+                    prNumber: 7,
+                    prMergedAt: new Date(),
+                    githubRepoOwner: 'secret-owner',
+                    githubRepoName: 'secret-repo',
+                    title: 'private session title',
+                },
+            })
+            await prisma.usageEvent.create({
+                data: {
+                    userId: target.userId,
+                    model: 'claude-x',
+                    costInCents: 123.4,
+                    externalRequestId: `proxy-card-${stamp}`,
+                    periodStart: new Date(),
+                    periodEnd: new Date(),
+                },
+            })
+            await prisma.feedback.create({
+                data: { userId: target.userId, feedback: 'love it', rating: 'good' },
+            })
+
+            await as(admin.token).post(`/users/${target.userId}/credits`, { amountInCents: 100 })
+
+            const res = await as(admin.token).get(`/users/${target.userId}`)
             expect(res.status).toBe(200)
-            const user = await prisma.user.findUniqueOrThrow({ where: { id: member.userId } })
-            expect(user.githubAppInstall).toBe(true)
-            expect(await auditRows('github_installation.assign', installation.id)).toBe(1)
+            const card = res.body.data
+            expect(card).toMatchObject({
+                email: `card-${stamp}@mailinator.com`,
+                disposable: true,
+                account: { signupMethod: 'email', googleLinked: false },
+                connected: { github: { username: 'octo', appInstalled: false }, secrets: 0 },
+                sessions: { total: 1, repos: 1 },
+                prs: { opened: 1, merged: 1, closed: 0 },
+                usage: {
+                    calls: 1,
+                    cliCalls: 1,
+                    spentCents: 123,
+                    spentDayCents: 123,
+                    topModels: [{ model: 'claude-x', calls: 1, cents: 123 }],
+                },
+                money: { balanceCents: 100, freeCents: 100 },
+                feedback: { total: 1 },
+            })
+            expect(card.usage.daily).toHaveLength(1)
+            expect(card.adminHistory[0]).toMatchObject({
+                action: 'credits.adjust',
+                amountInCents: 100,
+            })
+            expect(card.devices.length).toBeGreaterThanOrEqual(1)
+            expect(card.lastActiveAt).not.toBeNull()
+            const raw = JSON.stringify(card)
+            for (const secret of [
+                'secret-repo',
+                'private session title',
+                'gho_secret',
+                'githubToken',
+                'otpHash',
+                'refreshTokenHash',
+                'ipAddress',
+            ]) {
+                expect(raw).not.toContain(secret)
+            }
+            expect((await as(admin.token).get('/users/no-such-user')).status).toBe(404)
+            expect((await as(member.token).get(`/users/${target.userId}`)).status).toBe(404)
+        })
+
+        it('the removed user routes are gone', async () => {
+            expect((await as(admin.token).post(`/users/${member.userId}/restore`)).status).toBe(404)
+            expect((await as(admin.token).get('/github-installations')).status).toBe(404)
         })
     })
 
-    describe('a7 and a8 announcements', () => {
-        it('a feedback request skips users with product emails turned off, and is kept in history', async () => {
-            const daysAgo = 3000 + Math.floor(Math.random() * 1000)
-            const signedUp = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000)
-            const optedIn = await createSignedInUser({
-                email: `opted-in-${stamp}@example.com`,
-                createdAt: signedUp,
-            })
-            const optedOut = await createSignedInUser({
-                email: `opted-out-${stamp}@example.com`,
-                createdAt: signedUp,
-            })
-            extraUserIds.push(optedIn.userId, optedOut.userId)
-            await prisma.user.update({
-                where: { id: optedOut.userId },
-                data: { notifyProductUpdates: false },
-            })
-            sentTo.length = 0
-
-            const res = await as(admin.token).post('/announcements/send', {
-                kind: 'FEEDBACK_REQUEST',
-                subject: 'quick ask',
-                body: 'hi {name}, how was december?',
-                signedUpDaysAgo: daysAgo,
-            })
-            expect(res.status).toBe(201)
-            expect(res.body.data.recipientCount).toBe(1)
-            expect(res.body.data.skippedCount).toBe(1)
-            expect(sentTo).toEqual([`opted-in-${stamp}@example.com`])
-            expect(await auditRows('announcement.send', res.body.data.id)).toBe(1)
-
-            const history = await as(admin.token).get('/announcements')
-            expect(history.body.data.items[0].id).toBe(res.body.data.id)
-        })
-
-        it('sends a test to the admin only', async () => {
-            sentTo.length = 0
-            const res = await as(admin.token).post('/announcements/test', {
-                subject: 'hello',
-                body: 'news',
-            })
-            expect(res.status).toBe(200)
-            expect(sentTo).toEqual([adminEmail])
-            const tests = await prisma.adminAuditLog.count({
-                where: { adminUserId: admin.userId, action: 'announcement.test' },
-            })
-            expect(tests).toBe(1)
-        })
-
+    describe('unsubscribe links in emails already sent', () => {
         it('the unsubscribe link asks first, then turns product emails off', async () => {
-            const link = await as(admin.token).get(`/users/${member.userId}`)
-            const url = new URL(link.body.data.unsubscribeUrl)
+            const url = new URL(buildUnsubscribeUrl(member.userId))
             const u = url.searchParams.get('u') as string
             const t = url.searchParams.get('t') as string
 
@@ -376,7 +603,7 @@ describe('admin api', () => {
         })
     })
 
-    describe('a9 sandboxes and usage', () => {
+    describe('a9 sandboxes', () => {
         it('lists running sandboxes and pauses or stops one through the worker, audited', async () => {
             const session = await prisma.session.create({
                 data: {
@@ -389,6 +616,8 @@ describe('admin api', () => {
             })
             const list = await as(admin.token).get('/sandboxes')
             expect(list.body.data.items.map((s: any) => s.sessionId)).toContain(session.id)
+            // B12: no session titles, they are the user's own work
+            expect(JSON.stringify(list.body.data)).not.toContain('"title"')
 
             const pause = await as(admin.token).post(`/sandboxes/${session.id}/pause`)
             expect(pause.status).toBe(200)
@@ -401,21 +630,102 @@ describe('admin api', () => {
             expect(await auditRows('sandbox.pause', session.id)).toBe(1)
             expect(await auditRows('sandbox.stop', session.id)).toBe(1)
         })
-
-        it('reports cost per model per day', async () => {
-            await prisma.usageEvent.create({
-                data: {
-                    userId: member.userId,
-                    model: `model-${stamp}`,
-                    costInCents: 12.5,
-                    periodStart: new Date(),
-                    periodEnd: new Date(),
-                },
+    })
+    // L1 to L5: what one admin can give and send in 24 hours
+    describe('limits', () => {
+        const askFor = async (name: string) => {
+            const user = await createSignedInUser({ email: `${name}-${stamp}@example.com` })
+            extraUserIds.push(user.userId)
+            await request(app)
+                .post('/api/v1/billing/credit-request')
+                .set('x-forwarded-for', getRandomIP())
+                .set('Authorization', `Bearer ${user.token}`)
+                .send({ buildPlan: 'a todo app', heardFrom: 'twitter', agreeToFeedback: true })
+            const creditRequest = await prisma.creditRequest.findFirstOrThrow({
+                where: { userId: user.userId },
             })
-            const res = await as(admin.token).get('/usage/daily?days=2')
+            return { user, requestId: creditRequest.id }
+        }
+
+        it('B10: a deleted account gets no credits, by request or by hand, and is not counted', async () => {
+            const { user, requestId } = await askFor('limit-deleted')
+            const before = (await as(admin.token).get('/overview')).body.data.needsYou
+                .pendingRequests
+            await prisma.user.update({
+                where: { id: user.userId },
+                data: { isDeleted: true, deletedAt: new Date() },
+            })
+            const after = (await as(admin.token).get('/overview')).body.data.needsYou
+                .pendingRequests
+            expect(after).toBe(before - 1)
+
+            const approve = await as(admin.token).post(`/credit-requests/${requestId}/approve`)
+            expect(approve.status).toBe(409)
+            expect(approve.body.message).toContain('deleted')
+            const add = await as(admin.token).post(`/users/${user.userId}/credits`, {
+                amountInCents: 100,
+            })
+            expect(add.status).toBe(404)
+            const grants = await prisma.walletTransaction.count({ where: { userId: user.userId } })
+            expect(grants).toBe(0)
+        })
+
+        it('B9: the audit row is written with the money, in the same transaction', async () => {
+            const { requestId } = await askFor('limit-audit')
+            const res = await as(admin.token).post(`/credit-requests/${requestId}/approve`)
             expect(res.status).toBe(200)
-            const row = res.body.data.items.find((item: any) => item.model === `model-${stamp}`)
-            expect(row.costInCents).toBe(12.5)
+            expect(await auditRows('credit_request.approve', requestId)).toBe(1)
+        })
+
+        it('one user gets at most $10 a day, approved $5 requests included', async () => {
+            const { user, requestId } = await askFor('limit-user')
+            const approved = await as(admin.token).post(`/credit-requests/${requestId}/approve`)
+            expect(approved.status).toBe(200)
+
+            const tooMuch = await as(admin.token).post(`/users/${user.userId}/credits`, {
+                amountInCents: 501,
+            })
+            expect(tooMuch.status).toBe(400)
+            expect(tooMuch.body.message).toContain('for this user')
+
+            const fits = await as(admin.token).post(`/users/${user.userId}/credits`, {
+                amountInCents: 500,
+            })
+            expect(fits.status).toBe(200)
+        })
+
+        it('a change of $10 or more goes to the admin inbox, not to email', async () => {
+            const user = await createSignedInUser({ email: `limit-alert-${stamp}@example.com` })
+            extraUserIds.push(user.userId)
+            sentTo.length = 0
+            const res = await as(admin.token).post(`/users/${user.userId}/credits`, {
+                amountInCents: 1000,
+            })
+            expect(res.status).toBe(200)
+            expect(sentTo).not.toContain(adminEmail)
+            const inbox = await prisma.notification.findFirst({
+                where: { userId: admin.userId, title: 'Credits added: $10.00' },
+            })
+            expect(inbox?.message).toContain(`limit-alert-${stamp}@example.com`)
+        })
+
+        it('approvals count toward the daily total of the admin', async () => {
+            const saved = process.env.ADMIN_DAILY_CREDIT_CAP_CENTS
+            const ledger = await as(admin.token).get('/credit-ledger')
+            // room for less than one more $5 approval
+            process.env.ADMIN_DAILY_CREDIT_CAP_CENTS = String(ledger.body.data.cap.usedCents + 400)
+            try {
+                const { requestId } = await askFor('limit-total')
+                const res = await as(admin.token).post(`/credit-requests/${requestId}/approve`)
+                expect(res.status).toBe(400)
+                expect(res.body.message).toContain('for credits you give')
+                const row = await prisma.creditRequest.findUniqueOrThrow({
+                    where: { id: requestId },
+                })
+                expect(row.status).toBe('PENDING')
+            } finally {
+                process.env.ADMIN_DAILY_CREDIT_CAP_CENTS = saved
+            }
         })
     })
 })

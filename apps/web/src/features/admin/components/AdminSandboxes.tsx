@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 
 import { adminAPI, type AdminSandbox } from '../api/admin'
 
@@ -11,20 +11,29 @@ import {
     ErrorLine,
     Muted,
     Tag,
-    money,
     shortDate,
     useAdminAction,
 } from './AdminUi'
 
-import { SettingsSelect } from '@/features/profile/components/SettingsUi'
-
 const KEY = ['admin', 'sandboxes']
 
 const SandboxRow: React.FC<{ sandbox: AdminSandbox }> = ({ sandbox }) => {
+    // B2: the health counts change too
     const control = useAdminAction(
         (action: 'pause' | 'stop') => adminAPI.controlSandbox(sandbox.sessionId, action),
-        [KEY]
+        [KEY, ['admin', 'health']]
     )
+    // B2: Stop asks first; after a pause or stop is sent, the row says so until the worker
+    // has done it, so a second click can't queue it again
+    const [confirmStop, setConfirmStop] = useState(false)
+    const [sent, setSent] = useState<'pause' | 'stop' | null>(null)
+    const send = (action: 'pause' | 'stop') =>
+        control.mutate([action], {
+            onSuccess: () => {
+                setSent(action)
+                setConfirmStop(false)
+            },
+        })
     const isRunning = sandbox.sandboxStatus !== 'PAUSED'
 
     return (
@@ -38,124 +47,79 @@ const SandboxRow: React.FC<{ sandbox: AdminSandbox }> = ({ sandbox }) => {
                     {sandbox.agentWorking && <Tag tone="warn">agent working</Tag>}
                     {isRunning && <Tag>{sandbox.userRunningCount} running for this user</Tag>}
                 </div>
+                {/* B12: no session titles, only ids */}
                 <Muted className="break-all">
-                    {sandbox.title ?? 'Untitled'} · {sandbox.sandboxId} · last activity{' '}
+                    Session {sandbox.sessionId.slice(0, 8)} · {sandbox.sandboxId} · last activity{' '}
                     {shortDate(sandbox.lastActivityAt)}
                 </Muted>
                 <ErrorLine error={control.error} />
             </div>
             <div className="flex items-center gap-2">
-                {isRunning && (
-                    <AdminButton
-                        disabled={control.isPending}
-                        onClick={() => control.mutate(['pause'])}
-                    >
-                        Pause
-                    </AdminButton>
+                {sent ? (
+                    <Muted>{sent === 'stop' ? 'Stopping…' : 'Pausing…'}</Muted>
+                ) : confirmStop ? (
+                    <>
+                        <Muted>
+                            {sandbox.agentWorking
+                                ? 'The agent is working. Stop it?'
+                                : 'Stop this sandbox?'}
+                        </Muted>
+                        <AdminButton onClick={() => setConfirmStop(false)}>No</AdminButton>
+                        <AdminButton
+                            tone="danger"
+                            disabled={control.isPending}
+                            onClick={() => send('stop')}
+                        >
+                            Stop
+                        </AdminButton>
+                    </>
+                ) : (
+                    <>
+                        {isRunning && (
+                            <AdminButton disabled={control.isPending} onClick={() => send('pause')}>
+                                Pause
+                            </AdminButton>
+                        )}
+                        <AdminButton
+                            tone="danger"
+                            disabled={control.isPending}
+                            onClick={() => setConfirmStop(true)}
+                        >
+                            Stop
+                        </AdminButton>
+                    </>
                 )}
-                <AdminButton
-                    tone="danger"
-                    disabled={control.isPending}
-                    onClick={() => control.mutate(['stop'])}
-                >
-                    Stop
-                </AdminButton>
             </div>
         </AdminRow>
     )
 }
 
-const DailyUsage: React.FC = () => {
-    const [days, setDays] = useState('7')
-    const { data, error } = useQuery({
-        queryKey: ['admin', 'usage', days],
-        queryFn: () => adminAPI.dailyUsage(Number(days)),
-    })
-
-    const byDay = useMemo(() => {
-        const groups = new Map<string, NonNullable<typeof data>['items']>()
-        for (const row of data?.items ?? []) {
-            const day = new Date(row.day).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-            })
-            groups.set(day, [...(groups.get(day) ?? []), row])
-        }
-        return Array.from(groups.entries())
-    }, [data])
-
-    return (
-        <AdminSection
-            title="Cost per model"
-            action={
-                <SettingsSelect
-                    label="Days"
-                    value={days}
-                    onChange={setDays}
-                    options={[
-                        { value: '1', label: 'Today' },
-                        { value: '7', label: '7 days' },
-                        { value: '30', label: '30 days' },
-                    ]}
-                />
-            }
-        >
-            <ErrorLine error={error} />
-            <AdminList empty="No usage">
-                {byDay.map(([day, rows]) => (
-                    <AdminRow key={day} className="flex-col !items-stretch">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[14px] text-[#D6D5C9]">{day}</span>
-                            <span className="font-mono text-[13px] text-[#D6D5C9]">
-                                {money(
-                                    rows
-                                        .filter((row) => row.billingSource === 'CREDITS')
-                                        .reduce((sum, row) => sum + row.costInCents, 0)
-                                )}
-                            </span>
-                        </div>
-                        {rows.map((row) => (
-                            <div
-                                key={`${row.model}-${row.billingSource}`}
-                                className="flex items-center justify-between gap-3 text-[12.5px]"
-                            >
-                                <Muted className="truncate">
-                                    {row.model}
-                                    {row.billingSource === 'OWN_KEY' ? ' (own key)' : ''} ·{' '}
-                                    {row.events} calls
-                                </Muted>
-                                <span className="font-mono text-[#B5B4AE]">
-                                    {money(row.costInCents)}
-                                </span>
-                            </div>
-                        ))}
-                    </AdminRow>
-                ))}
-            </AdminList>
-        </AdminSection>
-    )
-}
-
-export const AdminSandboxes: React.FC = () => {
+export const AdminSandboxes: React.FC<{
+    counts?: { starting: number; running: number; paused: number }
+}> = ({ counts }) => {
     const { data, error, isLoading } = useQuery({
         queryKey: KEY,
         queryFn: adminAPI.listSandboxes,
-        refetchInterval: 30 * 1000,
     })
 
     return (
-        <>
-            <AdminSection title="Sandboxes">
-                <ErrorLine error={error} />
-                {!isLoading && (
-                    <AdminList empty="No sandboxes">
-                        {(data?.items ?? []).map((sandbox) => (
+        <AdminSection title="Sandboxes">
+            {counts && (
+                <Muted>
+                    {counts.running} running · {counts.starting} starting · {counts.paused} paused
+                </Muted>
+            )}
+            <ErrorLine error={error} />
+            {!isLoading && (
+                <AdminList empty="No sandboxes running">
+                    {/* Y7: only the ones costing money now; paused ones keep their files and cost nothing */}
+                    {(data?.items ?? [])
+                        .filter((sandbox) => sandbox.sandboxStatus !== 'PAUSED')
+                        .map((sandbox) => (
                             <SandboxRow key={sandbox.sessionId} sandbox={sandbox} />
                         ))}
-                    </AdminList>
-                )}
-            </AdminSection>
-            <DailyUsage />
-        </>
+                </AdminList>
+            )}
+        </AdminSection>
     )
 }

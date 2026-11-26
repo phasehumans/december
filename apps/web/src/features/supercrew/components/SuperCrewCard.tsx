@@ -63,7 +63,10 @@ export const SuperCrewCard: React.FC<{ isHome: boolean }> = ({ isHome }) => {
         button = (
             <button
                 type="button"
-                onClick={() => setShowAuthModal(true)}
+                onClick={() => {
+                    setIsOpen(false)
+                    setShowAuthModal(true)
+                }}
                 className="w-full h-[28px] rounded-[8px] bg-[#E8E8E8] hover:bg-white text-[#141414] text-[12.5px] font-medium transition-colors cursor-pointer outline-none"
             >
                 Sign in to get notified

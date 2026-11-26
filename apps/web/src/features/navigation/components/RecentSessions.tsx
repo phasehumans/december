@@ -26,7 +26,7 @@ import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 import { cn } from '@/shared/lib/utils'
 
 // the desktop sidebar Recent list:
-// - rows fill the sidebar (up to 20) and end with "All sessions". a row is a link, so
+// - rows fill the sidebar (up to 20). a row is a link, so
 //   ctrl, cmd and middle click open a new tab
 // - pinned sessions come first and show a pin. a session that waits for an answer says so
 // - the ⋯ next to the header sorts, filters (Running, Pull request and Needs answer
@@ -278,7 +278,6 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
     isAuthenticated,
     onOpenAuth,
     onOpenProject,
-    onSessions,
     onLeaveCurrent,
 }) => {
     const [view, setView] = React.useState<RecentView>(readView)
@@ -609,19 +608,7 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
             )
         })
         if (undoAt === sessions.length) rows.push(undoLine)
-        body = (
-            <>
-                {rows}
-                <button
-                    type="button"
-                    onClick={onSessions}
-                    className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-xl text-[12px] text-[#919191] hover:text-[#D6D5D4] hover:bg-[#202020] transition-colors cursor-pointer shrink-0"
-                >
-                    All sessions
-                    <Icons.ChevronRight className="w-3 h-3" />
-                </button>
-            </>
-        )
+        body = <>{rows}</>
     }
 
     return (
@@ -773,7 +760,6 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
                             canStop={isActive(rowMenu.session)}
                             onOpenPullRequest={closing(rowLinks?.onOpenPullRequest)}
                             onNewInRepo={closing(rowLinks?.onNewInRepo)}
-                            onOpenInNewTab={closing(rowLinks?.onOpenInNewTab)}
                             onRename={fromRowMenu((s) => actions.openRename(s))}
                             onTags={fromRowMenu((s) => actions.openTags(s))}
                             onToggleArchive={fromRowMenu((s, i) => actions.toggleArchive(s, i))}

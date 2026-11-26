@@ -20,6 +20,7 @@ import { appCache } from '../../shared/cache'
 import { claimOnce, setFlag, takeFlag } from '../../shared/claim-once'
 import {
     sessionPrefix,
+    sessionWorkspaceKey,
     sessionWorkspacePrefix,
     listPrefix,
     getTextFile,
@@ -79,9 +80,7 @@ import type {
     DeleteAllSessions,
     EndSessionRuns,
     DisconnectSession,
-    RehydrateSession,
     ProxyPreview,
-    LoadSessionFiles,
     StreamSearchResponse,
     SmartSearchSessions,
     SmartSearchFilters,
@@ -155,11 +154,6 @@ const getSessionRedis = (): Redis | null => {
     return sessionRedis
 }
 
-const loadSessionFiles = async (data: LoadSessionFiles) => {
-    // Deprecated: Monolithic full-repo S3 loading deprecated in favor of on-demand fetching and git diff
-    return {}
-}
-
 const invalidateUserRecentSessions = async (userId: string) => {
     await appCache.delPattern(appCache.key('sessions', 'recent', userId, '*'))
 }
@@ -215,6 +209,8 @@ const getUserSessions = async (data: GetUserSessions) => {
                 // the owner apart from the name: the web joins them to match a repository
                 githubRepoOwner: session.githubRepoOwner ?? null,
                 githubRepoName: session.githubRepoName ?? null,
+                // GitHub or GitLab: the web builds repository links for the right host
+                gitProvider: session.gitProvider ?? 'GITHUB',
                 repoUrl: session.repoUrl ?? session.githubRepoUrl ?? null,
             }
         })
@@ -914,10 +910,13 @@ const endSessionRuns = async (data: EndSessionRuns) => {
     const { sessionIds } = data
 
     for (const sessionId of sessionIds) {
+        // the same stop as the stop button: a queued run reads the request when it starts,
+        // an active run gets the interrupt
         try {
-            await publishEvent(`session_events:${sessionId}`, { type: 'SIGKILL', data: {} })
-        } catch {
-            // Intentionally swallowed: Redis pubsub event publishing fallback in test or offline environment
+            await leaveStopRequest(sessionId, 'user')
+            await publishEvent(interruptChannel(sessionId), { type: 'INTERRUPT', reason: 'user' })
+        } catch (error) {
+            console.warn('[Session] could not stop the run of a deleted session', error)
         }
 
         try {
@@ -1012,6 +1011,27 @@ const deleteSession = async (data: DeleteSession) => {
         throw new AppError('Only the session creator can delete this session', 403)
     }
 
+    // like delete all: the sandbox stops first, so it does not run on without its session
+    const hasLiveSandbox =
+        Boolean(owner.vmId) &&
+        (owner.sandboxStatus === null || LIVE_SANDBOX_STATUSES.has(owner.sandboxStatus))
+    if (hasLiveSandbox) {
+        try {
+            await enqueueJob('sandbox_control', {
+                taskType: 'sandbox_control',
+                action: 'stop',
+                sessionId,
+                sandboxId: owner.vmId,
+            })
+        } catch (error) {
+            console.error('[Session] could not queue the sandbox stop:', error)
+            throw new AppError(
+                'could not stop the sandbox, the session was not deleted. try again',
+                503
+            )
+        }
+    }
+
     await endSessionRuns({ sessionIds: [sessionId] })
     // the files sent with prompts (#634) go now; their rows go with the session
     await attachmentService.deleteSessionFiles({ sessionIds: [sessionId] })
@@ -1020,58 +1040,6 @@ const deleteSession = async (data: DeleteSession) => {
     await invalidateUserRecentSessions(userId)
 
     return { message: 'session deleted successfully' }
-}
-
-const rehydrateSession = async (data: RehydrateSession) => {
-    const { userId, sessionId } = data
-    const session = await sessionRepository.findSessionById(sessionId, userId)
-    if (!session) {
-        throw new AppError('Session not found', 404)
-    }
-
-    const messages = await prisma.message.findMany({
-        where: { sessionId },
-        orderBy: { sequence: 'asc' },
-    })
-
-    let gitDiff: string | null = null
-    let gitStatus: string | null = null
-
-    try {
-        const redis = getSessionRedis()
-        if (redis) {
-            const cached = await redis.get(`session_git_diff:${sessionId}`)
-            if (cached) {
-                const parsed = JSON.parse(cached)
-                gitDiff = parsed.gitDiff ?? null
-                gitStatus = parsed.gitStatus ?? null
-            }
-        }
-    } catch {
-        // Intentionally swallowed: Redis retrieval fallback for cached git diff
-    }
-
-    const chatMessages = messages.map((message) => ({
-        id: message.id,
-        role: message.role,
-        content: message.content,
-        status: message.status,
-        sequence: message.sequence,
-        blocks: (message as any).blocks ?? undefined,
-        createdAt: message.createdAt,
-        updatedAt: message.updatedAt,
-    }))
-
-    return {
-        session,
-        chatMessages,
-        messages,
-        fileTree: {},
-        generatedFiles: {},
-        terminalScrollback: [],
-        gitDiff,
-        gitStatus,
-    }
 }
 
 const disconnectSession = async (data: DisconnectSession) => {
@@ -1135,9 +1103,8 @@ const proxyPreview = async (data: ProxyPreview) => {
         port,
         targetHost,
         headers: {
+            // the route needs the user's sign-in; it sends no CORS headers of its own
             'X-Forwarded-Host': targetHost,
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': 'true',
         },
     }
 }
@@ -1425,9 +1392,9 @@ const getSessionFileContent = async (data: GetSessionFileContent) => {
         throw new AppError('Session not found', 404)
     }
 
-    const prefix = sessionWorkspacePrefix(sessionId)
     const cleanPath = path.replace(/^\/+/, '')
-    const key = `${prefix}${cleanPath}`
+    // the shared key builder drops ".." parts, so a path never leaves this session
+    const key = sessionWorkspaceKey(sessionId, cleanPath)
 
     try {
         const content = (await getTextFile(key)) ?? ''
@@ -1494,57 +1461,8 @@ const getSessionPlan = async (data: GetSessionPlan) => {
         // Intentionally swallowed: Redis retrieval fallback for session plan
     }
 
-    // Baseline fallback plan with 5 canonical phases
-    const now = new Date().toISOString()
-    return {
-        plan: {
-            sessionId,
-            activePhaseId: 'reproduce',
-            milestones: [
-                {
-                    id: 'reproduce',
-                    title: 'Reproduce & Understand',
-                    description:
-                        'Analyze user prompt, inspect issue context, and reproduce problem state.',
-                    status: 'in_progress',
-                    logs: [],
-                    startedAt: now,
-                },
-                {
-                    id: 'locate',
-                    title: 'Locate Relevant Code',
-                    description:
-                        'Search repository, inspect source tree, and locate files requiring changes.',
-                    status: 'pending',
-                    logs: [],
-                },
-                {
-                    id: 'implement',
-                    title: 'Implement Solution',
-                    description:
-                        'Apply targeted modifications, refactor code, and update components.',
-                    status: 'pending',
-                    logs: [],
-                },
-                {
-                    id: 'test',
-                    title: 'Run Tests & Verify',
-                    description: 'Run automated tests, verify builds, and ensure no regressions.',
-                    status: 'pending',
-                    logs: [],
-                },
-                {
-                    id: 'pr',
-                    title: 'Branch & Create PR',
-                    description:
-                        'Commit to task branch, push to origin, and generate pull request.',
-                    status: 'pending',
-                    logs: [],
-                },
-            ],
-            updatedAt: Date.now(),
-        },
-    }
+    // no plan saved: the agent has not written one, so there is nothing to show
+    return { plan: null }
 }
 
 const getSessionTests = async (data: GetSessionTests) => {
@@ -1730,6 +1648,12 @@ const handleRunEvent = async (data: HandleRunEvent) => {
             const owner = await sessionRepository.findSessionOwner(sessionId)
             if (!owner) return
             await notifySessionOwner({ owner, kind: 'SESSION_FINISHED' })
+            return
+        }
+        case 'RunClosed': {
+            // sent after the worker saved the run status: Running and the counts change
+            const owner = await sessionRepository.findSessionOwner(sessionId)
+            if (owner) await invalidateUserRecentSessions(owner.userId)
             return
         }
         case 'SpendLimitReached': {
@@ -2217,7 +2141,6 @@ const smartSearchSessions = async (data: SmartSearchSessions) => {
 export const sessionService = {
     invalidateRecentSessions,
     recordPreviewActivity,
-    loadSessionFiles,
     getUserSessions,
     createSession,
     getSession,
@@ -2243,7 +2166,6 @@ export const sessionService = {
     updateSessionTags,
     deleteSession,
     deleteAllSessions,
-    rehydrateSession,
     disconnectSession,
     proxyPreview,
     streamSearchResponse,

@@ -16,7 +16,7 @@ import {
     type SearchSection,
 } from './searchItems'
 
-import type { BackendSession } from '@/features/sessions/api/session'
+import type { BackendSession, BackendSessionDetail } from '@/features/sessions/api/session'
 
 import { useAppStore } from '@/app/store'
 import { requestHomePrefill } from '@/features/home/prefill'
@@ -81,12 +81,12 @@ export const useSearchModel = (options: SearchModelOptions) => {
         SESSION_SEARCH_DEBOUNCE_MS
     )
 
-    // same query key as the sidebar list, so this reads the shared cache
-    const { data: recentData } = useSessions()
+    const { data: recentData } = useSessions(undefined, { enabled: Boolean(isAuthenticated) })
     const { data: searchData, isFetching: isTitleSearchFetching } = useQuery({
         queryKey: ['sessions', 'search-modal', debouncedSearch],
         queryFn: () =>
             sessionAPI.getSessions({
+                type: 'WEB',
                 search: debouncedSearch,
                 searchIn: 'title',
                 isArchived: false,
@@ -116,16 +116,17 @@ export const useSearchModel = (options: SearchModelOptions) => {
             (session: BackendSession): SearchItem => ({
                 id: `session-${session.id}`,
                 group: 'Sessions',
-                label: session.title || 'Untitled session',
+                label: session.title || session.projectName || 'Untitled session',
                 repo: isMobile ? null : sessionRepoLabel(session),
                 time: compactTime(session.updatedAt),
+                href: `${window.location.origin}/sessions/${session.id}`,
                 run: () => onOpenSession?.(session.id),
             }),
         [isMobile, onOpenSession]
     )
 
     const recentSessions = useMemo(
-        () => (recentData?.sessions ?? []).filter((s) => !s.isArchived),
+        () => (recentData?.sessions ?? []).filter((s) => !s.isArchived && s.type !== 'SEARCH'),
         [recentData?.sessions]
     )
 
@@ -140,9 +141,16 @@ export const useSearchModel = (options: SearchModelOptions) => {
             },
         ]
         if (isAuthenticated && activeSessionId) {
+            const detailOrSession = queryClient.getQueryData<BackendSession | BackendSessionDetail>(
+                ['session', activeSessionId]
+            )
+            const detailSession = !detailOrSession
+                ? undefined
+                : 'project' in detailOrSession
+                  ? detailOrSession.project
+                  : detailOrSession
             const cached =
-                recentData?.sessions?.find((s) => s.id === activeSessionId) ??
-                queryClient.getQueryData<BackendSession>(['session', activeSessionId])
+                recentData?.sessions?.find((s) => s.id === activeSessionId) ?? detailSession
             const isArchived = Boolean(cached?.isArchived)
             list.push({
                 id: 'action-archive',
@@ -336,7 +344,9 @@ export const useSearchModel = (options: SearchModelOptions) => {
         // sessions: server title matches plus fuzzy matches over the cached recent list
         const sessionPool = new Map<string, BackendSession>()
         if (!isCommandMode && isAuthenticated) {
-            for (const s of searchData?.sessions ?? []) if (!s.isArchived) sessionPool.set(s.id, s)
+            for (const s of searchData?.sessions ?? []) {
+                if (!s.isArchived && s.type !== 'SEARCH') sessionPool.set(s.id, s)
+            }
             for (const s of recentSessions) sessionPool.set(s.id, s)
         }
         const pool: SearchItem[] = isCommandMode
@@ -431,9 +441,11 @@ export const useSearchModel = (options: SearchModelOptions) => {
     const askDecember = useMemo(
         () => (prompt: string) => {
             startNewSession()
-            requestHomePrefill({ prompt })
+            if (isAuthenticated) {
+                requestHomePrefill({ prompt })
+            }
         },
-        [startNewSession]
+        [startNewSession, isAuthenticated]
     )
 
     return { sections, askDecember, isAiSearching: isAiEnabled && isAiFetching }

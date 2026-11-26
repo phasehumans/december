@@ -104,14 +104,6 @@ async function updateModelSource(id: string, defaultModelSource: 'CREDITS' | 'OW
     })
 }
 
-async function updateSupportAccess(id: string, supportAccessUntil: Date | null) {
-    return prisma.user.update({
-        where: { id },
-        data: { supportAccessUntil },
-        select: { supportAccessUntil: true },
-    })
-}
-
 async function findPreferences(id: string) {
     return prisma.user.findUnique({
         where: { id },
@@ -441,7 +433,6 @@ export const settingRepository = {
     updateSessionDefaults,
     findToolDenyRules,
     updateToolDenyRules,
-    updateSupportAccess,
     findPreferences,
     updatePreferences,
     findPullRequestSettings,

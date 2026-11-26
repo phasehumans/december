@@ -105,8 +105,7 @@ describe('SessionListRow', () => {
     })
 
     test('desktop menu has three groups: open, manage, Delete', () => {
-        const handlers = renderRow()
-        const open = spyOn(window, 'open').mockImplementation(() => null)
+        renderRow()
         const menu = screen.getByRole('menu')
         const rows = within(menu)
             .getAllByRole('menuitem')
@@ -114,7 +113,6 @@ describe('SessionListRow', () => {
         expect(rows).toEqual([
             'Open pull request',
             'New session in this repo',
-            'Open in new tab',
             'Rename',
             'Tags',
             'Archive',
@@ -122,19 +120,16 @@ describe('SessionListRow', () => {
             'Delete',
         ])
         expect(menu.querySelectorAll('.h-px').length).toBe(2)
-
-        fireEvent.click(within(menu).getByRole('menuitem', { name: 'Open in new tab' }))
-        expect(open).toHaveBeenCalledWith('/sessions/session-123', '_blank', 'noopener')
-        expect(handlers.onCloseMenu).toHaveBeenCalled()
-        expect(handlers.onOpenProject).not.toHaveBeenCalled()
+        // a new tab is ctrl, cmd or middle click on the row, not a menu row
+        expect(within(menu).queryByRole('menuitem', { name: 'Open in new tab' })).toBeNull()
     })
 
-    test('a session with no pull request and no repository only gets Open in new tab', () => {
+    test('a session with no pull request and no repository starts with the manage rows', () => {
         renderRow({ prNumber: null, prUrl: null, githubRepoName: null })
         const rows = within(screen.getByRole('menu'))
             .getAllByRole('menuitem')
             .map((item) => item.textContent?.trim())
-        expect(rows).toEqual(['Open in new tab', 'Rename', 'Tags', 'Archive', 'Stop', 'Delete'])
+        expect(rows).toEqual(['Rename', 'Tags', 'Archive', 'Stop', 'Delete'])
     })
 
     test('a right-click on the desktop row opens the menu', () => {

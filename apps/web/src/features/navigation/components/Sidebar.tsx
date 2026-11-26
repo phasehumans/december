@@ -49,24 +49,44 @@ const Sidebar: React.FC<
     const [isSearchOpen, setIsSearchOpen] = React.useState(false)
     const isSuperCrewOpen = useAppStore((s) => s.isSuperCrewOpen)
     const setIsSuperCrewOpen = useAppStore((s) => s.setIsSuperCrewOpen)
+    const newSessionFocusTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    React.useEffect(() => {
+        return () => {
+            if (newSessionFocusTimerRef.current) clearTimeout(newSessionFocusTimerRef.current)
+        }
+    }, [])
 
     React.useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
                 e.preventDefault()
-                setIsSearchOpen((prev) => !prev)
+                setIsSearchOpen((prev) => {
+                    const next = !prev
+                    if (next) setIsSuperCrewOpen(false)
+                    return next
+                })
             }
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [])
+    }, [setIsSuperCrewOpen])
 
     // the /resume command opens search from the prompt box
     React.useEffect(() => {
-        const openSearch = () => setIsSearchOpen(true)
+        const openSearch = () => {
+            setIsSuperCrewOpen(false)
+            setIsSearchOpen(true)
+        }
         window.addEventListener(OPEN_SEARCH_EVENT, openSearch)
         return () => window.removeEventListener(OPEN_SEARCH_EVENT, openSearch)
-    }, [])
+    }, [setIsSuperCrewOpen])
+
+    React.useEffect(() => {
+        if (isSuperCrewOpen) {
+            setIsSearchOpen(false)
+        }
+    }, [isSuperCrewOpen])
 
     const isHomeActive = path === '/'
     const isProjectsActive =
@@ -124,7 +144,9 @@ const Sidebar: React.FC<
                 const el = document.getElementById('main-scroll-container')
                 el?.scrollTo({ top: 0, behavior: 'smooth' })
                 window.dispatchEvent(new CustomEvent('december:new-session'))
-                setTimeout(() => {
+                if (newSessionFocusTimerRef.current) clearTimeout(newSessionFocusTimerRef.current)
+                newSessionFocusTimerRef.current = setTimeout(() => {
+                    newSessionFocusTimerRef.current = null
                     document.getElementById('home-prompt-textarea')?.focus()
                 }, 50)
             },
@@ -135,6 +157,7 @@ const Sidebar: React.FC<
             icon: <Icons.Search className="w-[17px] h-[17px]" />,
             onClick: () => {
                 if (isAuthenticated) {
+                    setIsSuperCrewOpen(false)
                     setIsSearchOpen(true)
                 } else {
                     if (onOpenAuth) onOpenAuth()
@@ -145,7 +168,11 @@ const Sidebar: React.FC<
             id: 'supercrew',
             label: 'Super Crew',
             icon: <Icons.CrewDots className="w-[17px] h-[17px]" />,
-            onClick: () => setIsSuperCrewOpen(!isSuperCrewOpen),
+            onClick: () => {
+                const next = !isSuperCrewOpen
+                if (next) setIsSearchOpen(false)
+                setIsSuperCrewOpen(next)
+            },
         },
         {
             id: 'sessions',
@@ -210,17 +237,17 @@ const Sidebar: React.FC<
                     <div className="flex flex-col gap-[2px] relative items-center">
                         {navItems.map((item, idx) => {
                             const isNew = item.id === 'new'
+                            const accessibleLabel =
+                                item.id === 'new' ? 'Create new session' : item.label
                             return (
                                 <button
                                     key={item.id}
+                                    type="button"
+                                    aria-label={accessibleLabel}
                                     onClick={item.onClick}
                                     className={cn(
-                                        'relative flex items-center justify-center w-[32px] h-[32px] rounded-[9px] transition-all group outline-none',
-                                        isNew
-                                            ? ''
-                                            : activeIndex === idx
-                                              ? 'bg-[#1F1F1F]'
-                                              : 'hover:bg-[#1C1C1C]'
+                                        'relative flex items-center justify-center w-[32px] h-[32px] rounded-[9px] transition-all group outline-none cursor-pointer',
+                                        activeIndex === idx ? 'bg-[#1F1F1F]' : 'hover:bg-[#1C1C1C]'
                                     )}
                                 >
                                     <div
@@ -237,7 +264,7 @@ const Sidebar: React.FC<
                                     </div>
                                     <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                         <span className="text-[12px] font-medium text-[#EDEDEF]">
-                                            {item.id === 'new' ? 'Create new session' : item.label}
+                                            {accessibleLabel}
                                         </span>
                                     </div>
                                 </button>
@@ -273,9 +300,10 @@ const Sidebar: React.FC<
                         {navItems.map((item, idx) => (
                             <button
                                 key={item.id}
+                                type="button"
                                 onClick={item.onClick}
                                 className={cn(
-                                    'relative flex items-center justify-between w-full px-2.5 h-[30px] rounded-[9px] transition-all group outline-none',
+                                    'relative flex items-center justify-between w-full px-2.5 h-[30px] rounded-[9px] transition-all group outline-none cursor-pointer',
                                     activeIndex === idx ? 'bg-[#1F1F1F]' : 'hover:bg-[#1C1C1C]'
                                 )}
                             >
@@ -307,7 +335,7 @@ const Sidebar: React.FC<
                                     </span>
                                 )}
                                 {item.id === 'new' && (
-                                    <div className="absolute top-1/2 left-[120px] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                                    <div className="absolute top-1/2 left-[calc(100%+12px)] -translate-y-1/2 z-50 hidden group-hover:flex items-center gap-1.5 bg-[#1F1F1F] border border-[#282828] px-2.5 py-1 rounded-lg shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
                                         <span className="text-[12px] font-medium text-[#EDEDEF]">
                                             Create new session
                                         </span>

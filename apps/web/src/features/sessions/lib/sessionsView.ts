@@ -116,9 +116,18 @@ export const sessionsViewFilters = (
     view: SessionsView
 ): Pick<
     SessionFilters,
-    'sortBy' | 'sortOrder' | 'hasPr' | 'needsAnswer' | 'isArchived' | 'tags' | 'repoName'
+    | 'sortBy'
+    | 'sortOrder'
+    | 'hasPr'
+    | 'needsAnswer'
+    | 'isArchived'
+    | 'tags'
+    | 'repoName'
+    | 'pinnedFirst'
 > => ({
     sortBy: view.sort === 'updated' ? 'updatedAt' : 'createdAt',
+    // pins lead under Last updated, like the sidebar Recent list. Newest and Oldest stay by date
+    pinnedFirst: view.sort === 'updated' || undefined,
     sortOrder: view.sort === 'oldest' ? 'asc' : 'desc',
     hasPr: view.hasPr || undefined,
     needsAnswer: view.needsAnswer || undefined,
@@ -126,6 +135,10 @@ export const sessionsViewFilters = (
     tags: view.tag ? [view.tag] : undefined,
     repoName: view.repo || undefined,
 })
+
+// the newest pin first, as the server sorts. a pinned row without a time still leads
+const pinTime = (session: BackendSession): number =>
+    session.isPinned ? new Date(session.pinnedAt || 0).getTime() || 1 : 0
 
 const sortTime = (session: BackendSession, sort: SessionsSort): number =>
     new Date(
@@ -147,8 +160,12 @@ export const applySessionsView = (sessions: BackendSession[], view: SessionsView
             if (view.tag && !(session.tags || []).includes(view.tag)) return false
             return true
         })
-        .sort((a, b) =>
-            view.sort === 'oldest'
+        .sort((a, b) => {
+            if (view.sort === 'updated') {
+                const pinned = pinTime(b) - pinTime(a)
+                if (pinned !== 0) return pinned
+            }
+            return view.sort === 'oldest'
                 ? sortTime(a, view.sort) - sortTime(b, view.sort)
                 : sortTime(b, view.sort) - sortTime(a, view.sort)
-        )
+        })

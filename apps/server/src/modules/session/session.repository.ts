@@ -188,6 +188,9 @@ export async function findSessionOwner(sessionId: string) {
             userId: true,
             // the notification names the session (#636)
             title: true,
+            // delete stops a live sandbox first
+            vmId: true,
+            sandboxStatus: true,
         },
     })
 }

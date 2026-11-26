@@ -12,8 +12,18 @@ export type DownloadSession = {
 
 export type DownloadSessionResult = {
     fileName: string
-    downloadUrl?: string
+    /** packed from the live sandbox */
     zip?: Uint8Array | Buffer
+    /** the archive of the repository branch, streamed from the git host */
+    stream?: ReadableStream<Uint8Array>
+}
+
+export type FetchRepoArchive = {
+    gitProvider: 'GITHUB' | 'GITLAB'
+    owner: string
+    name: string
+    ref: string | null
+    token: string
 }
 
 export type ListGithubRepos = {

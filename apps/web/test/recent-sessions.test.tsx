@@ -2,22 +2,22 @@ import { GlobalRegistrator } from '@happy-dom/global-registrator'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { expect, test, describe, spyOn, afterEach, beforeEach, mock } from 'bun:test'
 import React from 'react'
-import { MemoryRouter } from 'react-router-dom'
 
 if (!globalThis.document) {
     GlobalRegistrator.register()
 }
 
 const { render, screen, fireEvent, cleanup, waitFor, act } = await import('@testing-library/react')
-
-import { useAppStore } from '../src/app/store'
-import { generationAPI } from '../src/features/generation/api/generation'
-import { takeHomePrefill } from '../src/features/home/prefill'
-import { MobileMenuSheet } from '../src/features/navigation/components/MobileMenuSheet'
-import { RecentSessions } from '../src/features/navigation/components/RecentSessions'
-import { sessionAPI } from '../src/features/sessions/api/session'
-import { SessionDeleteModal } from '../src/features/sessions/components/SessionDeleteModal'
-import { NEW_SESSION_REQUEST_EVENT } from '../src/shared/lib/appEvents'
+const { MemoryRouter } = await import('react-router-dom')
+const { useAppStore } = await import('../src/app/store')
+const { generationAPI } = await import('../src/features/generation/api/generation')
+const { takeHomePrefill } = await import('../src/features/home/prefill')
+const { MobileMenuSheet } = await import('../src/features/navigation/components/MobileMenuSheet')
+const { RecentSessions } = await import('../src/features/navigation/components/RecentSessions')
+const { sessionAPI } = await import('../src/features/sessions/api/session')
+const { SessionDeleteModal } =
+    await import('../src/features/sessions/components/SessionDeleteModal')
+const { NEW_SESSION_REQUEST_EVENT } = await import('../src/shared/lib/appEvents')
 
 const now = new Date().toISOString()
 const session = (over: Record<string, unknown>) => ({
@@ -102,7 +102,7 @@ describe('sidebar Recent list', () => {
         mock.restore()
     })
 
-    test('asks the server for 20 web sessions and shows status, PR colour and All sessions', async () => {
+    test('asks the server for 20 web sessions and shows status and PR colour without All sessions', async () => {
         const getSessions = spyOn(sessionAPI, 'getSessions').mockImplementation(async () => ({
             sessions: SESSIONS as any,
         }))
@@ -119,7 +119,7 @@ describe('sidebar Recent list', () => {
         expect(screen.getByText('Starting')).toBeTruthy()
         expect(screen.queryByText('Provisioning')).toBeNull()
         expect(screen.getByText('638').parentElement?.className).toContain('text-[#C084FC]')
-        expect(screen.getByText('All sessions')).toBeTruthy()
+        expect(screen.queryByText('All sessions')).toBeNull()
     })
 
     test('⋯ menu sorts, filters and groups, stays open after a pick and remembers the view', async () => {
@@ -219,7 +219,7 @@ describe('sidebar Recent list', () => {
         fireEvent.click(screen.getByLabelText('More options'))
         fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Group by repository' }))
 
-        const list = screen.getByText('All sessions').parentElement as HTMLElement
+        const list = screen.getByText('Running one').closest('.overflow-y-auto') as HTMLElement
         // december first (its first session is newest), sessions with no repository last
         expect(list.textContent).toMatch(
             /december.*Running one.*Open one.*docs.*Starting one.*No repository.*Merged one/
@@ -283,7 +283,7 @@ describe('sidebar Recent list', () => {
         expect(menu.textContent).toContain('Rename')
     })
 
-    test('row menu opens the pull request, a new tab and a new session in the repository', async () => {
+    test('row menu opens the pull request and a new session in the repository', async () => {
         spyOn(sessionAPI, 'getSessions').mockImplementation(async () => ({
             sessions: SESSIONS as any,
         }))
@@ -298,13 +298,13 @@ describe('sidebar Recent list', () => {
                 .closest('a')
                 ?.parentElement?.querySelector('[aria-label="Session options"]') as HTMLElement
 
-        // no pull request and no repository: only Open in new tab from the open group
+        // no pull request and no repository: no open rows, and never Open in new tab
         fireEvent.click(optionsOf('Merged one'))
         let menu = screen.getByRole('menu', { name: 'Session options' })
         expect(menu.textContent).not.toContain('Open pull request')
         expect(menu.textContent).not.toContain('New session in this repo')
-        fireEvent.click(screen.getByRole('menuitem', { name: 'Open in new tab' }))
-        expect(open).toHaveBeenCalledWith('/sessions/pr', '_blank', 'noopener')
+        expect(menu.textContent).not.toContain('Open in new tab')
+        fireEvent.keyDown(document, { key: 'Escape' })
         expect(screen.queryByRole('menu', { name: 'Session options' })).toBeNull()
 
         fireEvent.click(optionsOf('Open one'))
@@ -481,6 +481,7 @@ describe('phone menu sheet Recent', () => {
         renderSheet()
 
         const row = (await screen.findByText('Merged one')).closest('button') as HTMLElement
+        expect(screen.queryByText('All sessions')).toBeNull()
         fireEvent.pointerDown(row, { clientX: 10, clientY: 10 })
         await act(() => new Promise((r) => setTimeout(r, 600)))
         fireEvent.pointerUp(row)

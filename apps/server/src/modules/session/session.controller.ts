@@ -8,6 +8,7 @@ import {
     getPullRequestsSchema,
     createSessionSchema,
     getSessionByIdSchema,
+    getSessionMessagesQuerySchema,
     renameSessionParamsSchema,
     renameSessionBodySchema,
     archiveSessionParamsSchema,
@@ -20,7 +21,6 @@ import {
     deleteSessionParamsSchema,
     deleteAllSessionsSchema,
     disconnectSessionParamsSchema,
-    rehydrateSessionParamsSchema,
     proxyPreviewParamsSchema,
     previewActivityParamsSchema,
     stopSessionParamsSchema,
@@ -274,18 +274,6 @@ export const deleteAllSessions = asyncHandler(async (req: Request, res: Response
     return sendSuccess(res, 'all sessions deleted', result)
 })
 
-export const rehydrateSession = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId
-    if (!userId) throw new AppError('unauthorized', 401)
-    const { id } = rehydrateSessionParamsSchema.parse(req.params)
-
-    const result = await sessionService.rehydrateSession({
-        userId,
-        sessionId: id,
-    })
-    return sendSuccess(res, 'session rehydrated successfully', result)
-})
-
 export const disconnectSession = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId
     if (!userId) throw new AppError('unauthorized', 401)
@@ -390,10 +378,7 @@ export const getSessionMessages = asyncHandler(async (req: Request, res: Respons
     if (!userId) throw new AppError('unauthorized', 401)
     const { id } = getSessionByIdSchema.parse(req.params)
 
-    const beforeSequence = req.query.beforeSequence
-        ? parseInt(req.query.beforeSequence as string, 10)
-        : undefined
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50
+    const { beforeSequence, limit } = getSessionMessagesQuerySchema.parse(req.query)
 
     const messages = await sessionService.getSessionMessages({
         userId,
@@ -550,7 +535,6 @@ export const sessionController = {
     updateSessionTags,
     deleteSession,
     deleteAllSessions,
-    rehydrateSession,
     disconnectSession,
     proxyPreview,
     recordPreviewActivity,

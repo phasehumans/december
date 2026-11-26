@@ -11,12 +11,14 @@ import {
     MessageSquare,
     Plus,
     Settings2,
+    LayoutDashboard,
     Box,
     Users,
 } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
+import { useAdminPath } from '../hooks/useAdminPath'
 import { useProfileSettingsController } from '../hooks/useProfileSettingsController'
 import { SettingsTopBarContext, type SettingsTopBarAction } from '../lib/settingsTopBar'
 
@@ -231,6 +233,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     const [deleteAccountModalOpen, setDeleteAccountModalOpen] = React.useState(false)
     const [signOutAllSessionsModalOpen, setSignOutAllSessionsModalOpen] = React.useState(false)
     const [feedbackModalOpen, setFeedbackModalOpen] = React.useState(false)
+    // only the admin gets a path: everyone else never sees the link
+    const adminPath = useAdminPath()
     const [topBarAction, setTopBarAction] = React.useState<SettingsTopBarAction | null>(null)
 
     const {
@@ -407,6 +411,18 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                 <MessageSquare className={navIconClass} strokeWidth={1.5} />
                                 Send feedback
                             </button>
+                            {adminPath && (
+                                <button
+                                    // U2: the panel is its own tool, so it opens in a new tab
+                                    onClick={() =>
+                                        window.open(adminPath, '_blank', 'noopener,noreferrer')
+                                    }
+                                    className={navItemClass(false)}
+                                >
+                                    <LayoutDashboard className={navIconClass} strokeWidth={1.5} />
+                                    Admin panel
+                                </button>
+                            )}
                         </div>
                     </div>
 

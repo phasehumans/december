@@ -13,7 +13,8 @@ export const getSessionsSchema = z.object({
     repoName: z.string().trim().min(1).max(200).optional(),
     sortBy: z.enum(['updatedAt', 'createdAt']).optional(),
     sortOrder: z.enum(['asc', 'desc']).optional(),
-    search: z.string().optional(),
+    // a search reads every message of the user: keep it short
+    search: z.string().trim().max(200).optional(),
     searchIn: z.enum(['title', 'all']).optional(),
     page: z.preprocess(
         (val) => (val !== undefined && val !== '' ? Number(val) : undefined),
@@ -23,7 +24,10 @@ export const getSessionsSchema = z.object({
         (val) => (val !== undefined && val !== '' ? Number(val) : undefined),
         z.number().int().min(1).max(100).optional()
     ),
-    vmStatus: z.string().optional(),
+    // 'running' and 'active' mean PROVISIONING or RUNNING; anything else is a 400, not a 500
+    vmStatus: z
+        .enum(['running', 'active', 'PROVISIONING', 'RUNNING', 'STOPPED', 'FAILED'])
+        .optional(),
     hasPr: z
         .preprocess((val) => (val === 'true' ? true : undefined), z.boolean().optional())
         .optional(),
@@ -103,14 +107,25 @@ export const smartSearchFiltersSchema = z.object({
     sort: z.enum(['newest', 'oldest']).default('newest'),
 })
 
+// a git branch or ref name: no spaces, no leading dash (a git option) and none of the
+// characters git refuses or a shell reads. the worker quotes it as well
+const gitRefSchema = z
+    .string()
+    .max(100)
+    .regex(/^(?!-)[^\s~^:?*[\\;$`|&<>(){}'"!]+$/, 'not a valid branch name')
+
 export const createSessionSchema = z.object({
     title: z.string().max(100).optional(),
     type: z.enum(['WEB', 'SEARCH']).optional(),
     prompt: z.string().min(1, 'prompt is required').optional(),
     projectId: z.string().uuid().optional(),
-    repoUrl: z.string().url().optional(),
-    branch: z.string().max(100).optional(),
-    gitRef: z.string().max(100).optional(),
+    repoUrl: z
+        .string()
+        .url()
+        .refine((value) => /^https?:\/\//i.test(value), 'repoUrl must be an http(s) link')
+        .optional(),
+    branch: gitRefSchema.optional(),
+    gitRef: gitRefSchema.optional(),
     issueNumber: z.number().int().positive().optional(),
     billingSource: z.enum(['CREDITS', 'OWN_KEY']).optional(),
     provider: z.string().trim().max(64).optional(),
@@ -170,7 +185,15 @@ export const updateSessionTagsParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
 })
 export const updateSessionTagsBodySchema = z.object({
-    tags: z.array(z.string().max(30)).max(1, 'Only one tag is allowed per session'),
+    // the list filter sends tags joined by commas, so a tag cannot hold one
+    tags: z
+        .array(
+            z
+                .string()
+                .max(30)
+                .regex(/^[^,]*$/, 'A tag cannot contain a comma')
+        )
+        .max(1, 'Only one tag is allowed per session'),
 })
 
 // the web asks the user to type "delete" first; the server checks it too (#636)
@@ -191,10 +214,6 @@ export const previewActivityParamsSchema = z.object({
 })
 
 export const stopSessionParamsSchema = z.object({
-    id: z.string().uuid('Invalid session ID'),
-})
-
-export const rehydrateSessionParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
 })
 
@@ -274,4 +293,16 @@ export const getPendingQuestionParamsSchema = z.object({
 
 export const getSessionDesktopViewportParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
+})
+
+// a page of messages: older than a sequence, at most 100 at once
+export const getSessionMessagesQuerySchema = z.object({
+    beforeSequence: z.preprocess(
+        (val) => (val !== undefined && val !== '' ? Number(val) : undefined),
+        z.number().int().min(0).optional()
+    ),
+    limit: z.preprocess(
+        (val) => (val !== undefined && val !== '' ? Number(val) : undefined),
+        z.number().int().min(1).max(100).default(50)
+    ),
 })

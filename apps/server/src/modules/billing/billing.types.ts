@@ -82,11 +82,6 @@ export type UsageHour = {
     totalTokens: number
 }
 
-export type RedeemCode = {
-    userId: string
-    code: string
-}
-
 export type AddCredits = {
     userId: string
     amountInCents: number

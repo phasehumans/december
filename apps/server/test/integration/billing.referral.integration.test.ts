@@ -11,7 +11,13 @@ import app from '../../src/app'
 import { razorpay } from '../../src/config/razorpay'
 import { env } from '../../src/env'
 import { emailService } from '../../src/modules/email/email.service'
-import { authCookieToken, cleanupTestUser, createSignedInUser, getRandomIP } from '../helpers'
+import {
+    asAdmin,
+    authCookieToken,
+    cleanupTestUser,
+    createSignedInUser,
+    getRandomIP,
+} from '../helpers'
 
 // #638 section 3, referrals. the tests read and write through the http routes. razorpay,
 // google and github are replaced at their edge: no call leaves the test.
@@ -595,7 +601,7 @@ describe('referral payout', () => {
         expect(await statusOf(invitee.userId)).toBe('PENDING')
     })
 
-    it('free credits, a redeem code and a credit change by an admin pay nothing', async () => {
+    it('free credits and a credit change by an admin pay nothing', async () => {
         const { inviter, invitee } = await newReferral('free')
         const admin = await newUser('admin')
         const adminAddress = `referral-admin-${stamp}@example.com`
@@ -603,22 +609,7 @@ describe('referral payout', () => {
         const savedSendMessage = emailService.sendMessageEmail
         process.env.ADMIN_EMAILS = adminAddress
         emailService.sendMessageEmail = (async () => ({ id: 'email-referral' })) as any
-        const rawCode = `REFERRALGIFT${stamp}`
-        const redeemCode = await prisma.redeemCode.create({
-            data: {
-                codeHash: crypto.createHash('sha256').update(rawCode).digest('hex'),
-                creditAmount: 700,
-                maxRedemptions: 1,
-            },
-        })
-
         try {
-            // a redeem code
-            const redeemed = await authedPost(invitee.token, '/billing/redeem-code', {
-                code: rawCode,
-            })
-            expect(redeemed.status).toBe(200)
-
             // free credits: the account asks, an admin approves
             const asked = await authedPost(invitee.token, '/billing/credit-request', {
                 buildPlan: 'a todo app',
@@ -629,32 +620,26 @@ describe('referral payout', () => {
             const creditRequest = await prisma.creditRequest.findFirstOrThrow({
                 where: { userId: invitee.userId },
             })
-            const approved = await authedPost(
-                admin.token,
+            const adminApi = await asAdmin(admin)
+            const approved = await adminApi.post(
                 `/admin/credit-requests/${creditRequest.id}/approve`
             )
             expect(approved.status).toBe(200)
 
             // a credit change
-            const changed = await authedPost(
-                admin.token,
-                `/admin/users/${invitee.userId}/credits`,
-                {
-                    amountInCents: 300,
-                    reason: 'referral test',
-                }
-            )
+            const changed = await adminApi.post(`/admin/users/${invitee.userId}/credits`, {
+                amountInCents: 300,
+            })
             expect(changed.status).toBe(200)
         } finally {
             process.env.ADMIN_EMAILS = savedAdminEmails
             emailService.sendMessageEmail = savedSendMessage
             await prisma.adminAuditLog.deleteMany({ where: { adminUserId: admin.userId } })
             await prisma.creditRequest.deleteMany({ where: { userId: invitee.userId } })
-            await prisma.redeemCode.delete({ where: { id: redeemCode.id } })
         }
 
-        // $7 from the code, $5 of free credits and $3 from the admin
-        expect(await balanceOf(invitee.userId)).toBe(1500)
+        // $5 of free credits and $3 from the admin
+        expect(await balanceOf(invitee.userId)).toBe(800)
         expect(await balanceOf(inviter.userId)).toBe(0)
         expect(await statusOf(invitee.userId)).toBe('PENDING')
         expect(await referralRows(invitee.userId)).toHaveLength(0)

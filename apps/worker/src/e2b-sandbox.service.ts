@@ -51,6 +51,7 @@ import {
     setupRepoFullName,
     withSetupFailure,
 } from './setup-commands'
+import { shellQuote } from './shell-quote'
 import { TerminalBridgeService } from './terminal-bridge.service'
 import { archiveWorkspaceState } from './workspace'
 
@@ -263,9 +264,10 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                             token: effectiveToken,
                             provider: gitProvider,
                         })
-                        const branchFlag = targetBranch ? ` -b ${targetBranch}` : ''
+                        // quoted: a branch name may hold ; $ | and other shell characters
+                        const branchFlag = targetBranch ? ` -b ${shellQuote(targetBranch)}` : ''
                         await mockSandbox.commands
-                            .run(`git clone${branchFlag} ${cloneUrl} /workspace`, {
+                            .run(`git clone${branchFlag} -- ${shellQuote(cloneUrl)} /workspace`, {
                                 cwd: '/workspace',
                             })
                             .catch(() => {
@@ -273,16 +275,19 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                             })
 
                         await mockSandbox.commands
-                            .run(`${gitIdentityCommand(author)} && git checkout -B ${taskBranch}`, {
-                                cwd: '/workspace',
-                            })
+                            .run(
+                                `${gitIdentityCommand(author)} && git checkout -B ${shellQuote(taskBranch)}`,
+                                {
+                                    cwd: '/workspace',
+                                }
+                            )
                             .catch(() => {
                                 // Intentionally swallowed: Git task branch checkout mock fallback
                             })
                     } else {
                         await mockSandbox.commands
                             .run(
-                                `git init && ${gitIdentityCommand(author)} && git checkout -B ${taskBranch}`,
+                                `git init && ${gitIdentityCommand(author)} && git checkout -B ${shellQuote(taskBranch)}`,
                                 { cwd: '/workspace' }
                             )
                             .catch(() => {
@@ -417,11 +422,12 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         console.log(
                             `[E2BSandboxService] Initializing sandbox workspace from repository: ${targetRepo}`
                         )
-                        const branchFlag = targetBranch ? ` -b ${targetBranch}` : ''
+                        // quoted: a branch name may hold ; $ | and other shell characters
+                        const branchFlag = targetBranch ? ` -b ${shellQuote(targetBranch)}` : ''
                         let cloneSuccess = false
                         try {
                             const cloneRes = await sandbox.commands.run(
-                                `git clone${branchFlag} ${cloneUrl} /workspace`,
+                                `git clone${branchFlag} -- ${shellQuote(cloneUrl)} /workspace`,
                                 { cwd: '/workspace' }
                             )
                             if (cloneRes.exitCode === 0) {
@@ -433,7 +439,9 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
 
                         if (!cloneSuccess && targetBranch) {
                             await sandbox.commands
-                                .run(`git clone ${cloneUrl} /workspace`, { cwd: '/workspace' })
+                                .run(`git clone -- ${shellQuote(cloneUrl)} /workspace`, {
+                                    cwd: '/workspace',
+                                })
                                 .catch((e: any) => {
                                     console.warn(
                                         `[E2BSandboxService] Git clone fallback warning for session ${sessionId}:`,
@@ -450,7 +458,7 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         } else {
                             await sandbox.commands
                                 .run(
-                                    `${gitIdentityCommand(author)} && git checkout -B ${taskBranch}`,
+                                    `${gitIdentityCommand(author)} && git checkout -B ${shellQuote(taskBranch)}`,
                                     { cwd: '/workspace' }
                                 )
                                 .catch((e: any) => {
@@ -464,7 +472,7 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                         // Greenfield workspace: initialize local repo and checkout task branch
                         await sandbox.commands
                             .run(
-                                `git init && ${gitIdentityCommand(author)} && git checkout -B ${taskBranch}`,
+                                `git init && ${gitIdentityCommand(author)} && git checkout -B ${shellQuote(taskBranch)}`,
                                 { cwd: '/workspace' }
                             )
                             .catch(() => {

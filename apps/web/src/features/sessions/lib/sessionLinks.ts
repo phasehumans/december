@@ -26,10 +26,14 @@ export const openSessionInNewTab = (sessionId: string): void => {
 
 /** opens a page of another site (the pull request on GitHub) */
 export const openExternal = (url: string): void => {
+    // web links only: a saved link is never run as javascript: or opened as a file
+    if (!/^https?:\/\//i.test(url.trim())) return
     window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 const ownerAndName = (session: BackendSession): { owner: string; name: string } | null => {
+    // the Home prompt box takes GitHub repositories only
+    if (session.gitProvider === 'GITLAB') return null
     if (session.repoUrl) {
         const url = session.repoUrl
             .trim()
@@ -37,6 +41,14 @@ const ownerAndName = (session: BackendSession): { owner: string; name: string } 
             .replace(/\.git$/, '')
         const match = /github\.com[/:]([\w.-]+)\/([\w.-]+)/i.exec(url)
         if (match) return { owner: match[1], name: match[2] }
+    }
+    // the list sends the owner apart from the name; older rows keep "owner/name" in the name
+    if (
+        session.githubRepoOwner &&
+        session.githubRepoName &&
+        !session.githubRepoName.includes('/')
+    ) {
+        return { owner: session.githubRepoOwner, name: session.githubRepoName }
     }
     const parts = (session.githubRepoName || '').split('/')
     return parts.length === 2 && parts[0] && parts[1] ? { owner: parts[0], name: parts[1] } : null

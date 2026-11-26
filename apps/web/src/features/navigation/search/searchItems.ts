@@ -70,10 +70,28 @@ export const SETTINGS_PAGES: { id: string; label: string; path: string; keywords
         ],
     },
     {
+        id: 'defaults',
+        label: 'Defaults',
+        path: '/settings/defaults',
+        keywords: ['plan first', 'speed', 'effort', 'pull request', 'default'],
+    },
+    {
         id: 'repositories',
         label: 'Repositories',
         path: '/settings/repositories',
         keywords: ['repos', 'github', 'git', 'branch', 'code'],
+    },
+    {
+        id: 'pull-requests',
+        label: 'Pull requests',
+        path: '/settings/pull-requests',
+        keywords: ['prs', 'pr', 'github', 'review', 'draft', 'auto'],
+    },
+    {
+        id: 'sandbox',
+        label: 'Sandbox',
+        path: '/settings/sandbox',
+        keywords: ['environment', 'vm', 'container', 'setup', 'runtime'],
     },
     {
         id: 'connections',
@@ -99,7 +117,7 @@ export const SETTINGS_PAGES: { id: string; label: string; path: string; keywords
         ],
     },
     {
-        id: 'repositories',
+        id: 'github-repositories',
         label: 'GitHub repositories',
         path: '/settings/connections/apps/github',
         keywords: ['repos', 'github', 'git', 'sync', 'branches', 'codebase'],

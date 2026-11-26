@@ -48,44 +48,15 @@ export const PlanChecklistPanel: React.FC<PlanChecklistPanelProps> = ({ sessionI
         }))
     }
 
-    const milestones: PlanMilestone[] = sessionPlan?.milestones || [
-        {
-            id: 'reproduce',
-            title: 'Reproduce & Understand',
-            description: 'Analyze user prompt, inspect issue context, and reproduce problem state.',
-            status: 'in_progress',
-            logs: [],
-        },
-        {
-            id: 'locate',
-            title: 'Locate Relevant Code',
-            description:
-                'Search repository, inspect source tree, and locate files requiring changes.',
-            status: 'pending',
-            logs: [],
-        },
-        {
-            id: 'implement',
-            title: 'Implement Solution',
-            description: 'Apply targeted modifications, refactor code, and update components.',
-            status: 'pending',
-            logs: [],
-        },
-        {
-            id: 'test',
-            title: 'Run Tests & Verify',
-            description: 'Run automated tests, verify builds, and ensure no regressions.',
-            status: 'pending',
-            logs: [],
-        },
-        {
-            id: 'pr',
-            title: 'Branch & Create PR',
-            description: 'Commit to task branch, push to origin, and generate pull request.',
-            status: 'pending',
-            logs: [],
-        },
-    ]
+    // only a plan the agent wrote. no plan yet: one plain line, no made-up steps
+    const milestones: PlanMilestone[] = sessionPlan?.milestones ?? []
+    if (milestones.length === 0) {
+        return (
+            <div className="flex flex-1 w-full h-full items-center justify-center bg-[#141414] p-6">
+                <p className="text-[13px] text-[#8E8D8C]">No plan yet</p>
+            </div>
+        )
+    }
 
     const completedCount = milestones.filter((m) => m.status === 'completed').length
     const totalCount = milestones.length

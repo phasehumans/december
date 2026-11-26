@@ -11,7 +11,7 @@ import { githubAppService } from '../githubapp/githubapp.service'
 import { integrationsService } from '../integration/integration.service'
 
 import { platformRepository } from './platform.repository'
-import { executeSandboxCommand, runSandboxGitArchive } from './platform.utils'
+import { executeSandboxCommand, fetchRepoArchive, runSandboxGitArchive } from './platform.utils'
 
 import type {
     ListGithubRepos,
@@ -66,27 +66,40 @@ const downloadSession = async (data: DownloadSession): Promise<DownloadSessionRe
             .replace(/^-+|-+$/g, '') || 'session'
     const fileName = `${safeSessionName}.zip`
 
-    if (session.githubRepoOwner && session.githubRepoName) {
-        const owner = session.githubRepoOwner
-        const name = session.githubRepoName
-        const downloadUrl =
-            session.gitProvider === 'GITLAB'
-                ? `https://gitlab.com/${owner}/${name}/-/archive/main/${name}-main.zip`
-                : `https://github.com/${owner}/${name}/archive/refs/heads/main.zip`
-        return {
-            fileName,
-            downloadUrl,
+    // the live sandbox has the newest work, also what is not pushed yet
+    const sandboxIsLive =
+        Boolean(session.vmId) &&
+        (session.sandboxStatus === 'RUNNING' || session.sandboxStatus === 'PAUSED')
+    if (sandboxIsLive) {
+        try {
+            return { fileName, zip: await runSandboxGitArchive({ sandboxId: session.vmId }) }
+        } catch (error) {
+            // no repository to fall back to: say why the download failed
+            if (!session.githubRepoOwner || !session.githubRepoName) throw error
+            console.warn('[Platform] sandbox download failed, using the repository', error)
         }
     }
 
-    const zip = await runSandboxGitArchive({
-        sandboxId: session.vmId,
-    })
-
-    return {
-        fileName,
-        zip,
+    // else what was pushed: the pull request branch, the branch the session started on, or
+    // the default branch. read with the user's token, so a private repository works
+    if (session.githubRepoOwner && session.githubRepoName) {
+        const gitProvider = session.gitProvider === 'GITLAB' ? 'GITLAB' : 'GITHUB'
+        const token = await resolveRepoToken({
+            userId,
+            gitProvider,
+            owner: session.githubRepoOwner,
+        })
+        const stream = await fetchRepoArchive({
+            gitProvider,
+            owner: session.githubRepoOwner,
+            name: session.githubRepoName,
+            ref: session.prBranch || session.branch || null,
+            token,
+        })
+        return { fileName, stream }
     }
+
+    throw new AppError('Nothing to download: the sandbox of this session has stopped', 404)
 }
 
 const getUserGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> => {

@@ -133,7 +133,9 @@ export const useSessionListMutations = ({
             setActionError(null)
             await queryClient.cancelQueries({ queryKey: ['sessions'] })
             updateAllSessionsCache((session) =>
-                session.id === sessionId ? { ...session, isPinned } : session
+                session.id === sessionId
+                    ? { ...session, isPinned, pinnedAt: isPinned ? new Date().toISOString() : null }
+                    : session
             )
         },
         onError: (error) => {

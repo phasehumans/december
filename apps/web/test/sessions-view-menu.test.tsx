@@ -92,6 +92,8 @@ describe('sessions view', () => {
         expect(sessionsViewFilters(DEFAULT_SESSIONS_VIEW)).toEqual({
             sortBy: 'updatedAt',
             sortOrder: 'desc',
+            // pins lead under Last updated, like the sidebar Recent list
+            pinnedFirst: true,
             hasPr: undefined,
             isArchived: false,
             tags: undefined,
@@ -375,5 +377,44 @@ describe('SessionListView with the view menu', () => {
         )
         expect(screen.getAllByText('3d ago').length).toBeGreaterThan(0)
         expect(screen.getAllByText(/Created/).length).toBeGreaterThan(0)
+    })
+})
+
+describe('pinned sessions on the Sessions page', () => {
+    const rows = [
+        session({
+            id: 'old-pin',
+            isPinned: true,
+            pinnedAt: '2026-11-02T00:00:00.000Z',
+            updatedAt: '2026-11-01T00:00:00.000Z',
+        }),
+        session({ id: 'new', updatedAt: '2026-11-05T00:00:00.000Z' }),
+        session({
+            id: 'new-pin',
+            isPinned: true,
+            pinnedAt: '2026-11-03T00:00:00.000Z',
+            updatedAt: '2026-11-01T00:00:00.000Z',
+        }),
+        session({ id: 'older', updatedAt: '2026-11-04T00:00:00.000Z' }),
+    ]
+
+    test('under Last updated pins come first, newest pin first, then the rest by time', () => {
+        expect(applySessionsView(rows, DEFAULT_SESSIONS_VIEW).map((row) => row.id)).toEqual([
+            'new-pin',
+            'old-pin',
+            'new',
+            'older',
+        ])
+    })
+
+    test('Newest and Oldest stay by date only, and do not ask the server for pins first', () => {
+        const newest = { ...DEFAULT_SESSIONS_VIEW, sort: 'newest' as const }
+        expect(sessionsViewFilters(newest).pinnedFirst).toBeUndefined()
+        expect(
+            applySessionsView(
+                rows.map((row) => ({ ...row, createdAt: row.updatedAt })),
+                newest
+            ).map((row) => row.id)
+        ).toEqual(['new', 'older', 'old-pin', 'new-pin'])
     })
 })

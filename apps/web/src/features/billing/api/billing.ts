@@ -216,13 +216,6 @@ const downloadReceipt = async (transactionId: string) => {
     }
 }
 
-const redeemCode = (code: string) => {
-    return apiRequest<{ creditAmount: number; newBalance: number }>('/billing/redeem-code', {
-        method: 'POST',
-        body: JSON.stringify({ code }),
-    })
-}
-
 const getReferral = () => {
     return apiRequest<Referral>('/billing/referral')
 }
@@ -258,5 +251,4 @@ export const billingAPI = {
     verifyRazorpayPayment,
     getCreditsHistory,
     downloadReceipt,
-    redeemCode,
 }

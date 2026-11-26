@@ -119,11 +119,6 @@ export type UpdatePreferences = {
     preferences: Partial<Preferences>
 }
 
-export type UpdateSupportAccess = {
-    userId: string
-    enabled: boolean
-}
-
 export type DataExportStatus = 'PENDING' | 'READY' | 'FAILED'
 
 export type DataExportJobData = {

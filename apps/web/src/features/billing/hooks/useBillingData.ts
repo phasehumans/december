@@ -49,18 +49,6 @@ export const useVerifyRazorpayPayment = () => {
     })
 }
 
-export const useRedeemCode = () => {
-    const queryClient = useQueryClient()
-
-    return useMutation({
-        mutationFn: billingAPI.redeemCode,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: billingQueryKeys.overview })
-            queryClient.invalidateQueries({ queryKey: ['profile'] })
-        },
-    })
-}
-
 export const useFreeCreditRequest = () => {
     return useQuery({
         queryKey: billingQueryKeys.freeCredits,

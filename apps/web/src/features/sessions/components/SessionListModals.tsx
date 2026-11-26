@@ -1,16 +1,14 @@
 import React from 'react'
 
 import { SessionDeleteModal } from './SessionDeleteModal'
-import { SessionOpenConfirmModal } from './SessionOpenConfirmModal'
 import { SessionRenameModal } from './SessionRenameModal'
 import { SessionTagsModal } from './SessionTagsModal'
 
-import type { DeleteModalState, RenameModalState, Project } from '@/features/sessions/types'
+import type { DeleteModalState, RenameModalState } from '@/features/sessions/types'
 
 interface SessionListModalsProps {
     renameModal: RenameModalState
     deleteModal: DeleteModalState
-    openConfirmModal: { isOpen: boolean; project: Project | null }
     tagsModal: { isOpen: boolean; project: any | null }
     isRenamePending: boolean
     isDeletePending: boolean
@@ -20,8 +18,6 @@ interface SessionListModalsProps {
     onRenameSubmit: (event: React.FormEvent) => void
     onCloseDelete: () => void
     onDeleteConfirm: () => void
-    onCloseOpenConfirm: () => void
-    onOpenConfirm: () => void
     onCloseTags: () => void
     onSaveTags: (tags: string[]) => void
 }
@@ -29,7 +25,6 @@ interface SessionListModalsProps {
 export const SessionListModals: React.FC<SessionListModalsProps> = ({
     renameModal,
     deleteModal,
-    openConfirmModal,
     tagsModal,
     isRenamePending,
     isDeletePending,
@@ -39,8 +34,6 @@ export const SessionListModals: React.FC<SessionListModalsProps> = ({
     onRenameSubmit,
     onCloseDelete,
     onDeleteConfirm,
-    onCloseOpenConfirm,
-    onOpenConfirm,
     onCloseTags,
     onSaveTags,
 }) => {
@@ -61,13 +54,6 @@ export const SessionListModals: React.FC<SessionListModalsProps> = ({
                 isPending={isDeletePending}
                 onClose={onCloseDelete}
                 onConfirm={onDeleteConfirm}
-            />
-
-            <SessionOpenConfirmModal
-                isOpen={openConfirmModal.isOpen}
-                projectTitle={openConfirmModal.project?.title}
-                onClose={onCloseOpenConfirm}
-                onConfirm={onOpenConfirm}
             />
 
             <SessionTagsModal

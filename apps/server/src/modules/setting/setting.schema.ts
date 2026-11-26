@@ -161,10 +161,6 @@ export const updatePreferencesSchema = preferencesSchema.refine(
     { message: 'send at least one preference' }
 )
 
-export const updateSupportAccessSchema = z.object({
-    enabled: z.boolean({ message: 'enabled must be a boolean' }),
-})
-
 export const dataExportDownloadSchema = z.object({
     id: z.string().uuid('export id is not valid'),
     t: z.string().trim().min(1).max(200),

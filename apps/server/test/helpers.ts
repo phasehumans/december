@@ -151,3 +151,27 @@ export async function createSignedInUser(data: {
         token: generateAccessToken({ userId: user.id, sessionId: session.id }),
     }
 }
+
+/**
+ * The admin api takes only the web cookie from the web app's origin, after an
+ * authenticator code in the last 12 hours. This marks the code as entered just now and
+ * returns request helpers that send the cookie and the origin.
+ */
+export async function asAdmin(data: { userId: string; token: string }) {
+    const { userId, token } = data
+    await prisma.authSession.updateMany({
+        where: { userId },
+        data: { adminVerifiedAt: new Date() },
+    })
+    const { default: app } = await import('../src/app')
+    const withAuth = (req: any) =>
+        req
+            .set('x-forwarded-for', getRandomIP())
+            .set('Origin', 'http://localhost:3000')
+            .set('Cookie', `accessToken=${token}`)
+    return {
+        get: (path: string) => withAuth(request(app).get(`/api/v1${path}`)),
+        post: (path: string, body: object = {}) =>
+            withAuth(request(app).post(`/api/v1${path}`)).send(body),
+    }
+}

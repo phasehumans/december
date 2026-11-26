@@ -26,9 +26,6 @@ const ONBOARDING_STEPS: OnboardingStep[] = ['github', 'start', 'models']
 export const toOnboardingStep = (value: string | null): OnboardingStep | null =>
     ONBOARDING_STEPS.find((step) => step === value) ?? null
 
-/** support access lasts this long after the user turns it on (#636) */
-export const SUPPORT_ACCESS_MS = 7 * 24 * 60 * 60 * 1000
-
 /**
  * The preferences saved on the account, or null when none are saved. Only valid keys are
  * kept, one by one, so a value from an older schema does not hide the others.

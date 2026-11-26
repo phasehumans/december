@@ -325,11 +325,6 @@ export type DisconnectSession = {
     sessionId: string
 }
 
-export type RehydrateSession = {
-    userId: string
-    sessionId: string
-}
-
 export type TouchPreviewActivity = {
     sessionId: string
 }
@@ -344,11 +339,6 @@ export type ProxyPreview = {
     sessionId: string
     port: number
     reqPath?: string
-}
-
-export type LoadSessionFiles = {
-    sessionId: string
-    userId?: string
 }
 
 export type SmartSearchSessions = {

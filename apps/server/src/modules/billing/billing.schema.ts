@@ -37,16 +37,6 @@ export const receiptParamsSchema = z.object({
     id: z.string().trim().min(1).max(64),
 })
 
-export const redeemCodeSchema = z
-    .object({
-        code: z
-            .string()
-            .trim()
-            .min(1, { message: 'redeem code cannot be empty' })
-            .max(100, { message: 'redeem code cannot exceed 100 characters' }),
-    })
-    .strict()
-
 // #624 part 2: the free credit request form on the billing page
 export const creditRequestSchema = z
     .object({

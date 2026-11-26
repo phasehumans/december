@@ -1,3 +1,6 @@
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
+
 import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
@@ -29,12 +32,13 @@ const downloadProject = asyncHandler(async (req: Request, res: Response) => {
         sessionId,
     })
 
-    if (result.downloadUrl) {
-        return res.redirect(result.downloadUrl)
-    }
-
     res.setHeader('Content-Type', 'application/zip')
     res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`)
+    if (result.stream) {
+        res.status(200)
+        await pipeline(Readable.fromWeb(result.stream as any), res)
+        return
+    }
     return res.status(200).send(Buffer.from(result.zip || ''))
 })
 

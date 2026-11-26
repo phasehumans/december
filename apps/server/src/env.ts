@@ -110,8 +110,25 @@ const envSchema = z
         REDIS_URL: emptyAsUndefined,
         AGENT_TOKEN_SECRET: emptyAsUndefined,
         MAX_CONCURRENT_SESSIONS_PER_USER: z.coerce.number().default(10),
-        // comma-separated; only these verified accounts can use /admin (#624)
+        // comma-separated; only these verified accounts can use the admin panel (#624)
         ADMIN_EMAILS: emptyAsUndefined,
+        // the web path of the admin panel. only admins are told it (profile.adminPath)
+        ADMIN_PATH: z
+            .string()
+            .regex(/^\/[a-z0-9-]{6,64}$/, 'ADMIN_PATH must look like /ops-x7k2q')
+            .optional(),
+        // the most credits an admin gives in 24 hours, in cents: approved requests and
+        // credits added by hand together ($50)
+        ADMIN_DAILY_CREDIT_CAP_CENTS: z.coerce.number().int().min(0).default(5000),
+        // the deployed commit, set at docker build time (admin system tab)
+        GIT_SHA: emptyAsUndefined,
+        // Cloudflare, read only, for the admin panel: deploys, traffic and page speed of the
+        // web app and the landing page. The token needs Account Analytics Read, Analytics Read
+        // (zone) and Cloudflare Pages Read, nothing more. PAGES_PROJECTS is comma-separated
+        CLOUDFLARE_API_TOKEN: emptyAsUndefined,
+        CLOUDFLARE_ACCOUNT_ID: emptyAsUndefined,
+        CLOUDFLARE_ZONE_ID: emptyAsUndefined,
+        CLOUDFLARE_PAGES_PROJECTS: emptyAsUndefined,
         GITHUB_APP_ID: emptyAsUndefined,
         GITHUB_APP_NAME: emptyAsUndefined,
         GITHUB_APP_PRIVATE_KEY: emptyAsUndefined,

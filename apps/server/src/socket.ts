@@ -114,7 +114,9 @@ export function initSocket(httpServer: any) {
                     event?.type === 'AgentEnd' ||
                     event?.type === 'CreditsLow' ||
                     // a charge or a run start reached a spend limit: the session pauses (#638)
-                    event?.type === 'SpendLimitReached'
+                    event?.type === 'SpendLimitReached' ||
+                    // the worker saved the end of the run: the cached lists are old now
+                    event?.type === 'RunClosed'
                 ) {
                     // failed, finished and low credits reach the inbox, email and push (#636)
                     sessionService.handleRunEvent({ sessionId, event }).catch((error: unknown) => {

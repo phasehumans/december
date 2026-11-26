@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -7,6 +8,7 @@ import { useAppController } from './app/hooks/useAppController'
 import { AuthModal } from './features/auth/components/AuthModal'
 import { githubOAuth } from './features/auth/githubOAuth'
 import { OnboardingPage } from './features/onboarding/components/OnboardingPage'
+import { profileAPI } from './features/profile/api/profile'
 import { useFinishSound } from './features/profile/hooks/useFinishSound'
 import { SuperCrewCard } from './features/supercrew/components/SuperCrewCard'
 
@@ -17,7 +19,7 @@ import { getWebUrl } from '@/shared/config/env'
 import { resetUserQueryCache } from '@/shared/lib/query-cache'
 import { useDelayedFlag } from '@/shared/lib/useDelayedFlag'
 
-// the admin page (#624) is a separate screen; its code loads only when it is opened
+// the admin panel (#624) is a separate screen; its code loads only when it is opened
 const AdminPage = React.lazy(() =>
     import('./features/admin/components/AdminPage').then((m) => ({ default: m.AdminPage }))
 )
@@ -62,6 +64,13 @@ const App: React.FC = () => {
 
     const location = useLocation()
     const navigate = useNavigate()
+    // the same cached profile the controller loads; only the admin's has adminPath
+    const { data: profile } = useQuery({
+        queryKey: ['profile'],
+        queryFn: profileAPI.getProfile,
+        enabled: isAuthenticated,
+    })
+    const adminPath = profile?.isAdmin ? profile.adminPath : undefined
     const activeProjectId = useAppStore((s) => s.activeProjectId)
 
     // opening a session from inside the app keeps the current page until the session is
@@ -123,7 +132,9 @@ const App: React.FC = () => {
         return <LogoLoader />
     }
 
-    if (location.pathname === '/admin') {
+    // the admin panel lives at a path only the admin is told; for anyone else it is a
+    // normal unknown path
+    if (adminPath && location.pathname === adminPath) {
         return (
             <React.Suspense fallback={<LogoLoader />}>
                 <AdminPage />

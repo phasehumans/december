@@ -1,12 +1,9 @@
-import crypto from 'crypto'
-
 import { razorpay } from '../../config/razorpay'
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { buildPdf } from '../../shared/pdf'
-import { getAdminEmails } from '../admin/admin.utils'
+import { getAdminPath } from '../admin/admin.utils'
 import { auditService } from '../audit/audit.service'
-import { emailService } from '../email/email.service'
 import { notificationService } from '../notification/notification.service'
 
 import { billingRepository } from './billing.repository'
@@ -37,7 +34,6 @@ import type {
     VerifyRazorpayPayment,
     CreditsHistory,
     AddCredits,
-    RedeemCode,
     HandleRazorpayWebhook,
     RequestFreeCredits,
     GetFreeCreditRequest,
@@ -380,35 +376,6 @@ const getReceipt = async (data: GetReceipt) => {
     }
 }
 
-const redeemCode = async (data: RedeemCode) => {
-    const { userId, code } = data
-
-    const normalizedCode = code
-        .replace(/[\u200B-\u200D\uFEFF]/g, '')
-        .trim()
-        .toUpperCase()
-    if (!normalizedCode) {
-        throw new AppError('redeem code cannot be empty', 400)
-    }
-
-    const codeHash = crypto.createHash('sha256').update(normalizedCode).digest('hex')
-
-    const result = await billingRepository.redeemCode({ userId, codeHash })
-
-    try {
-        await notificationService.sendNotificationToUser({
-            userId,
-            title: 'Code Redeemed Successfully',
-            message: `Successfully claimed $${(result.creditAmount / 100).toFixed(2)} in gifted credits!`,
-            type: 'SUCCESS',
-        })
-    } catch (err) {
-        console.error('Failed to send redemption notification:', err)
-    }
-
-    return result
-}
-
 const addCredits = async (data: AddCredits) => {
     const { userId, amountInCents, paymentMethod } = data
 
@@ -541,14 +508,12 @@ const requestFreeCredits = async (data: RequestFreeCredits) => {
         throw err
     }
 
-    const appUrl = (env.APP_URL || 'https://app.trydecember.com').replace(/\/+$/, '')
-    for (const adminEmail of getAdminEmails()) {
-        await emailService.sendMessageEmail({
-            to: adminEmail,
-            subject: 'new free credit request',
-            body: `${user.email} asked for free credits.\n\nwhat they will build: ${buildPlan}\n\nhow they heard about december: ${heardFrom}\n\nreview it: ${appUrl}/admin`,
-        })
-    }
+    // the admins see it in their December inbox (no email), with a link to the Credits tab
+    await notificationService.sendNotificationToAdmins({
+        title: 'New free credit request',
+        message: `${user.email} asked for free credits. What they will build: ${buildPlan.slice(0, 200)}. How they heard about December: ${heardFrom.slice(0, 100)}`,
+        link: `${getAdminPath()}#users/asked`,
+    })
 
     return toCreditRequestView(created)
 }
@@ -728,7 +693,6 @@ export const billingService = {
     verifyRazorpayPayment,
     getCreditsHistory,
     getReceipt,
-    redeemCode,
     addCredits,
     handleRazorpayWebhook,
 }

@@ -48,11 +48,17 @@ export const repoNameOf = (session: BackendSession): string | null => {
     return match ? match[1] : null
 }
 
+// only web links reach an href or window.open: never javascript: or file:
+const webLinkOrNull = (url: string | null | undefined): string | null =>
+    url && /^https?:\/\//i.test(url.trim()) ? url.trim() : null
+
 /** the saved pull request link, else one built from the repository url */
 export const pullRequestUrlOf = (session: BackendSession): string | null => {
     if (!session.prNumber) return null
-    if (session.prUrl) return session.prUrl
-    return session.repoUrl ? `${cleanRepoUrl(session.repoUrl)}/pull/${session.prNumber}` : null
+    if (session.prUrl) return webLinkOrNull(session.prUrl)
+    return session.repoUrl
+        ? webLinkOrNull(`${cleanRepoUrl(session.repoUrl)}/pull/${session.prNumber}`)
+        : null
 }
 
 /** rows of the pull requests list, in the order the server sorted them */

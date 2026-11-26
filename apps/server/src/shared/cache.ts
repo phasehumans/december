@@ -135,14 +135,17 @@ class AppCache {
                     count: 100,
                 })
 
-                stream.on('data', async (keys: string[]) => {
+                // each batch is deleted before this returns, so a read right after an
+                // invalidation never gets the old value
+                const deletes: Promise<unknown>[] = []
+                stream.on('data', (keys: string[]) => {
                     if (keys.length > 0 && redisClient) {
-                        try {
-                            await redisClient.del(...keys)
-                        } catch (err) {
-                            // Intentionally swallowed: stream batch delete error
-                            console.error('[AppCache Redis Stream Del Batch Error]', err)
-                        }
+                        deletes.push(
+                            redisClient.del(...keys).catch((err) => {
+                                // Intentionally swallowed: stream batch delete error
+                                console.error('[AppCache Redis Stream Del Batch Error]', err)
+                            })
+                        )
                     }
                 })
 
@@ -154,6 +157,7 @@ class AppCache {
                         resolve()
                     })
                 })
+                await Promise.all(deletes)
             } catch (err) {
                 // Intentionally swallowed: scan error logged gracefully
                 console.error('[AppCache Redis DelPattern Error]', err)

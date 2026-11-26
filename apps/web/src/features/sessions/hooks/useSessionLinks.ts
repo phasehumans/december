@@ -7,7 +7,6 @@ import type { BackendSession } from '@/features/sessions/api/session'
 import { pullRequestUrlOf } from '@/features/pullrequests/lib/pullRequests'
 import {
     openExternal,
-    openSessionInNewTab,
     repoOfSession,
     startSessionInRepo,
 } from '@/features/sessions/lib/sessionLinks'
@@ -18,7 +17,6 @@ export interface SessionLinks {
     onOpenPullRequest?: () => void
     /** only when the session has a repository */
     onNewInRepo?: () => void
-    onOpenInNewTab: () => void
 }
 
 /**
@@ -37,7 +35,6 @@ export const useSessionLinks = () => {
             return {
                 onOpenPullRequest: prUrl ? () => openExternal(prUrl) : undefined,
                 onNewInRepo: repo ? () => startSessionInRepo(repo, session.branch) : undefined,
-                onOpenInNewTab: () => openSessionInNewTab(session.id),
             }
         },
         [queryClient]

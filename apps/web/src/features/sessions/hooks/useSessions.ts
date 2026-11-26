@@ -4,6 +4,11 @@ import { sessionAPI, type SessionFilters } from '../api/session'
 
 import { useAppStore } from '@/app/store'
 
+// a run that ends is not pushed to the list: while a row works, the list reads again
+const RUNNING_REFRESH_MS = 5000
+const isWorking = (vmStatus?: string | null) =>
+    vmStatus === 'RUNNING' || vmStatus === 'PROVISIONING'
+
 export const useSessions = (filters?: SessionFilters, options?: { enabled?: boolean }) => {
     const isAuthenticated = useAppStore((state) => state.isAuthenticated)
 
@@ -33,6 +38,13 @@ export const useInfiniteSessions = (filters?: SessionFilters) => {
         // a new sort, filter or search keeps the current rows on screen until its rows
         // arrive, instead of dropping to the loading skeleton
         placeholderData: keepPreviousData,
+        // a stopped or finished run leaves "Running" within a few seconds
+        refetchInterval: (query) =>
+            query.state.data?.pages.some((page) =>
+                page.sessions.some((session) => isWorking(session.vmStatus))
+            )
+                ? RUNNING_REFRESH_MS
+                : false,
     })
 }
 
@@ -48,6 +60,8 @@ export const useSessionCounts = () => {
         queryKey: ['sessions', 'counts'],
         queryFn: () => sessionAPI.getSessionCounts(),
         enabled: isAuthenticated,
+        refetchInterval: (query) =>
+            (query.state.data?.running ?? 0) > 0 ? RUNNING_REFRESH_MS : false,
     })
 }
 

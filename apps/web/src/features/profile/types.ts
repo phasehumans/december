@@ -11,7 +11,6 @@ export interface Profile {
     googleId: string | null
     githubConnected: boolean
     githubUsername?: string
-    supportAccessUntil?: string | null
 }
 
 export interface UpdateNameInput {

@@ -101,8 +101,9 @@ model User {
   teamMemberships     TeamMember[]
   teamInvitesSent     TeamInvite[]
   auditEvents         AuditEvent[]
-  referralsMade       Referral[]           @relation("ReferralInviter")
-  referredBy          Referral?            @relation("ReferralInvitee")
+  referralsMade       Referral[]              @relation("ReferralInviter")
+  referredBy          Referral?               @relation("ReferralInvitee")
+  adminTotp           AdminTotp?
 }
 
 // how a cloud run pays for model tokens
@@ -194,19 +195,21 @@ model Notification {
 }
 
 model AuthSession {
-  id                       String    @id @default(uuid())
+  id                       String             @id @default(uuid())
   userId                   String
-  refreshTokenHash         String    @unique
+  refreshTokenHash         String             @unique
   previousRefreshTokenHash String?
   rotatedAt                DateTime?
+  // when the admin last entered an authenticator code in this sign-in (admin panel only)
+  adminVerifiedAt          DateTime?
   userAgent                String?
   ipAddress                String?
   expiresAt                DateTime
-  createdAt                DateTime  @default(now())
-  updatedAt                DateTime  @updatedAt
-  isRevoked                Boolean   @default(false)
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  isRevoked                Boolean            @default(false)
   revokedAt                DateTime?
-  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   // browsers that turned push on while signed in with this session (#636)
   pushSubscriptions        PushSubscription[]
 
@@ -280,8 +283,8 @@ model Session {
   updatedAt            DateTime       @updatedAt
   deletedAt            DateTime?
 
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project         Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project         Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
   messages        Message[]
   attachments     MessageAttachment[]
   settings        SessionSettings?
@@ -546,6 +549,21 @@ model DataExport {
 
   @@index([userId, createdAt])
   @@index([expiresAt])
+}
+
+// the admin's authenticator app (TOTP). the secret is encrypted with SECRETS_ENC_KEY.
+// enabledAt is null until the first code is entered during setup.
+model AdminTotp {
+  userId          String    @id
+  secretEncrypted String
+  enabledAt       DateTime?
+  // the last 30-second step a code was accepted for: the same code cannot be used twice
+  lastUsedStep    Int?
+  failedCount     Int       @default(0)
+  lockedUntil     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model AdminAuditLog {
@@ -844,15 +862,15 @@ model GithubAppInstallation {
 }
 
 model Secret {
-  id        String   @id @default(uuid())
-  userId    String
-  name      String
-  value     String // Encrypted value
-  note      String?
+  id           String   @id @default(uuid())
+  userId       String
+  name         String
+  value        String // Encrypted value
+  note         String?
   // the repository that gets this secret, as 'owner/name'. '' means all repositories (#637)
-  repoFullName String @default("")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  repoFullName String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -10,7 +10,6 @@ import {
     updateSessionDefaultsSchema,
     updateToolDenyRulesSchema,
     updatePreferencesSchema,
-    updateSupportAccessSchema,
     dataExportDownloadSchema,
     updatePullRequestSettingsSchema,
     updateSandboxSettingsSchema,
@@ -109,18 +108,6 @@ const updateSessionDefaults = asyncHandler(async (req: Request, res: Response) =
         defaultBaseBranch,
     })
     return sendSuccess(res, 'session defaults updated', result)
-})
-
-const updateSupportAccess = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const { enabled } = updateSupportAccessSchema.parse(req.body)
-    const result = await settingService.updateSupportAccess({ userId, enabled })
-    return sendSuccess(res, 'support access updated', result)
 })
 
 const updatePreferences = asyncHandler(async (req: Request, res: Response) => {
@@ -361,7 +348,6 @@ export const settingController = {
     updateSessionDefaults,
     getToolDenyRules,
     updateToolDenyRules,
-    updateSupportAccess,
     updatePreferences,
     getPullRequestSettings,
     updatePullRequestSettings,

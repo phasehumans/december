@@ -78,13 +78,13 @@ describe('Profile Settings Notifications Tab Placement', () => {
         // Headings
         expect(screen.getByRole('heading', { name: 'Account' })).toBeDefined()
         expect(screen.getByRole('heading', { name: 'Notifications' })).toBeDefined()
-        // devices, data and support (#636) replace the old sign in box
+        // devices and data (#636) replace the old sign in box; the support switch is gone
         expect(screen.getByRole('heading', { name: 'Devices' })).toBeDefined()
         expect(screen.getByRole('heading', { name: 'Data' })).toBeDefined()
-        expect(screen.getByRole('heading', { name: 'Support' })).toBeDefined()
+        expect(screen.queryByRole('heading', { name: 'Support' })).toBeNull()
         expect(
-            screen.getByRole('switch', { name: 'Let December support open my sessions' })
-        ).toBeDefined()
+            screen.queryByRole('switch', { name: 'Let December support open my sessions' })
+        ).toBeNull()
         expect(screen.getByText('Export my data')).toBeDefined()
         expect(screen.getByText('Delete all sessions')).toBeDefined()
 

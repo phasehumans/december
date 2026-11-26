@@ -12,7 +12,6 @@ import {
     updateSessionTagsBodySchema,
     deleteSessionParamsSchema,
     disconnectSessionParamsSchema,
-    rehydrateSessionParamsSchema,
     proxyPreviewParamsSchema,
     getSessionDiffParamsSchema,
     getSessionFileTreeParamsSchema,
@@ -134,7 +133,6 @@ describe('Session Schemas - Unit Tests', () => {
             { name: 'updateSessionTagsParamsSchema', schema: updateSessionTagsParamsSchema },
             { name: 'deleteSessionParamsSchema', schema: deleteSessionParamsSchema },
             { name: 'disconnectSessionParamsSchema', schema: disconnectSessionParamsSchema },
-            { name: 'rehydrateSessionParamsSchema', schema: rehydrateSessionParamsSchema },
             { name: 'getSessionDiffParamsSchema', schema: getSessionDiffParamsSchema },
             { name: 'getSessionFileTreeParamsSchema', schema: getSessionFileTreeParamsSchema },
             {

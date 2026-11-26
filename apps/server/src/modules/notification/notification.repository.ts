@@ -318,7 +318,22 @@ async function markDigestSent(userId: string, at: Date) {
     })
 }
 
+/** The live, verified accounts with these emails (the admins), for their inbox. */
+async function findUserIdsByEmails(emails: string[]) {
+    if (emails.length === 0) return []
+    const users = await prisma.user.findMany({
+        where: {
+            OR: emails.map((email) => ({ email: { equals: email, mode: 'insensitive' as const } })),
+            emailVerified: true,
+            isDeleted: false,
+        },
+        select: { id: true },
+    })
+    return users.map((user) => user.id)
+}
+
 export const notificationRepository = {
+    findUserIdsByEmails,
     findUserNotifyPrefs,
     claimLowBalanceAlert,
     findPushSubscriptions,

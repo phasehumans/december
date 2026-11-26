@@ -112,7 +112,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     const isMobile = useIsMobile()
     const viewport = useVisualViewport(isOpen && isMobile)
     // back button and back swipe close the search instead of leaving the page
-    useBackToClose({ isOpen, onClose })
+    const { closeThen } = useBackToClose({ isOpen, onClose })
 
     const { sections, askDecember, isAiSearching } = useSearchModel({
         isOpen,
@@ -129,7 +129,16 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     const hasQuery = query.trim().length > 0
 
     useEffect(() => {
-        if (!isOpen) return
+        if (!isOpen) {
+            if (flashTimerRef.current) {
+                clearTimeout(flashTimerRef.current)
+                flashTimerRef.current = null
+            }
+            setQuery('')
+            setSelectedIndex(0)
+            setFlash(null)
+            return
+        }
         setQuery('')
         setSelectedIndex(0)
         setFlash(null)
@@ -163,20 +172,24 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 setFlash({ id: item.id, label: item.flashLabel })
                 if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
                 flashTimerRef.current = setTimeout(() => {
+                    flashTimerRef.current = null
                     onClose()
                     onAction?.()
                 }, FLASH_MS)
                 return
             }
-            onClose()
             if (newTab && item.href && !item.external) {
+                onClose()
                 window.open(item.href, '_blank', 'noopener,noreferrer')
-            } else {
-                item.run()
+                onAction?.()
+                return
             }
-            onAction?.()
+            closeThen(() => {
+                item.run()
+                onAction?.()
+            })
         },
-        [onClose, onAction]
+        [closeThen, onClose, onAction]
     )
 
     const activate = useCallback(
@@ -184,26 +197,28 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             const row = rows[index]
             if (!row) return
             if (row.kind === 'ask') {
-                onClose()
-                askDecember(row.prompt)
-                onAction?.()
+                closeThen(() => {
+                    askDecember(row.prompt)
+                    onAction?.()
+                })
                 return
             }
             runItem(row.item, newTab)
         },
-        [rows, onClose, askDecember, onAction, runItem]
+        [rows, closeThen, askDecember, onAction, runItem]
     )
 
     useEffect(() => {
         if (!isOpen) return
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.isComposing) return
             const count = rows.length || 1
             if (e.key === 'ArrowDown') {
                 e.preventDefault()
-                setSelectedIndex((selectedIndex + 1) % count)
+                setSelectedIndex((prev) => (prev + 1) % count)
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault()
-                setSelectedIndex((selectedIndex - 1 + count) % count)
+                setSelectedIndex((prev) => (prev - 1 + count) % count)
             } else if (e.key === 'Enter') {
                 e.preventDefault()
                 activate(selectedIndex, e.metaKey || e.ctrlKey)

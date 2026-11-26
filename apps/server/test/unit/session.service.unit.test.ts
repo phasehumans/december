@@ -729,7 +729,7 @@ describe('Session Service - Unit Tests', () => {
             ).rejects.toThrow('Session not found')
         })
 
-        it('should return baseline plan with 5 canonical phases when session exists', async () => {
+        it('returns no plan when the agent has not saved one', async () => {
             sessionRepository.findSessionById = mock(async () => ({
                 id: testSessionId,
                 userId: testUserId,
@@ -739,16 +739,7 @@ describe('Session Service - Unit Tests', () => {
                 userId: testUserId,
                 sessionId: testSessionId,
             })
-            expect(res.plan).toBeDefined()
-            expect(res.plan.sessionId).toBe(testSessionId)
-            expect(res.plan.milestones).toHaveLength(5)
-            expect(res.plan.milestones.map((m: any) => m.id)).toEqual([
-                'reproduce',
-                'locate',
-                'implement',
-                'test',
-                'pr',
-            ])
+            expect(res).toEqual({ plan: null })
         })
     })
 })

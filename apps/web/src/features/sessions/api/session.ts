@@ -12,6 +12,8 @@ export type BackendSession = {
     /** the owner of the repository. the list sends it apart from the name */
     githubRepoOwner?: string | null
     githubRepoName?: string | null
+    /** the git host of the repository; old cached rows may not have it */
+    gitProvider?: 'GITHUB' | 'GITLAB'
     branch?: string | null
     gitRef?: string | null
     issueNumber?: number | null
@@ -287,17 +289,6 @@ export const sessionAPI = {
         )
     },
 
-    rehydrateSession: (sessionId: string) => {
-        return apiRequest<{
-            session: BackendSession
-            chatMessages: BackendMessage[]
-            generatedFiles: Record<string, string>
-            terminalScrollback: string[]
-            gitDiff?: string | null
-            gitStatus?: string | null
-        }>(`/session/${sessionId}/rehydrate`)
-    },
-
     getSessionDiff: async (sessionId: string): Promise<{ gitStatus: string; gitDiff: string }> => {
         const data = await apiRequest<{ gitStatus: string; gitDiff: string }>(
             `/session/${sessionId}/diff`
@@ -396,33 +387,9 @@ export const sessionAPI = {
         return res.session
     },
 
-    updateSession: async (
-        id: string,
-        data: { title?: string; projectId?: string }
-    ): Promise<BackendSession> => {
-        const res = await apiRequest<{ session: BackendSession }>(`/session/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(data),
-        })
-        return res.session
-    },
-
-    updateSessionSettings: async (
-        id: string,
-        data: { isArchived?: boolean; tags?: string[] }
-    ): Promise<BackendSession> => {
-        const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/settings`, {
-            method: 'PATCH',
-            body: JSON.stringify(data),
-        })
-        return res.session
-    },
-
-    downloadSession: async (sessionId: string, versionId?: string | null) => {
-        const res = await apiFetch(
-            `/session/${sessionId}/download${buildVersionQuery(versionId)}`,
-            {}
-        )
+    // the live sandbox, else the pushed branch of the repository (platform module)
+    downloadSession: async (sessionId: string) => {
+        const res = await apiFetch(`/platform/${encodeURIComponent(sessionId)}/download`, {})
 
         if (!res.ok) {
             let payload: { message?: string; errors?: unknown } | null

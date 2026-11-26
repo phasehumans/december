@@ -6,6 +6,7 @@ import {
     SessionMenuItems,
     SessionSheetItems,
     sessionMenuPanelClass,
+    useMenuKeys,
 } from './SessionMenu'
 import { SessionPrTooltip } from './SessionPrTooltip'
 import { ListMeta, SessionTags } from './SessionRowParts'
@@ -68,6 +69,8 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
     // set by a right-click: where the menu sits inside the row. null when the ⋯ opened it
     const [menuPoint, setMenuPoint] = useState<React.CSSProperties | null>(null)
     const desktopMenuRef = useRef<HTMLDivElement>(null)
+    // the desktop ⋯: a press on it is not a click outside, so a second click closes the menu
+    const desktopTriggerRef = useRef<HTMLButtonElement>(null)
     const isPhone = useIsPhone()
     const linksFor = useSessionLinks()
     const isActive = session.vmStatus === 'RUNNING' || session.vmStatus === 'PROVISIONING'
@@ -76,11 +79,19 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
     useEffect(() => {
         if (!isMenuOpen || isPhone) return
         const handleClickOutside = (event: MouseEvent) => {
-            if (!desktopMenuRef.current?.contains(event.target as Node)) onCloseMenu()
+            const target = event.target as Node
+            if (
+                !desktopMenuRef.current?.contains(target) &&
+                !desktopTriggerRef.current?.contains(target)
+            ) {
+                onCloseMenu()
+            }
         }
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [isMenuOpen, isPhone, onCloseMenu])
+    // Escape, arrows, Home and End, like the Recent menus
+    useMenuKeys(isMenuOpen && !isPhone, desktopMenuRef, desktopTriggerRef, onCloseMenu)
 
     const openMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
         const rect = e.currentTarget.getBoundingClientRect()
@@ -142,7 +153,6 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
         ...menuProps,
         onOpenPullRequest: closing(links.onOpenPullRequest),
         onNewInRepo: closing(links.onNewInRepo),
-        onOpenInNewTab: closing(links.onOpenInNewTab),
     }
     const rowOpacity =
         dimArchived && session.isArchived && !isMenuOpen ? 'opacity-60 hover:opacity-100' : ''
@@ -163,10 +173,13 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
         <span className="shrink-0 text-[12px] text-amber-400">Needs answer</span>
     )
 
-    const menuButton = (extra: string) => (
+    const menuButton = (extra: string, ref?: React.Ref<HTMLButtonElement>) => (
         <button
+            ref={ref}
             type="button"
             onClick={openMenu}
+            aria-haspopup="menu"
+            aria-expanded={isMenuOpen}
             className={cn(
                 'rounded-lg p-1.5 text-[#7B7A79] transition-all hover:bg-[#242323] hover:text-[#D6D5C9] shrink-0',
                 isMenuOpen && 'bg-[#242323] text-[#D6D5C9]',
@@ -297,7 +310,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                     )}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {menuButton('p-2')}
+                    {menuButton('p-2', desktopTriggerRef)}
                     {isMenuOpen && !isPhone && !menuPoint && (
                         <div
                             ref={desktopMenuRef}

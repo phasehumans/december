@@ -22,35 +22,3 @@ export type WaitlistState = {
     popupSeen: boolean
     canShowPopup: boolean
 }
-
-export type ListWaitlistEntries = {
-    feature: WaitlistFeature
-}
-
-export type WaitlistAdminEntry = {
-    userId: string
-    name: string
-    email: string
-    joinedAt: string | null
-    notifiedAt: string | null
-}
-
-export type LaunchWaitlist = {
-    adminUserId: string
-    feature: WaitlistFeature
-    subject: string
-    body: string
-    inboxMessage: string
-}
-
-export type WaitlistLaunchResult = {
-    sentCount: number
-    failedCount: number
-}
-
-export type WaitlistAdminList = {
-    feature: WaitlistFeature
-    joinedCount: number
-    notifiedCount: number
-    items: WaitlistAdminEntry[]
-}

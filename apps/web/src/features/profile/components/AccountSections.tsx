@@ -4,7 +4,6 @@ import React from 'react'
 import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
 import { SettingsRow, SettingsSection, outlineButtonClass } from './SettingsUi'
 
-import { Switch } from '@/features/connections/components/ConnectionsUi'
 import { profileAPI, type DataExport } from '@/features/profile/api/profile'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { formatRelativeTime } from '@/shared/lib/relativeTime'
@@ -22,9 +21,6 @@ const exportHint = (latest: DataExport | null | undefined, error: string | null)
 
 const errorMessage = (error: unknown, fallback: string) =>
     error instanceof Error && error.message ? error.message : fallback
-
-const untilDate = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
 interface AccountSectionsProps {
     onSignOut: () => void
@@ -50,15 +46,6 @@ export const AccountSections: React.FC<AccountSectionsProps> = ({
     const revoke = useMutation({
         mutationFn: profileAPI.revokeSignedInSession,
         onSettled: () => queryClient.invalidateQueries({ queryKey: sessionsQueryKey }),
-    })
-
-    const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: profileAPI.getProfile })
-    const supportAccessUntil = profile?.supportAccessUntil ?? null
-    const supportAccessOn =
-        supportAccessUntil !== null && new Date(supportAccessUntil).getTime() > Date.now()
-    const supportAccess = useMutation({
-        mutationFn: profileAPI.updateSupportAccess,
-        onSettled: () => queryClient.invalidateQueries({ queryKey: ['profile'] }),
     })
 
     const { data: exportState } = useQuery({
@@ -168,24 +155,6 @@ export const AccountSections: React.FC<AccountSectionsProps> = ({
                     >
                         Delete
                     </button>
-                </SettingsRow>
-            </SettingsSection>
-
-            <SettingsSection title="Support" description="Let the December team look at a problem.">
-                <SettingsRow
-                    label="Let December support open my sessions"
-                    hint={
-                        supportAccessOn && supportAccessUntil
-                            ? `On until ${untilDate(supportAccessUntil)}`
-                            : 'Turns off after 7 days'
-                    }
-                >
-                    <Switch
-                        label="Let December support open my sessions"
-                        checked={supportAccessOn}
-                        disabled={supportAccess.isPending}
-                        onChange={(enabled) => supportAccess.mutate(enabled)}
-                    />
                 </SettingsRow>
             </SettingsSection>
 

@@ -468,7 +468,8 @@ describe('E2BSandboxService (Unit & Integration)', () => {
             // 2. Repo cloned with branch and injected credentials
             const cloneCmd = executedCommands.find((cmd) => cmd.includes('git clone'))
             expect(cloneCmd).toBeDefined()
-            expect(cloneCmd).toContain('-b feat/onboarding')
+            // the branch and the url are quoted, and -- ends the git options
+            expect(cloneCmd).toContain(`-b 'feat/onboarding' -- '`)
             expect(cloneCmd).toContain(
                 'x-access-token:ghp_secretToken123@github.com/phasehumans/december.git'
             )
@@ -476,7 +477,7 @@ describe('E2BSandboxService (Unit & Integration)', () => {
             // 3. Local git config and task branch checkout
             const taskBranchCmd = executedCommands.find(
                 (cmd) =>
-                    cmd.includes('checkout -B december/sess-repo-onboard-1') &&
+                    cmd.includes(`checkout -B 'december/sess-repo-onboard-1'`) &&
                     cmd.includes(`git config user.name 'December Agent'`)
             )
             expect(taskBranchCmd).toBeDefined()

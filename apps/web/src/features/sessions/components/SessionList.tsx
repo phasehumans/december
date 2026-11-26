@@ -83,7 +83,15 @@ export const SessionList: React.FC<{
     } = useInfiniteSessions(queryFilters)
     // a sort, filter or search is waiting for its rows: the old rows stay on screen
     const isSwitching = isPlaceholderData || searchQuery.trim() !== serverSearch
-    const sessions = useMemo(() => data?.pages.flatMap((page) => page.sessions) || [], [data])
+    // pages are read by offset: a row that moved while the user scrolled can come twice
+    const sessions = useMemo(() => {
+        const seen = new Set<string>()
+        return (data?.pages.flatMap((page) => page.sessions) || []).filter((session) => {
+            if (seen.has(session.id)) return false
+            seen.add(session.id)
+            return true
+        })
+    }, [data])
     const errorMessage = error instanceof Error ? error.message : null
 
     // every repository and tag of the user fills the menu lists, also from sessions that
@@ -127,13 +135,6 @@ export const SessionList: React.FC<{
         isOpen: false,
         project: null,
     })
-    const [openConfirmModal, setOpenConfirmModal] = useState<{
-        isOpen: boolean
-        project: any | null
-    }>({
-        isOpen: false,
-        project: null,
-    })
     const [tagsModal, setTagsModal] = useState<{
         isOpen: boolean
         project: any | null
@@ -170,16 +171,8 @@ export const SessionList: React.FC<{
         // the view again on loaded rows, so an archive or a new tag shows at once
         let result = applySessionsView(sessions, view)
 
-        // search filter
-        if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase().trim()
-            result = result.filter(
-                (session) =>
-                    (session.title || '').toLowerCase().includes(query) ||
-                    (session.projectName || '').toLowerCase().includes(query) ||
-                    (session.lastMessage || '').toLowerCase().includes(query)
-            )
-        }
+        // no search here: the server matches the title and every message, the rows only
+        // carry the newest message
 
         // status filter
         if (statusFilter === 'running') {
@@ -189,7 +182,7 @@ export const SessionList: React.FC<{
         }
 
         return result
-    }, [sessions, searchQuery, view, statusFilter])
+    }, [sessions, view, statusFilter])
 
     // the rows shown before a switch. while the new rows load, a filter that the old rows
     // do not match (Archived, say) keeps these on screen, instead of "No sessions found"
@@ -276,13 +269,6 @@ export const SessionList: React.FC<{
         onOpenProject(id)
     }
 
-    const handleOpenConfirm = () => {
-        if (openConfirmModal.project) {
-            onOpenProject(openConfirmModal.project.id)
-            setOpenConfirmModal({ isOpen: false, project: null })
-        }
-    }
-
     if (!isAuthRestored || !isAuthenticated) {
         return null
     }
@@ -350,7 +336,6 @@ export const SessionList: React.FC<{
             <SessionListModals
                 renameModal={renameModal}
                 deleteModal={deleteModal}
-                openConfirmModal={openConfirmModal}
                 tagsModal={tagsModal}
                 isRenamePending={renameMutation.isPending}
                 isDeletePending={deleteMutation.isPending}
@@ -362,8 +347,6 @@ export const SessionList: React.FC<{
                 onRenameSubmit={handleRename}
                 onCloseDelete={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
                 onDeleteConfirm={handleDelete}
-                onCloseOpenConfirm={() => setOpenConfirmModal({ isOpen: false, project: null })}
-                onOpenConfirm={handleOpenConfirm}
                 onCloseTags={() => setTagsModal({ isOpen: false, project: null })}
                 onSaveTags={handleSaveTags}
             />

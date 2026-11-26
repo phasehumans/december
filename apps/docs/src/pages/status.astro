@@ -1,0 +1,375 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Status page in the look of the sign-up page: dark, the logo, one line, the services.
+// The browser reads the live status from Better Stack, never from our API, so the page
+// still shows the truth when our servers are down. status.trydecember.com (Better
+// Stack's own page) is the backup and keeps the incident history.
+
+const SERVICES = ['API', 'Web app', 'Website'];
+// one bar for each of the last 90 days, oldest first, like status.trydecember.com
+const DAYS = Array.from({ length: 90 }, (_, i) => i);
+---
+
+<BaseLayout
+  title="Status | December"
+  description="The live status of the December API, December Cloud and the website."
+  canonicalUrl="https://trydecember.com/status"
+  activePath="/status"
+  hideHeader={true}
+  hideFooter={true}
+  hideScrollbar={true}
+>
+  <div class="status-shell fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#141414] overflow-y-auto p-6">
+    <div class="w-full max-w-[340px] flex flex-col">
+      <div class="flex flex-col items-center text-center mb-6">
+        <a href="/" aria-label="December" class="select-none">
+          <svg viewBox="5 4 14 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="w-[36px] h-[36px] text-white">
+            <line x1="12" y1="12" x2="12" y2="5.3" />
+            <line x1="12" y1="7.5" x2="13.9" y2="6.4" />
+            <line x1="12" y1="7.5" x2="10.1" y2="6.4" />
+            <line x1="12" y1="12" x2="17.8" y2="8.65" />
+            <line x1="15.9" y1="9.75" x2="17.8" y2="10.85" />
+            <line x1="15.9" y1="9.75" x2="15.9" y2="7.55" />
+            <line x1="12" y1="12" x2="17.8" y2="15.35" />
+            <line x1="15.9" y1="14.25" x2="15.9" y2="16.45" />
+            <line x1="15.9" y1="14.25" x2="17.8" y2="13.15" />
+            <line x1="12" y1="12" x2="12" y2="18.7" />
+            <line x1="12" y1="16.5" x2="10.1" y2="17.6" />
+            <line x1="12" y1="16.5" x2="13.9" y2="17.6" />
+            <line x1="12" y1="12" x2="6.2" y2="15.35" />
+            <line x1="8.1" y1="14.25" x2="6.2" y2="13.15" />
+            <line x1="8.1" y1="14.25" x2="8.1" y2="16.45" />
+            <line x1="12" y1="12" x2="6.2" y2="8.65" />
+            <line x1="8.1" y1="9.75" x2="8.1" y2="7.55" />
+            <line x1="8.1" y1="9.75" x2="6.2" y2="10.85" />
+          </svg>
+        </a>
+        <!-- the overall state: "Checking status" until the live data loads, never "all good" without data -->
+        <p
+          id="status-overall"
+          data-state="checking"
+          class="mt-3 flex items-center gap-2 text-xs sm:text-[13px] text-[#888888]"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="status-overall-text">Checking status</span>
+        </p>
+      </div>
+
+      <!-- R2: the notice written in Better Stack ("Announcement"); hidden when there is none -->
+      <p
+        id="status-announcement"
+        class="hidden mb-4 text-center text-xs sm:text-[13px] text-[#EDEDED] leading-relaxed whitespace-pre-line"
+      ></p>
+
+      <div class="border border-[#2A2A2A] rounded-lg px-4">
+        <!-- the whole system, one bar for each of the last 90 days: each day takes the worst
+             state of the three services. grey until filled in from Better Stack -->
+        <div class="pt-3.5 pb-3">
+          <div id="status-bars" class="flex items-stretch gap-[1.5px] h-7" aria-hidden="true">
+            {DAYS.map(() => <span class="status-bar flex-1 rounded-[1px] bg-[#2A2A2A]"></span>)}
+          </div>
+          <div class="mt-1.5 flex justify-between text-[11px] text-[#5C5C5C]">
+            <span>90 days ago</span>
+            <span>Today</span>
+          </div>
+        </div>
+
+        <ul class="flex flex-col pb-1.5">
+          {SERVICES.map((name) => (
+            <li class="status-service flex items-center justify-between gap-3 h-9" data-name={name} data-state="checking">
+              <span class="text-xs sm:text-[13px] text-white font-medium">{name}</span>
+              <span class="flex items-center gap-2 text-xs sm:text-[13px] text-[#888888]">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="status-label">Checking</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <a
+        href="https://status.trydecember.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="group mt-6 self-center flex items-center gap-1.5 text-xs sm:text-[13px] text-white hover:text-[#EDEDED] transition-colors"
+      >
+        Check detailed system status
+        <svg class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M7 7h10v10" />
+          <path d="M7 17 17 7" />
+        </svg>
+      </a>
+
+      <a
+        href="https://betterstack.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="mt-8 self-center flex items-center gap-1 text-[11px] text-[#737373] hover:text-[#888888] transition-colors"
+      >
+        Powered by
+        <img src="/status/betterstack.svg" alt="Better Stack" width="98" height="28" class="h-[28px] w-auto" />
+      </a>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .status-shell {
+    font-family: var(--font-sans);
+  }
+  .status-shell ::selection {
+    background: rgb(135 178 244 / 0.3);
+    color: #fff;
+  }
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+    background: #4a4a4a;
+  }
+  [data-state='operational'] .status-dot {
+    background: #4ade80;
+  }
+  [data-state='degraded'] .status-dot,
+  [data-state='maintenance'] .status-dot {
+    background: #fbbf24;
+  }
+  [data-state='downtime'] .status-dot {
+    background: #f87171;
+  }
+  [data-state='checking'] .status-dot {
+    animation: status-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes status-pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-state='checking'] .status-dot {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  // Better Stack's public status data. It allows any site to read it (CORS *).
+  const SOURCE = 'https://status.trydecember.com/index.json';
+  const REFRESH_MS = 60_000;
+
+  type State = 'operational' | 'degraded' | 'downtime' | 'maintenance';
+
+  const LABELS: Record<State, string> = {
+    operational: 'Operational',
+    degraded: 'Slow',
+    downtime: 'Down',
+    maintenance: 'Maintenance',
+  };
+
+  // R1: what the top line says when one service has a problem ("API is down") or more
+  const ONE_PROBLEM: Record<Exclude<State, 'operational'>, string> = {
+    degraded: 'is slow',
+    downtime: 'is down',
+    maintenance: 'is under maintenance',
+  };
+  const MANY_PROBLEMS: Record<Exclude<State, 'operational'>, string> = {
+    degraded: 'are slow',
+    downtime: 'are down',
+    maintenance: 'are under maintenance',
+  };
+  const OVERALL: Record<State, string> = {
+    operational: 'All systems normal',
+    degraded: 'Some systems are slow',
+    downtime: 'Some systems are down',
+    maintenance: 'Maintenance in progress',
+  };
+  // the worst state first
+  const SEVERITY: State[] = ['downtime', 'degraded', 'maintenance', 'operational'];
+
+  const overallText = (overall: State, problems: Array<{ name: string; state: State }>) => {
+    if (problems.length === 0) return OVERALL[overall];
+    const worst = SEVERITY.find((state) => problems.some((p) => p.state === state)) ?? overall;
+    if (worst === 'operational') return OVERALL[overall];
+    const atWorst = problems.filter((p) => p.state === worst);
+    if (atWorst.length === 1) return `${atWorst[0].name} ${ONE_PROBLEM[worst]}`;
+    return `${atWorst.length} services ${MANY_PROBLEMS[worst]}`;
+  };
+
+  // R3: the browser tab shows the state too
+  const setTabTitle = (text: string) => {
+    document.title = `${text} · December`;
+  };
+
+  const setAnnouncement = (value: unknown) => {
+    const line = document.getElementById('status-announcement');
+    if (!line) return;
+    const text = typeof value === 'string' ? value.replace(/<[^>]*>/g, '').trim() : '';
+    line.textContent = text;
+    line.classList.toggle('hidden', text.length === 0);
+  };
+
+  const asState = (value: unknown): State | null =>
+    value === 'operational' || value === 'degraded' || value === 'downtime' || value === 'maintenance'
+      ? value
+      : null;
+
+  const setOverall = (state: string, text: string) => {
+    const box = document.getElementById('status-overall');
+    const label = document.getElementById('status-overall-text');
+    if (box) box.dataset.state = state;
+    if (label) label.textContent = text;
+  };
+
+  const setService = (row: HTMLElement, state: State | null) => {
+    row.dataset.state = state ?? 'unknown';
+    const label = row.querySelector('.status-label');
+    if (label) label.textContent = state ? LABELS[state] : 'No data';
+  };
+
+  // the day bars: Better Stack's day states, worst first, and what each one means on hover
+  const DAY_SEVERITY = ['downtime', 'degraded', 'recovered', 'maintenance', 'operational', 'not_monitored'];
+  const BAR_COLORS: Record<string, string> = {
+    operational: '#4ade80',
+    recovered: '#fbbf24',
+    degraded: '#fbbf24',
+    maintenance: '#60a5fa',
+    downtime: '#f87171',
+  };
+  const DAY_WORDS: Record<string, string> = {
+    recovered: 'some downtime, recovered',
+    degraded: 'slow',
+    maintenance: 'maintenance',
+    downtime: 'down',
+  };
+
+  type Day = { day: string; status: string };
+
+  const toDays = (history: unknown): Day[] =>
+    (Array.isArray(history) ? history : []).filter(
+      (d): d is Day => typeof d?.day === 'string' && typeof d?.status === 'string'
+    );
+
+  /** one bar a day for the whole system: the worst state of any service that day */
+  const setBars = (histories: Map<string, unknown>) => {
+    const bars = Array.from(document.querySelectorAll<HTMLElement>('#status-bars .status-bar'));
+    const byDay = new Map<string, Array<{ name: string; status: string }>>();
+    for (const [name, history] of histories) {
+      for (const day of toDays(history)) {
+        const list = byDay.get(day.day) ?? [];
+        list.push({ name, status: day.status });
+        byDay.set(day.day, list);
+      }
+    }
+    const days = [...byDay.keys()].sort().slice(-bars.length);
+    // line the newest day up with the last bar
+    const offset = bars.length - days.length;
+    bars.forEach((bar, i) => {
+      const day = i >= offset ? days[i - offset] : undefined;
+      const services = day ? (byDay.get(day) ?? []) : [];
+      const worst = DAY_SEVERITY.find((s) => services.some((x) => x.status === s)) ?? 'not_monitored';
+      bar.style.backgroundColor = BAR_COLORS[worst] ?? '#2A2A2A';
+      if (!day) {
+        bar.title = '';
+        return;
+      }
+      const date = new Date(`${day}T00:00:00`).toLocaleDateString([], { day: 'numeric', month: 'short' });
+      const problems = services
+        .filter((x) => DAY_WORDS[x.status])
+        .map((x) => `${x.name} ${DAY_WORDS[x.status]}`);
+      bar.title =
+        problems.length > 0
+          ? `${date}: ${problems.join(', ')}`
+          : worst === 'operational'
+            ? `${date}: No problems`
+            : `${date}: Not monitored yet`;
+    });
+  };
+
+  let lastLoadAt = 0;
+
+  const load = async () => {
+    lastLoadAt = Date.now();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(SOURCE, { cache: 'no-store', signal: controller.signal });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const json = await res.json();
+
+      const states = new Map<string, State | null>();
+      const histories = new Map<string, unknown>();
+      for (const item of Array.isArray(json?.included) ? json.included : []) {
+        if (item?.type !== 'status_page_resource') continue;
+        const name = String(item?.attributes?.public_name ?? '').trim();
+        if (!name) continue;
+        states.set(name, asState(item?.attributes?.status));
+        histories.set(name, item?.attributes?.status_history);
+      }
+
+      // every value goes in with textContent, title or a color, never as HTML
+      document.querySelectorAll<HTMLElement>('.status-service').forEach((row) => {
+        setService(row, states.get(row.dataset.name ?? '') ?? null);
+      });
+      setBars(histories);
+
+      const problems: Array<{ name: string; state: State }> = [];
+      for (const [name, state] of states) {
+        if (state && state !== 'operational') problems.push({ name, state });
+      }
+
+      const overall = asState(json?.data?.attributes?.aggregate_state);
+      if (overall) {
+        const text = overallText(overall, problems);
+        setOverall(overall, text);
+        setTabTitle(text);
+      } else {
+        setOverall('unknown', 'Status not known');
+        setTabTitle('Status');
+      }
+      setAnnouncement(json?.data?.attributes?.announcement);
+
+    } catch (err) {
+      // never show "all good" without data: say so, and point to the backup page
+      console.warn('[status] could not load the live status', err);
+      setOverall('unknown', 'Cannot load the live status');
+      setTabTitle('Status');
+      document.querySelectorAll<HTMLElement>('.status-service').forEach((row) => setService(row, null));
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  let interval: ReturnType<typeof setInterval> | null = null;
+
+  const start = () => {
+    const box = document.getElementById('status-overall');
+    // once per page: the first load and astro:page-load can both call this
+    if (!box || box.dataset.started === 'true') return;
+    box.dataset.started = 'true';
+    load();
+    if (interval) clearInterval(interval);
+    interval = setInterval(() => {
+      // no requests while the tab is hidden
+      if (document.visibilityState === 'visible') load();
+    }, REFRESH_MS);
+  };
+
+  // R4: someone coming back to the tab sees fresh data
+  const onVisible = () => {
+    if (document.visibilityState !== 'visible') return;
+    if (!document.getElementById('status-overall')) return;
+    if (Date.now() - lastLoadAt > 10_000) load();
+  };
+
+  start();
+  document.addEventListener('visibilitychange', onVisible);
+  document.addEventListener('astro:page-load', start);
+  document.addEventListener('astro:before-swap', () => {
+    if (interval) clearInterval(interval);
+    interval = null;
+  });
+</script>

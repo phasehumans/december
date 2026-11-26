@@ -28,6 +28,9 @@ RUN bun --cwd packages/database db:generate
 
 FROM base AS server
 ENV NODE_ENV=production
+# the deployed commit, shown on the admin system tab
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
 EXPOSE 4000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:4000/health || exit 1

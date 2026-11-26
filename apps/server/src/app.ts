@@ -27,12 +27,16 @@ import settingRouter from './modules/setting/setting.routes'
 import teamRouter from './modules/team/team.routes'
 import usageRouter from './modules/usage/usage.routes'
 import waitlistRouter from './modules/waitlist/waitlist.routes'
+import { countServerErrors } from './shared/error-counter'
 
 const app = express()
 
 app.use(helmet())
-app.set('trust proxy', true)
+// one proxy in front: nginx on the same host adds the client's address last. with `true`,
+// anyone could send their own X-Forwarded-For and pick the IP that rate limits see
+app.set('trust proxy', 1)
 app.use(httpLogger)
+app.use(countServerErrors)
 
 app.use(
     express.json({
@@ -82,19 +86,15 @@ app.use(
     })
 )
 
-// Unauthenticated Health Check Endpoints for ALB / CloudWatch / Docker / Monitoring
+// public health check for docker, nginx and uptime monitors. it says only "ok": versions,
+// uptime and counts are on the admin system tab, never in public
 const healthCheckHandler = (_req: express.Request, res: express.Response) => {
-    res.status(200).json({
-        status: 'ok',
-        service: 'december-server',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-    })
+    res.set('Cache-Control', 'no-store')
+    res.status(200).json({ status: 'ok' })
 }
 
+// the only health route: docker, the deploy script and the Better Stack monitor use it
 app.get('/health', healthCheckHandler)
-app.get('/api/health', healthCheckHandler)
-app.get('/api/v1/health', healthCheckHandler)
 
 // Pre-parse token context for user-aware rate limiting and auth routing
 app.use(parseAuthToken)

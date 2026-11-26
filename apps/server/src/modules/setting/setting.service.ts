@@ -4,7 +4,7 @@ import { AppError } from '../../shared/appError'
 import { appCache } from '../../shared/cache'
 import { deleteObject, getBinaryFile, putBinaryFile } from '../../shared/project-storage'
 import { buildZip, type ZipEntry } from '../../shared/zip'
-import { isAdminEmail, isValidUnsubscribeToken } from '../admin/admin.utils'
+import { getAdminPath, isAdminEmail, isValidUnsubscribeToken } from '../admin/admin.utils'
 import { byokService } from '../byok/byok.service'
 import { emailService } from '../email/email.service'
 import { notificationService } from '../notification/notification.service'
@@ -16,7 +16,6 @@ import { settingRepository } from './setting.repository'
 import {
     DATA_EXPORT_COOLDOWN_MS,
     DATA_EXPORT_LINK_MS,
-    SUPPORT_ACCESS_MS,
     buildDataExportUrl,
     dataExportFileKey,
     dataExportSessionFileName,
@@ -59,7 +58,6 @@ export const settingSelect = {
     defaultOwnKeyModel: true,
     defaultRepository: true,
     defaultBaseBranch: true,
-    supportAccessUntil: true,
     preferences: true,
 }
 
@@ -81,7 +79,6 @@ import type {
     GetPullRequestSettings,
     UpdatePullRequestSettings,
     UpdatePreferences,
-    UpdateSupportAccess,
     RequestDataExport,
     GetDataExport,
     ProcessDataExport,
@@ -126,11 +123,14 @@ const getProfile = async (data: GetProfile) => {
             throw new AppError('user not found', 404)
         }
 
-        // for the web app only; every /admin route checks ADMIN_EMAILS again on the server
+        // for the web app only; every admin api route checks ADMIN_EMAILS again on the server.
+        // only the admin is told where the panel is
+        const isAdmin = profile.emailVerified && isAdminEmail(profile.email)
         return {
             ...profile,
             preferences: toPreferences(profile.preferences),
-            isAdmin: profile.emailVerified && isAdminEmail(profile.email),
+            isAdmin,
+            ...(isAdmin ? { adminPath: getAdminPath() } : {}),
         }
     })
 }
@@ -208,22 +208,6 @@ const updateSessionDefaults = async (data: UpdateSessionDefaults) => {
         defaultOwnKeyProvider,
         defaultOwnKeyModel,
     })
-    await invalidateUserSettingCache(userId)
-
-    return updated
-}
-
-// on: the admin page can open this user's sessions for 7 days. off: right away
-const updateSupportAccess = async (data: UpdateSupportAccess) => {
-    const { userId, enabled } = data
-
-    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    const supportAccessUntil = enabled ? new Date(Date.now() + SUPPORT_ACCESS_MS) : null
-    const updated = await settingRepository.updateSupportAccess(userId, supportAccessUntil)
     await invalidateUserSettingCache(userId)
 
     return updated
@@ -663,7 +647,6 @@ export const settingService = {
     updateSessionDefaults,
     getToolDenyRules,
     updateToolDenyRules,
-    updateSupportAccess,
     updatePreferences,
     getDataExport,
     requestDataExport,

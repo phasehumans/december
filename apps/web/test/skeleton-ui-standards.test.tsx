@@ -162,9 +162,9 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         expect(container.textContent).toContain('Billing')
         expect(container.textContent).not.toContain('Prepaid credits are used')
 
-        // Real balance box with Redeem code and Add credits (U4)
+        // Real balance box with Add credits (U4); redeem codes were removed
         expect(container.textContent).toContain('Balance')
-        expect(container.textContent).toContain('Redeem code')
+        expect(container.textContent).not.toContain('Redeem code')
         expect(container.textContent).toContain('Add credits')
         expect(container.textContent).not.toContain('Promotions')
 
@@ -284,7 +284,7 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         expect(container.textContent).toContain('Billing')
         expect(container.textContent).not.toContain('Prepaid credits are used')
         expect(container.textContent).toContain('Balance')
-        expect(container.textContent).toContain('Redeem code')
+        expect(container.textContent).not.toContain('Redeem code')
         expect(container.textContent).toContain('Add credits')
         expect(container.textContent).toContain('History')
         expect(container.textContent).toContain('Date')

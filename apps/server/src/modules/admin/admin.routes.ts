@@ -1,53 +1,44 @@
 import { Router } from 'express'
 
-import { requireAdmin } from '../../middleware/admin.middleware'
-import { authMiddleware } from '../../middleware/auth.middleware'
+import { limitAdminWrites, requireAdmin, requireAdminCode } from '../../middleware/admin.middleware'
+import admincloudflareRouter from '../admincloudflare/admincloudflare.routes'
+import adminstatsRouter from '../adminstats/adminstats.routes'
+import admintotpRouter from '../admintotp/admintotp.routes'
 
 import { adminController } from './admin.controller'
 
 const adminRouter = Router()
 
-// every route: signed in, verified, and listed in ADMIN_EMAILS
-adminRouter.use(authMiddleware, requireAdmin)
+// every route: the admin's web sign-in only (no CLI token, only the app's origin). anyone
+// else gets the same 404 as an unknown path
+adminRouter.use(requireAdmin)
+adminRouter.use(limitAdminWrites)
 
+// before the authenticator code: who am I, and set up or enter the code
 adminRouter.get('/me', adminController.getMe)
+adminRouter.use('/totp', admintotpRouter)
 
-// a1
-adminRouter.get('/credit-requests', adminController.listCreditRequests)
+// everything below needs a code entered in this sign-in in the last 12 hours
+adminRouter.use(requireAdminCode)
+
+// overview, analytics and system
+adminRouter.use(adminstatsRouter)
+// Cloudflare, read only: visitors, deploys, edge traffic and page speed
+adminRouter.use(admincloudflareRouter)
+
+// credit requests (shown on the Users tab) and today's total for the daily limit
 adminRouter.post('/credit-requests/:id/approve', adminController.approveCreditRequest)
 adminRouter.post('/credit-requests/:id/reject', adminController.rejectCreditRequest)
+adminRouter.get('/credit-ledger', adminController.listCreditLedger)
 
-// a2
-adminRouter.get('/feedback', adminController.listFeedback)
-
-// a3 and a5
+// users
 adminRouter.get('/users', adminController.listUsers)
 adminRouter.get('/users/:id', adminController.getUser)
+// the only user action: add credits, within the daily limits ($10 a user, $50 in total)
 adminRouter.post('/users/:id/credits', adminController.adjustCredits)
-adminRouter.post('/users/:id/restore', adminController.restoreUser)
 
-// support access (#636): only while the user has it on, and each open is logged
-adminRouter.get('/users/:id/sessions', adminController.listUserSessions)
-adminRouter.get('/users/:id/sessions/:sessionId', adminController.openUserSession)
-
-// a4
-adminRouter.get('/redeem-codes', adminController.listRedeemCodes)
-adminRouter.post('/redeem-codes', adminController.createRedeemCode)
-
-// a6
-adminRouter.get('/github-installations', adminController.listInstallations)
-adminRouter.post('/github-installations/:id/assign', adminController.assignInstallation)
-
-// a7 and a8
-adminRouter.get('/announcements', adminController.listAnnouncements)
-adminRouter.post('/announcements/test', adminController.sendTestAnnouncement)
-adminRouter.post('/announcements/send', adminController.sendAnnouncement)
-
-// a9
+// sandboxes (system tab)
 adminRouter.get('/sandboxes', adminController.listSandboxes)
 adminRouter.post('/sandboxes/:id/:action', adminController.controlSandbox)
-adminRouter.get('/usage/daily', adminController.dailyUsage)
-
-adminRouter.get('/audit-log', adminController.listAuditLog)
 
 export default adminRouter

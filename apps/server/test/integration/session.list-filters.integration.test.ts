@@ -326,4 +326,42 @@ describe('Sessions list filters and facets (#641)', () => {
             expect((await facets()).repos).toEqual(['acme/api', 'acme/web'])
         })
     })
+    // bad query values are a 400 with a reason, never a 500 from the database
+    describe('refused input', () => {
+        it('an unknown vmStatus is a 400', async () => {
+            const res = await get(ownerToken, '', { vmStatus: 'foo' })
+            expect(res.status).toBe(400)
+        })
+
+        it('a search longer than 200 characters is a 400', async () => {
+            const res = await get(ownerToken, '', { search: 'a'.repeat(201) })
+            expect(res.status).toBe(400)
+        })
+
+        it('vmStatus=running still lists working sessions', async () => {
+            const working = await makeSession(ownerId, { vmStatus: 'RUNNING' })
+            await makeSession(ownerId, { vmStatus: 'STOPPED' })
+            expect(await listIds({ vmStatus: 'running' })).toEqual([working.id])
+        })
+
+        it('message paging refuses a limit that is not a number or over 100', async () => {
+            const session = await makeSession(ownerId)
+            for (const query of [{ limit: 'abc' }, { limit: '101' }, { beforeSequence: '-1' }]) {
+                const res = await get(ownerToken, `/${session.id}/messages`, query)
+                expect(res.status).toBe(400)
+            }
+            const ok = await get(ownerToken, `/${session.id}/messages`, { limit: '10' })
+            expect(ok.status).toBe(200)
+        })
+
+        it('a tag with a comma is a 400: the list filter splits on commas', async () => {
+            const session = await makeSession(ownerId)
+            const res = await request(app)
+                .put(`/api/v1/session/${session.id}/tags`)
+                .set('x-forwarded-for', getRandomIP())
+                .set('Authorization', `Bearer ${ownerToken}`)
+                .send({ tags: ['a,b'] })
+            expect(res.status).toBe(400)
+        })
+    })
 })

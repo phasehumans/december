@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken'
 import { readJobAttachments } from './attachments'
 import { readNameList } from './connections'
 import { E2BSandboxService } from './e2b-sandbox.service'
+import { startWorkerHeartbeat } from './heartbeat'
 import { processGrpcStream, subscribeToInterrupts } from './listener'
 import {
     loadOwnKeyProvider,
@@ -532,6 +533,11 @@ export const idleSandboxSweeper = new IdleSandboxSweeper({
     extend: ({ sessionId, vmId }) =>
         E2BSandboxService.extendSandboxTimeout({ sessionId, sandboxId: vmId ?? undefined }),
 })
+// the admin system tab shows when this worker last checked in
+const heartbeat =
+    process.env.NODE_ENV !== 'test'
+        ? startWorkerHeartbeat({ redis: redisConnection, jobs: worker })
+        : null
 if (process.env.NODE_ENV !== 'test') {
     wakeUpSweeper.start()
     idleSandboxSweeper.start()
@@ -545,6 +551,7 @@ const shutdownGracefully = async () => {
     try {
         wakeUpSweeper.stop()
         idleSandboxSweeper.stop()
+        await heartbeat?.stop()
         await TerminalBridgeService.stop()
         await E2BSandboxService.detachAllActiveAdapters()
         await worker.close()

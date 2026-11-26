@@ -4,27 +4,15 @@ import request from 'supertest'
 import app from '../../src/app'
 
 describe('Server Health Check Endpoints', () => {
-    it('GET /health returns 200 OK with service status payload', async () => {
+    it('GET /health says only ok: no version, uptime or service details in public', async () => {
         const res = await request(app).get('/health')
         expect(res.status).toBe(200)
-        expect(res.body).toBeDefined()
-        expect(res.body.status).toBe('ok')
-        expect(res.body.service).toBe('december-server')
-        expect(res.body.timestamp).toBeDefined()
-        expect(typeof res.body.uptime).toBe('number')
+        expect(res.body).toEqual({ status: 'ok' })
+        expect(res.headers['cache-control']).toBe('no-store')
     })
 
-    it('GET /api/health returns 200 OK', async () => {
-        const res = await request(app).get('/api/health')
-        expect(res.status).toBe(200)
-        expect(res.body).toBeDefined()
-        expect(res.body.status).toBe('ok')
-    })
-
-    it('GET /api/v1/health returns 200 OK', async () => {
-        const res = await request(app).get('/api/v1/health')
-        expect(res.status).toBe(200)
-        expect(res.body).toBeDefined()
-        expect(res.body.status).toBe('ok')
+    it('the old /api/health and /api/v1/health aliases are gone', async () => {
+        expect((await request(app).get('/api/health')).status).toBe(404)
+        expect((await request(app).get('/api/v1/health')).status).toBe(404)
     })
 })

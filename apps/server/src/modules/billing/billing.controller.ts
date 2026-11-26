@@ -6,7 +6,6 @@ import {
     creditsHistoryQuerySchema,
     creditRequestSchema,
     receiptParamsSchema,
-    redeemCodeSchema,
     createRazorpayOrderSchema,
     verifyRazorpayPaymentSchema,
     updateLimitsSchema,
@@ -96,22 +95,6 @@ const getReceipt = asyncHandler(async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
     res.setHeader('Cache-Control', 'private, no-store')
     return res.status(200).send(body)
-})
-
-const redeemCode = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const parsedBody = redeemCodeSchema.parse(req.body)
-
-    const result = await billingService.redeemCode({
-        userId,
-        ...parsedBody,
-    })
-    return sendSuccess(res, 'code redeemed successfully', result)
 })
 
 const addCredits = asyncHandler(async (req: Request, res: Response) => {
@@ -217,7 +200,6 @@ export const billingController = {
     verifyRazorpayPayment,
     getCreditsHistory,
     getReceipt,
-    redeemCode,
     addCredits,
     handleRazorpayWebhook,
 }

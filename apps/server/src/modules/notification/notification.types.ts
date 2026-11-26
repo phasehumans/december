@@ -38,6 +38,9 @@ export type SendNotificationToUser = {
     toast?: boolean
 }
 
+// admin events go to the admins' December inbox, never to their email
+export type SendNotificationToAdmins = Omit<SendNotificationToUser, 'userId'>
+
 export type MarkAllAsRead = {
     userId: string
 }

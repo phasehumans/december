@@ -5,14 +5,12 @@ import { AddCreditsModal } from './AddCreditsModal'
 import { BillingLimitsSection, ReferralRow } from './BillingPreviewSections'
 import { FreeCreditsSection } from './FreeCreditsSection'
 import { ProfileBillingSkeleton } from './ProfileSettingsSkeleton'
-import { RedeemCodeModal } from './RedeemCodeModal'
 import {
     PAGE_SUBTITLES,
     blueButtonClass,
     listEmptyClass,
     listHeaderClass,
     listRowsClass,
-    outlineButtonClass,
     textLinkClass,
 } from './settingsStyles'
 import { SettingsPage, SettingsSection } from './SettingsUi'
@@ -58,7 +56,6 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
         error: overviewError,
     } = useBillingOverview()
 
-    const [showRedeemModal, setShowRedeemModal] = useState(false)
     const [showAddCreditsModal, setShowAddCreditsModal] = useState(false)
     const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null)
     const [receiptError, setReceiptError] = useState<string | null>(null)
@@ -165,13 +162,6 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setShowRedeemModal(true)}
-                                className={`${outlineButtonClass} flex-1 sm:flex-initial text-center`}
-                            >
-                                Redeem code
-                            </button>
                             <button
                                 type="button"
                                 onClick={() => setShowAddCreditsModal(true)}
@@ -341,7 +331,6 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
             <ErrorAlert message={receiptError} onClear={() => setReceiptError(null)} />
 
             {/* modals */}
-            {showRedeemModal && <RedeemCodeModal onClose={() => setShowRedeemModal(false)} />}
             {showAddCreditsModal && (
                 <AddCreditsModal onClose={() => setShowAddCreditsModal(false)} />
             )}

@@ -5,6 +5,9 @@ export type Profile = {
     id: string
     name: string
     email: string
+    // only the admin's profile says this, with the admin panel's path
+    isAdmin?: boolean
+    adminPath?: string
     createdAt: string
     updatedAt: string
     emailVerified: boolean
@@ -39,8 +42,6 @@ export type Profile = {
     defaultOwnKeyModel?: string | null
     defaultRepository?: string
     defaultBaseBranch?: string
-    // the admin page can open this user's sessions until this date (#636)
-    supportAccessUntil?: string | null
     // preferences saved on the account (#636), null when none are saved
     preferences?: Partial<AccountPreferences> | null
 }
@@ -228,13 +229,6 @@ const listSignedInSessions = () => {
 const revokeSignedInSession = (id: string) => {
     return apiRequest<{ id: string; isCurrent: boolean }>(`/auth/sessions/${id}`, {
         method: 'DELETE',
-    })
-}
-
-const updateSupportAccess = (enabled: boolean) => {
-    return apiRequest<{ supportAccessUntil: string | null }>('/setting/support-access', {
-        method: 'PATCH',
-        body: JSON.stringify({ enabled }),
     })
 }
 
@@ -432,7 +426,6 @@ export const profileAPI = {
     signoutAll,
     listSignedInSessions,
     revokeSignedInSession,
-    updateSupportAccess,
     updatePreferences,
     getDataExport,
     requestDataExport,

@@ -24,8 +24,6 @@ export interface SessionMenuProps {
     /** the "open" rows. each one shows only when its handler is given (see useSessionLinks) */
     onOpenPullRequest?: MenuHandler
     onNewInRepo?: MenuHandler
-    /** desktop only: the phone sheet has no such row */
-    onOpenInNewTab?: MenuHandler
 }
 
 const itemClass =
@@ -52,7 +50,6 @@ export const SessionMenuItems: React.FC<SessionMenuProps> = ({
     onDelete,
     onOpenPullRequest,
     onNewInRepo,
-    onOpenInNewTab,
 }) => (
     <>
         {onOpenPullRequest && (
@@ -65,12 +62,7 @@ export const SessionMenuItems: React.FC<SessionMenuProps> = ({
                 <Icons.Plus className="h-3.5 w-3.5 text-[#7B7A79]" /> New session in this repo
             </button>
         )}
-        {onOpenInNewTab && (
-            <button type="button" role="menuitem" onClick={onOpenInNewTab} className={itemClass}>
-                <Icons.ExternalLink className="h-3.5 w-3.5 text-[#7B7A79]" /> Open in new tab
-            </button>
-        )}
-        {(onOpenPullRequest || onNewInRepo || onOpenInNewTab) && divider}
+        {(onOpenPullRequest || onNewInRepo) && divider}
         {onTogglePin && !isArchived && (
             <button type="button" role="menuitem" onClick={onTogglePin} className={itemClass}>
                 <Icons.Pin className="h-3.5 w-3.5 text-[#7B7A79]" />

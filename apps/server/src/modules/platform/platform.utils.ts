@@ -1,5 +1,9 @@
 import { Sandbox } from 'e2b'
 
+import { AppError } from '../../shared/appError'
+
+import type { FetchRepoArchive } from './platform.types'
+
 export interface SandboxCommandOptions {
     sandboxId?: string | null
     sessionId?: string
@@ -76,18 +80,68 @@ export const runSandboxGitArchive = async (options: {
     }
 
     const apiKey = process.env.E2B_API_KEY
-    if (!apiKey || !sandboxId || sandboxId.startsWith('mock-') || process.env.NODE_ENV === 'test') {
+    // only tests and local mock sandboxes get the stand-in archive; a real download never does
+    if (process.env.NODE_ENV === 'test' || sandboxId?.startsWith('mock-')) {
         return Buffer.from('PK\x03\x04mock-git-archive')
+    }
+    if (!apiKey || !sandboxId) {
+        throw new AppError('the sandbox of this session is not running', 503)
     }
 
     const sandbox = await Sandbox.connect(sandboxId, { apiKey })
-    await sandbox.commands.run('git archive -o /tmp/workspace.zip HEAD', {
-        cwd,
-        timeoutMs: 60000,
-    })
+    // the work as it is now: `git stash create` makes a commit of the changed tracked files
+    // without touching the workspace, and prints nothing when there are no changes
+    try {
+        await sandbox.commands.run(
+            'git archive -o /tmp/workspace.zip "$(git stash create)" 2>/dev/null || git archive -o /tmp/workspace.zip HEAD',
+            { cwd, timeoutMs: 60000 }
+        )
+    } catch (error) {
+        // the sdk throws on a non-zero exit: no git repository, or nothing committed yet
+        console.warn('[Platform] git archive failed in the sandbox', error)
+        throw new AppError('could not pack the files of the sandbox', 502)
+    }
 
     const archiveData = await sandbox.files.read('/tmp/workspace.zip')
     return Buffer.from(archiveData as any)
+}
+
+type RepoArchiveFetch = (url: string, init: RequestInit) => Promise<Response>
+
+const defaultRepoArchiveFetch: RepoArchiveFetch = (url, init) => fetch(url, init)
+let repoArchiveFetch = defaultRepoArchiveFetch
+
+/** for tests: the request to the git host */
+export const setRepoArchiveFetch = (next: RepoArchiveFetch | null) => {
+    repoArchiveFetch = next ?? defaultRepoArchiveFetch
+}
+
+/** the zip of a repository branch from GitHub or GitLab, as a stream */
+export const fetchRepoArchive = async (
+    data: FetchRepoArchive
+): Promise<ReadableStream<Uint8Array>> => {
+    const { gitProvider, owner, name, ref, token } = data
+    const url =
+        gitProvider === 'GITLAB'
+            ? `https://gitlab.com/api/v4/projects/${encodeURIComponent(`${owner}/${name}`)}/repository/archive.zip${ref ? `?sha=${encodeURIComponent(ref)}` : ''}`
+            : `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/zipball${ref ? `/${ref.split('/').map(encodeURIComponent).join('/')}` : ''}`
+    const res = await repoArchiveFetch(url, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'User-Agent': 'december',
+            ...(gitProvider === 'GITHUB' ? { Accept: 'application/vnd.github+json' } : {}),
+        },
+        redirect: 'follow',
+    })
+    if (!res.ok || !res.body) {
+        throw new AppError(
+            res.status === 404
+                ? 'the branch of this session was not found in the repository'
+                : 'could not download the repository',
+            res.status === 404 ? 404 : 502
+        )
+    }
+    return res.body
 }
 
 type ZipEntry = {

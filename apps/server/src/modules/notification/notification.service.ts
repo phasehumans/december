@@ -3,6 +3,7 @@ import { publishEvent } from '@december/shared/queue'
 import { AppError } from '../../shared/appError'
 import { appCache } from '../../shared/cache'
 import { sendWebPush } from '../../shared/web-push'
+import { getAdminEmails } from '../admin/admin.utils'
 import { emailService } from '../email/email.service'
 
 import { notificationRepository } from './notification.repository'
@@ -47,6 +48,7 @@ import type {
     RemovePushOnSignOut,
     StartDigestWindow,
     SendDailyDigests,
+    SendNotificationToAdmins,
 } from './notification.types'
 
 const getNotifications = async (data: GetNotifications) => {
@@ -405,6 +407,22 @@ const sendDailyDigests = async (data: SendDailyDigests) => {
     return { checked: users.length, sent }
 }
 
+/**
+ * Admin events (a credit request, a credit change, a session opened, the authenticator) go
+ * to every admin's December inbox. Admins get no email for these.
+ */
+const sendNotificationToAdmins = async (data: SendNotificationToAdmins) => {
+    const userIds = await notificationRepository.findUserIdsByEmails(getAdminEmails())
+    for (const userId of userIds) {
+        try {
+            await sendNotificationToUser({ ...data, userId })
+        } catch (err) {
+            // the admin action already happened; a missed inbox item must not undo or block it
+            console.error('[Notification] admin inbox item failed:', err)
+        }
+    }
+}
+
 export const notificationService = {
     notifyEvent,
     notifyLowCredits,
@@ -422,6 +440,7 @@ export const notificationService = {
     markAsRead,
     deleteNotification,
     sendNotificationToUser,
+    sendNotificationToAdmins,
     deleteAllReadNotification,
     markAllAsRead,
 }

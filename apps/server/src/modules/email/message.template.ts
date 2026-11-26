@@ -40,7 +40,8 @@ export const renderMessageEmail = (options: RenderMessageEmailOptions) => {
         .join('\n')
 
     const html = renderBaseEmail({
-        previewText: body.trim().split('\n')[0]?.slice(0, 120) ?? subject,
+        // the layout puts this in the hidden preview line as is: escape it here
+        previewText: escapeHtml(body.trim().split('\n')[0]?.slice(0, 120) ?? subject),
         content: `<tr><td style='padding-bottom: 8px;'>${paragraphs}</td></tr>`,
         supportEmail,
         footerLinks,

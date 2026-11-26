@@ -2,6 +2,7 @@ import { ArrowUpRight, ChevronRight } from 'lucide-react'
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
+import { useAdminPath } from '@/features/profile/hooks/useAdminPath'
 import { isTeamsEnabled } from '@/features/profile/lib/teams'
 import { SheetRow, useBottomSheet } from '@/shared/components/ui/BottomSheet'
 import { getWebUrl } from '@/shared/config/env'
@@ -44,6 +45,7 @@ export const MobileSettingsLevel: React.FC<MobileSettingsLevelProps> = ({
 }) => {
     const { closeThen } = useBottomSheet()
     const navigate = useNavigate()
+    const adminPath = useAdminPath(isAuthenticated)
     const path = useLocation().pathname
 
     const openPage = (slug: string) =>
@@ -77,6 +79,16 @@ export const MobileSettingsLevel: React.FC<MobileSettingsLevelProps> = ({
                 label="Send feedback"
                 onClick={() => closeThen(isAuthenticated ? onSendFeedback : onOpenAuth)}
             />
+            {adminPath && (
+                <SheetRow
+                    label="Admin panel"
+                    trailing={<ChevronRight className={trailingIconClass} strokeWidth={1.75} />}
+                    // U2: the panel is its own tool, so it opens in a new tab
+                    onClick={() =>
+                        closeThen(() => window.open(adminPath, '_blank', 'noopener,noreferrer'))
+                    }
+                />
+            )}
         </div>
     )
 }

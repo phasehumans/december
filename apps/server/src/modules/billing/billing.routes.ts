@@ -61,15 +61,4 @@ billingRouter.post(
     billingController.requestFreeCredits
 )
 
-billingRouter.post(
-    '/redeem-code',
-    createRateLimiter({
-        windowMs: 15 * 60 * 1000,
-        max: env.NODE_ENV === 'test' ? 1000 : 3,
-        message: 'Too many redemption attempts. Please try again in 15 minutes.',
-        prefix: 'rl:billing:redeem:',
-    }),
-    billingController.redeemCode
-)
-
 export default billingRouter

@@ -57,6 +57,8 @@ jobs:
                   file: ./Dockerfile
                   target: server
                   push: true
+                  build-args: |
+                      GIT_SHA=${{ github.sha }}
                   tags: ghcr.io/phasehumans/december-server:latest
                   cache-from: type=gha,scope=server
                   cache-to: type=gha,mode=max,scope=server

@@ -304,11 +304,6 @@ export const ProfileBillingSkeleton: React.FC<{ onAddCredits?: () => void }> = (
                         <Skeleton className="h-6 sm:h-7 w-28 bg-white/[0.05] rounded" />
                     </div>
                     <div className="flex items-center gap-2">
-                        <span
-                            className={`${outlineButtonClass} flex-1 sm:flex-initial text-center`}
-                        >
-                            Redeem code
-                        </span>
                         <button
                             type="button"
                             onClick={onAddCredits}

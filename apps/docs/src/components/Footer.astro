@@ -96,6 +96,12 @@ const { showRider = false } = Astro.props;
           <!-- Legal links -->
           <a href="/privacy" target="_blank" rel="noopener noreferrer" class="hover:text-[#090a0f] transition-colors">privacy</a>
           <a href="/terms" target="_blank" rel="noopener noreferrer" class="hover:text-[#090a0f] transition-colors">terms</a>
+          <!-- Status: /status reads the live state from Better Stack, not from our API. The dot
+               shows the live state; it stays hidden until the state is known -->
+          <a href="/status" target="_blank" rel="noopener noreferrer" class="footer-status-link inline-flex items-center gap-1.5 hover:text-[#090a0f] transition-colors">
+            <span class="footer-status-dot hidden w-[6px] h-[6px] rounded-full" aria-hidden="true"></span>
+            status
+          </a>
         </div>
 
         <!-- Right: Social & Contact Icons (GitHub, X & Email) -->
@@ -213,4 +219,88 @@ const { showRider = false } = Astro.props;
 
   initFooterEmailCopy();
   document.addEventListener('astro:page-load', initFooterEmailCopy);
+
+  // the live status dot next to "status": read from Better Stack (not our API) only when the
+  // footer comes into view, kept for a minute. if anything fails the dot stays hidden.
+  const STATUS_SOURCE = 'https://status.trydecember.com/index.json';
+  const STATUS_CACHE_KEY = 'december:footer-status';
+  const STATUS_COLORS: Record<string, string> = {
+    operational: '#22c55e',
+    degraded: '#f59e0b',
+    maintenance: '#f59e0b',
+    downtime: '#ef4444',
+  };
+  const STATUS_TITLES: Record<string, string> = {
+    operational: 'All systems normal',
+    degraded: 'Some systems are slow',
+    maintenance: 'Maintenance in progress',
+    downtime: 'Some systems are down',
+  };
+
+  const readCachedStatus = (): string | null => {
+    try {
+      const raw = sessionStorage.getItem(STATUS_CACHE_KEY);
+      if (!raw) return null;
+      const { state, at } = JSON.parse(raw) as { state: string; at: number };
+      return Date.now() - at < 60_000 ? state : null;
+    } catch {
+      // Intentionally swallowed: no storage (private window) just means no cache
+      return null;
+    }
+  };
+
+  const fetchStatus = async (): Promise<string | null> => {
+    const cachedState = readCachedStatus();
+    if (cachedState) return cachedState;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    try {
+      const res = await fetch(STATUS_SOURCE, { cache: 'no-store', signal: controller.signal });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const state = json?.data?.attributes?.aggregate_state;
+      if (typeof state !== 'string' || !STATUS_COLORS[state]) return null;
+      try {
+        sessionStorage.setItem(STATUS_CACHE_KEY, JSON.stringify({ state, at: Date.now() }));
+      } catch {
+        // Intentionally swallowed: the dot still shows without the cache
+      }
+      return state;
+    } catch {
+      // Intentionally swallowed: a failed check leaves the plain "status" link
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  const showStatusDot = async () => {
+    const state = await fetchStatus();
+    if (!state) return;
+    document.querySelectorAll<HTMLElement>('.footer-status-dot').forEach((dot) => {
+      dot.style.backgroundColor = STATUS_COLORS[state] ?? '';
+      dot.classList.remove('hidden');
+      dot.parentElement?.setAttribute('title', STATUS_TITLES[state] ?? '');
+    });
+  };
+
+  const initFooterStatus = () => {
+    const link = document.querySelector<HTMLElement>('.footer-status-link');
+    if (!link || link.dataset.statusInit === 'true') return;
+    link.dataset.statusInit = 'true';
+    if (!('IntersectionObserver' in window)) {
+      showStatusDot();
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        observer.disconnect();
+        showStatusDot();
+      }
+    });
+    observer.observe(link.closest('footer') ?? link);
+  };
+
+  initFooterStatus();
+  document.addEventListener('astro:page-load', initFooterStatus);
 </script>
