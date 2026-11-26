@@ -53,6 +53,8 @@ import { AskQuestionMenuView, type QuestionItem } from './views/ask-question-men
 import {
     AuthMenuView,
     type AuthViewMode,
+    type OllamaSetupAction,
+    type OllamaSetupViewState,
     type ProviderItem,
     MAIN_MENU_OPTIONS,
     DEFAULT_AUTH_PROVIDERS,
@@ -438,6 +440,7 @@ export interface DifferentialAppState {
     authMenuSelectedIndex: number
     authConfirmDeleteValue: string | null
     authConfirmTarget: { label: string; value: string; account?: string } | null
+    ollamaSetup: OllamaSetupViewState | null
 
     // File autocomplete dropup state
     fileAutocompleteItems: ScoredFile[]
@@ -611,8 +614,18 @@ export interface DifferentialAppOptions extends DifferentialScreenOptions {
         signal?: AbortSignal
     ) => Promise<ApiKeySaveResult | void> | ApiKeySaveResult | void
     switchItems?: SwitchItem[]
+    onSwitchMenuOpen?: () => Promise<void> | void
     onSwitchSelect?: (value: string) => Promise<void> | void
     onDeleteProvider?: (value: string) => Promise<void> | void
+    onProbeOllama?: (baseUrl?: string) => Promise<OllamaProbeInfo>
+    onStartOllama?: (baseUrl?: string) => Promise<OllamaProbeInfo>
+    onInstallOllama?: (command: string, baseUrl?: string) => Promise<OllamaProbeInfo>
+    onPullOllamaModel?: (modelTag: string, baseUrl?: string) => Promise<OllamaProbeInfo>
+    onConnectOllama?: (
+        baseUrl: string,
+        models: { label: string; value: string; contextWindow?: number }[]
+    ) => Promise<{ model?: string } | void>
+    onOpenOllamaDownload?: () => Promise<void> | void
     onExecuteDirectCommand?: (command: string) => Promise<void> | void
     authRequiredNotice?: string
     settings?: SettingItem[]
@@ -664,6 +677,15 @@ export interface HooksData {
     /** project hooks exist but do not run because the workspace is not trusted */
     projectSkipped: boolean
     problems: string[]
+}
+
+export interface OllamaProbeInfo {
+    status: 'ready' | 'no_models' | 'installed_not_running' | 'not_installed'
+    baseUrl: string
+    installCommand?: string
+    models: { label: string; value: string; contextWindow?: number }[]
+    starterModels?: { id: string; label: string; hint: string }[]
+    error?: string
 }
 
 export interface GithubAppData {
@@ -865,8 +887,24 @@ export class DifferentialApp {
         provider: string,
         onCode?: (code: string, url: string) => void
     ) => Promise<any>
+    private onSwitchMenuOpenCallback?: () => Promise<void> | void
     private onSwitchSelectCallback?: (value: string) => Promise<void> | void
     private onDeleteProviderCallback?: (value: string) => Promise<void> | void
+    private onProbeOllamaCallback?: (baseUrl?: string) => Promise<OllamaProbeInfo>
+    private onStartOllamaCallback?: (baseUrl?: string) => Promise<OllamaProbeInfo>
+    private onInstallOllamaCallback?: (
+        command: string,
+        baseUrl?: string
+    ) => Promise<OllamaProbeInfo>
+    private onPullOllamaModelCallback?: (
+        modelTag: string,
+        baseUrl?: string
+    ) => Promise<OllamaProbeInfo>
+    private onConnectOllamaCallback?: (
+        baseUrl: string,
+        models: { label: string; value: string; contextWindow?: number }[]
+    ) => Promise<{ model?: string } | void>
+    private onOpenOllamaDownloadCallback?: () => Promise<void> | void
     private onSessionSelectCallback?: (sessionId: string) => Promise<void> | void
     private onSessionDeleteCallback?: (sessionId: string) => Promise<void> | void
     private onSessionRenameCallback?: (sessionId: string, newTitle: string) => Promise<void> | void
@@ -973,8 +1011,15 @@ export class DifferentialApp {
         this.onEffortSelectCallback = options?.onEffortSelect
         this.onLoginCallback = options?.onLogin
         this.onSubscriptionLoginCallback = options?.onSubscriptionLogin
+        this.onSwitchMenuOpenCallback = options?.onSwitchMenuOpen
         this.onSwitchSelectCallback = options?.onSwitchSelect
         this.onDeleteProviderCallback = options?.onDeleteProvider
+        this.onProbeOllamaCallback = options?.onProbeOllama
+        this.onStartOllamaCallback = options?.onStartOllama
+        this.onInstallOllamaCallback = options?.onInstallOllama
+        this.onPullOllamaModelCallback = options?.onPullOllamaModel
+        this.onConnectOllamaCallback = options?.onConnectOllama
+        this.onOpenOllamaDownloadCallback = options?.onOpenOllamaDownload
         this.onCodeSearchCallback = options?.onCodeSearch
         this.onOpenCodeSearchResultCallback = options?.onOpenCodeSearchResult
         this.onInsertContextCallback = options?.onInsertContext
@@ -1125,6 +1170,7 @@ export class DifferentialApp {
             authMenuSelectedIndex: 0,
             authConfirmDeleteValue: null,
             authConfirmTarget: null,
+            ollamaSetup: null,
 
             // File autocomplete dropup state
             fileAutocompleteItems: [],
@@ -2565,6 +2611,7 @@ export class DifferentialApp {
     getConfiguredProviderValues(): string[] {
         const result: string[] = []
         for (const it of this.state.switchItems) {
+            if ((it as any).isDetectedLocal) continue
             if (it.value.startsWith('provider:') || it.value.startsWith('byok:')) {
                 result.push(it.value.replace(/^(provider|byok):/, ''))
             } else if ((it as any).type === 'byok' && (it as any).provider) {
@@ -2572,6 +2619,265 @@ export class DifferentialApp {
             }
         }
         return result
+    }
+
+    /** Temporarily suspends raw-mode TUI to run an interactive terminal command (e.g. install / pull) */
+    async runSuspended<T>(fn: () => Promise<T>): Promise<T> {
+        const hadListener =
+            Boolean(this.stdinListener) &&
+            Boolean(this.terminal.stdin) &&
+            typeof this.terminal.stdin.removeListener === 'function'
+        if (hadListener && this.stdinListener) {
+            this.terminal.stdin.removeListener('data', this.stdinListener)
+        }
+        this.screen.suspend()
+        try {
+            return await fn()
+        } finally {
+            this.screen.resume()
+            if (
+                hadListener &&
+                this.stdinListener &&
+                typeof this.terminal.stdin?.on === 'function'
+            ) {
+                this.terminal.stdin.on('data', this.stdinListener)
+            }
+            this.render()
+        }
+    }
+
+    private buildOllamaSetupActions(probe: OllamaProbeInfo): OllamaSetupAction[] {
+        if (probe.status === 'not_installed') {
+            const actions: OllamaSetupAction[] = []
+            if (probe.installCommand) {
+                actions.push({
+                    id: 'install',
+                    label: 'Install Ollama',
+                    desc: `runs: ${probe.installCommand}`,
+                })
+            }
+            actions.push({
+                id: 'download',
+                label: 'Open download page',
+                desc: 'ollama.com/download',
+            })
+            actions.push({
+                id: 'custom_url',
+                label: 'Use custom URL',
+                desc: 'remote or non-default port',
+            })
+            return actions
+        }
+        if (probe.status === 'installed_not_running') {
+            return [
+                {
+                    id: 'start',
+                    label: 'Start Ollama server',
+                    desc: 'runs: ollama serve',
+                },
+                {
+                    id: 'custom_url',
+                    label: 'Use custom URL',
+                    desc: 'remote or non-default port',
+                },
+            ]
+        }
+        const starters = probe.starterModels || [
+            {
+                id: 'qwen3:8b',
+                label: 'qwen3:8b',
+                hint: '~5.2 GB · balanced reasoning & tool calling',
+            },
+            {
+                id: 'qwen2.5-coder:7b',
+                label: 'qwen2.5-coder:7b',
+                hint: '~4.7 GB · fast coding model',
+            },
+            {
+                id: 'qwen2.5-coder:3b',
+                label: 'qwen2.5-coder:3b',
+                hint: '~1.9 GB · lightweight, low RAM',
+            },
+        ]
+        return [
+            ...starters.map((m) => ({
+                id: 'pull_model' as const,
+                label: m.label,
+                desc: m.hint,
+                modelId: m.id,
+            })),
+            {
+                id: 'pull_custom',
+                label: 'Enter custom model tag...',
+            },
+            {
+                id: 'custom_url',
+                label: 'Use custom URL',
+                desc: 'remote or non-default port',
+            },
+        ]
+    }
+
+    private async applyOllamaProbeResult(
+        probe: OllamaProbeInfo,
+        returnTo: 'byok_provider' | 'switch'
+    ): Promise<void> {
+        if (probe.status === 'ready') {
+            if (this.onConnectOllamaCallback) {
+                await this.onConnectOllamaCallback(probe.baseUrl, probe.models)
+            }
+            this.state.ollamaSetup = null
+            this.state.activeOverlay = 'none'
+            this.state.overlayHistory = []
+            const count = probe.models.length
+            this.showToast(
+                `Connected to Ollama (${count} model${count === 1 ? '' : 's'} found).`,
+                'success'
+            )
+            this.render()
+            return
+        }
+
+        this.state.activeOverlay = 'auth'
+        this.state.authViewMode = 'ollama_setup'
+        this.state.ollamaSetup = {
+            step: probe.status,
+            baseUrl: probe.baseUrl,
+            installCommand: probe.installCommand,
+            actions: this.buildOllamaSetupActions(probe),
+            selectedIndex: 0,
+            inputValue: probe.baseUrl,
+            error: probe.error || null,
+            returnTo,
+        }
+        this.render()
+    }
+
+    private async startOllamaSetupFlow(
+        baseUrl?: string,
+        returnTo: 'byok_provider' | 'switch' = 'byok_provider',
+        busyMessage?: string
+    ): Promise<void> {
+        const effectiveUrl =
+            baseUrl || this.state.ollamaSetup?.baseUrl || 'http://localhost:11434/v1'
+        this.state.activeOverlay = 'auth'
+        this.state.authViewMode = 'ollama_setup'
+        this.state.ollamaSetup = {
+            step: 'checking',
+            baseUrl: effectiveUrl,
+            actions: [],
+            selectedIndex: 0,
+            inputValue: effectiveUrl,
+            busyMessage: busyMessage || 'Detecting local Ollama server...',
+            returnTo,
+        }
+        this.render()
+
+        if (!this.onProbeOllamaCallback) {
+            this.state.ollamaSetup = {
+                step: 'not_installed',
+                baseUrl: effectiveUrl,
+                actions: this.buildOllamaSetupActions({
+                    status: 'not_installed',
+                    baseUrl: effectiveUrl,
+                    models: [],
+                }),
+                selectedIndex: 0,
+                inputValue: effectiveUrl,
+                returnTo,
+            }
+            this.render()
+            return
+        }
+
+        try {
+            const probe = await this.onProbeOllamaCallback(baseUrl)
+            await this.applyOllamaProbeResult(probe, returnTo)
+        } catch (err: any) {
+            this.state.ollamaSetup = {
+                step: 'not_installed',
+                baseUrl: effectiveUrl,
+                actions: this.buildOllamaSetupActions({
+                    status: 'not_installed',
+                    baseUrl: effectiveUrl,
+                    models: [],
+                }),
+                selectedIndex: 0,
+                inputValue: effectiveUrl,
+                error: err?.message || 'Could not probe Ollama.',
+                returnTo,
+            }
+            this.render()
+        }
+    }
+
+    private async executeOllamaAction(action: OllamaSetupAction): Promise<void> {
+        const setup = this.state.ollamaSetup
+        if (!setup) return
+        const returnTo = setup.returnTo || 'byok_provider'
+
+        if (action.id === 'custom_url') {
+            this.state.ollamaSetup = {
+                ...setup,
+                step: 'custom_url',
+                inputValue: setup.baseUrl || 'http://localhost:11434/v1',
+                error: null,
+            }
+            this.render()
+            return
+        }
+
+        if (action.id === 'pull_custom') {
+            this.state.ollamaSetup = {
+                ...setup,
+                step: 'pull_custom',
+                inputValue: '',
+                error: null,
+            }
+            this.render()
+            return
+        }
+
+        if (action.id === 'download') {
+            await this.onOpenOllamaDownloadCallback?.()
+            this.showToast('Opened ollama.com/download in your browser.', 'info')
+            this.render()
+            return
+        }
+
+        if (action.id === 'start') {
+            this.state.ollamaSetup = {
+                ...setup,
+                step: 'checking',
+                busyMessage: 'Starting Ollama server...',
+                error: null,
+            }
+            this.render()
+            if (this.onStartOllamaCallback) {
+                const probe = await this.onStartOllamaCallback(setup.baseUrl)
+                await this.applyOllamaProbeResult(probe, returnTo)
+            }
+            return
+        }
+
+        if (action.id === 'install' && setup.installCommand) {
+            if (!this.onInstallOllamaCallback) return
+            const cmd = setup.installCommand
+            const probe = await this.runSuspended(() =>
+                this.onInstallOllamaCallback!(cmd, setup.baseUrl)
+            )
+            await this.applyOllamaProbeResult(probe, returnTo)
+            return
+        }
+
+        if (action.id === 'pull_model' && action.modelId) {
+            if (!this.onPullOllamaModelCallback) return
+            const modelId = action.modelId
+            const probe = await this.runSuspended(() =>
+                this.onPullOllamaModelCallback!(modelId, setup.baseUrl)
+            )
+            await this.applyOllamaProbeResult(probe, returnTo)
+        }
     }
 
     /** /model: makes `selected` the active model and tells the cli */
@@ -4430,6 +4736,7 @@ export class DifferentialApp {
             this.state.switchSelectedIndex = 0
             this.state.switchConfirmDeleteValue = null
             this.render()
+            void this.onSwitchMenuOpenCallback?.()
             return
         }
 
@@ -5117,6 +5424,23 @@ export class DifferentialApp {
                 this.render()
                 return
             }
+            if (this.state.authViewMode === 'ollama_setup') {
+                const setup = this.state.ollamaSetup
+                if (setup && (setup.step === 'custom_url' || setup.step === 'pull_custom')) {
+                    void this.startOllamaSetupFlow(setup.baseUrl, setup.returnTo || 'byok_provider')
+                    return
+                }
+                const returnTo = setup?.returnTo || 'byok_provider'
+                this.state.ollamaSetup = null
+                if (returnTo === 'switch') {
+                    this.state.activeOverlay = 'switch'
+                    this.state.authViewMode = 'byok_provider'
+                } else {
+                    this.state.authViewMode = 'byok_provider'
+                }
+                this.render()
+                return
+            }
             if (this.state.isSearchingAuthProviders) {
                 this.state.isSearchingAuthProviders = false
                 this.render()
@@ -5551,6 +5875,7 @@ export class DifferentialApp {
                         this.state.switchSelectedIndex = 0
                         this.state.switchConfirmDeleteValue = null
                         this.render()
+                        void this.onSwitchMenuOpenCallback?.()
                         return
                     }
                     if (current.id === 'model') {
@@ -6049,7 +6374,7 @@ export class DifferentialApp {
 
             if (key === 'd' || key === 'D') {
                 const currentItem = items[this.state.switchSelectedIndex]
-                if (currentItem) {
+                if (currentItem && !(currentItem as any).isDetectedLocal) {
                     this.state.switchConfirmDeleteValue = currentItem.value
                     this.render()
                 }
@@ -6075,6 +6400,10 @@ export class DifferentialApp {
             if (key === '\r' || key === '\n') {
                 const currentItem = items[this.state.switchSelectedIndex]
                 if (currentItem) {
+                    if ((currentItem as any).isDetectedLocal) {
+                        void this.startOllamaSetupFlow(undefined, 'switch')
+                        return
+                    }
                     if (this.onSwitchSelectCallback) {
                         Promise.resolve(this.onSwitchSelectCallback(currentItem.value)).catch(
                             () => {}
@@ -7852,6 +8181,11 @@ export class DifferentialApp {
                             return
                         }
 
+                        if (sel.value === 'ollama') {
+                            void this.startOllamaSetupFlow(undefined, 'byok_provider')
+                            return
+                        }
+
                         const configuredKeys = this.getConfiguredProviderValues()
                         if (configuredKeys.includes(sel.value)) {
                             this.state.authConfirmTarget = {
@@ -7961,6 +8295,101 @@ export class DifferentialApp {
                     this.state.authApiKeyInput += key
                     this.state.authKeyError = null
                     this.render()
+                }
+                return
+            }
+
+            if (this.state.authViewMode === 'ollama_setup') {
+                const setup = this.state.ollamaSetup
+                if (!setup) {
+                    this.state.authViewMode = 'byok_provider'
+                    this.render()
+                    return
+                }
+                if (setup.step === 'checking') {
+                    return
+                }
+                if (setup.step === 'custom_url' || setup.step === 'pull_custom') {
+                    if (key === '\x7f' || key === '\b') {
+                        this.state.ollamaSetup = {
+                            ...setup,
+                            inputValue: setup.inputValue.slice(0, -1),
+                            error: null,
+                        }
+                        this.render()
+                        return
+                    }
+                    if (key === '\r' || key === '\n') {
+                        const trimmed = setup.inputValue.trim()
+                        if (!trimmed) {
+                            this.state.ollamaSetup = {
+                                ...setup,
+                                error:
+                                    setup.step === 'custom_url'
+                                        ? 'Enter an Ollama URL (e.g. http://localhost:11434/v1).'
+                                        : 'Enter an Ollama model tag (e.g. qwen3:8b).',
+                            }
+                            this.render()
+                            return
+                        }
+                        if (setup.step === 'custom_url') {
+                            void this.startOllamaSetupFlow(
+                                trimmed,
+                                setup.returnTo || 'byok_provider'
+                            )
+                        } else if (this.onPullOllamaModelCallback) {
+                            void this.runSuspended(() =>
+                                this.onPullOllamaModelCallback!(trimmed, setup.baseUrl)
+                            ).then((probe) =>
+                                this.applyOllamaProbeResult(
+                                    probe,
+                                    setup.returnTo || 'byok_provider'
+                                )
+                            )
+                        }
+                        return
+                    }
+                    if (!key.startsWith('\x1b') && key.length > 0) {
+                        this.state.ollamaSetup = {
+                            ...setup,
+                            inputValue: setup.inputValue + key,
+                            error: null,
+                        }
+                        this.render()
+                    }
+                    return
+                }
+
+                if (key === 'r' || key === 'R') {
+                    void this.startOllamaSetupFlow(setup.baseUrl, setup.returnTo || 'byok_provider')
+                    return
+                }
+                if (key === '\x1b[A' || key === 'k') {
+                    if (setup.selectedIndex > 0) {
+                        this.state.ollamaSetup = {
+                            ...setup,
+                            selectedIndex: setup.selectedIndex - 1,
+                        }
+                        this.render()
+                    }
+                    return
+                }
+                if (key === '\x1b[B' || key === 'j') {
+                    if (setup.selectedIndex < setup.actions.length - 1) {
+                        this.state.ollamaSetup = {
+                            ...setup,
+                            selectedIndex: setup.selectedIndex + 1,
+                        }
+                        this.render()
+                    }
+                    return
+                }
+                if (key === '\r' || key === '\n') {
+                    const action = setup.actions[setup.selectedIndex]
+                    if (action) {
+                        void this.executeOllamaAction(action)
+                    }
+                    return
                 }
                 return
             }
@@ -9903,7 +10332,8 @@ export class DifferentialApp {
             } else if (overlay === 'auth') {
                 naturalHeight = AuthMenuView.getHeight(
                     this.state.authViewMode,
-                    this.state.authProviders.length
+                    this.state.authProviders.length,
+                    this.state.ollamaSetup
                 )
             } else if (overlay === 'switch') {
                 naturalHeight = SwitchSelectMenuView.getHeight(this.state.switchItems.length)
@@ -10251,6 +10681,7 @@ export class DifferentialApp {
                     confirmTarget: this.state.authConfirmTarget,
                     configuredSubscriptionValues: this.getConfiguredSubscriptionValues(),
                     configuredProviderValues: this.getConfiguredProviderValues(),
+                    ollamaSetup: this.state.ollamaSetup,
                 })
             } else if (overlay === 'switch') {
                 SwitchSelectMenuView.render(this.screen.backBuffer, {

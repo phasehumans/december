@@ -26,7 +26,7 @@ describe('Email Queue - Unit Tests', () => {
         setEmailQueue(null)
         const queue = getEmailQueue()
         expect(queue).toBeDefined()
-        expect(queue.name).toBe('email_jobs')
+        expect(queue.name).toBe('email_jobs_test')
     })
 
     it('should enqueue OTP email job with priority 1 and correct payload', async () => {

@@ -7,7 +7,7 @@ import { THEME } from '../../theme'
 import { drawText } from '../ui'
 
 import { MenuFooterView } from './menu-footer-view'
-import { drawInlineConfirm, drawPanelTitle, requestPanelCursor } from './panel'
+import { drawInlineConfirm, drawListRow, drawPanelTitle, requestPanelCursor } from './panel'
 
 import type { ScreenBuffer } from '../buffer'
 
@@ -16,9 +16,36 @@ export type AuthViewMode =
     | 'subscription'
     | 'byok_provider'
     | 'byok_key'
+    | 'ollama_setup'
     | 'switch'
     | 'confirm_switch_subscription'
     | 'confirm_replace_byok'
+
+export interface OllamaSetupAction {
+    id: 'install' | 'download' | 'start' | 'custom_url' | 'pull_model' | 'pull_custom'
+    label: string
+    desc?: string
+    modelId?: string
+}
+
+export interface OllamaSetupViewState {
+    step:
+        | 'checking'
+        | 'not_installed'
+        | 'installed_not_running'
+        | 'no_models'
+        | 'custom_url'
+        | 'pull_custom'
+    baseUrl: string
+    installCommand?: string
+    actions: OllamaSetupAction[]
+    selectedIndex: number
+    inputValue: string
+    error?: string | null
+    busyMessage?: string | null
+    /** Where esc returns when opening Ollama setup from /switch vs /login BYOK */
+    returnTo?: 'byok_provider' | 'switch'
+}
 
 export type ProviderItem = ProviderMenuItem
 
@@ -61,6 +88,7 @@ export interface AuthMenuViewProps {
     confirmTarget?: { label: string; value: string; account?: string } | null
     configuredSubscriptionValues?: string[]
     configuredProviderValues?: string[]
+    ollamaSetup?: OllamaSetupViewState | null
 }
 
 export const MAIN_MENU_OPTIONS = [
@@ -102,7 +130,11 @@ export const AuthMenuView = {
         )
     },
 
-    getHeight(mode: AuthViewMode, _itemsCount = 7): number {
+    getHeight(
+        mode: AuthViewMode,
+        _itemsCount = 7,
+        ollamaSetup?: OllamaSetupViewState | null
+    ): number {
         if (mode === 'menu') {
             return 7
         }
@@ -111,6 +143,21 @@ export const AuthMenuView = {
         }
         if (mode === 'byok_key') {
             return 7
+        }
+        if (mode === 'ollama_setup') {
+            const step = ollamaSetup?.step
+            if (step === 'checking') return 6
+            if (step === 'custom_url' || step === 'pull_custom') return 7
+            if (step === 'not_installed') {
+                return Math.max(12, 10 + (ollamaSetup?.actions.length ?? 2))
+            }
+            if (step === 'installed_not_running') {
+                return Math.max(8, 6 + (ollamaSetup?.actions.length ?? 2))
+            }
+            if (step === 'no_models') {
+                return Math.max(9, 6 + (ollamaSetup?.actions.length ?? 4))
+            }
+            return 10
         }
         if (mode === 'confirm_switch_subscription' || mode === 'confirm_replace_byok') {
             return 6
@@ -412,6 +459,159 @@ export const AuthMenuView = {
             return
         }
 
+        if (props.mode === 'ollama_setup') {
+            const state = props.ollamaSetup
+            const step = state?.step ?? 'checking'
+            const baseHost = (state?.baseUrl || 'http://localhost:11434/v1')
+                .replace(/^https?:\/\//i, '')
+                .replace(/\/v1\/?$/i, '')
+            const footerY =
+                (props.y ?? 0) + (props.height ?? this.getHeight('ollama_setup', 0, state)) - 1
+
+            if (step === 'checking') {
+                drawPanelTitle(buffer, {
+                    x,
+                    y,
+                    title: 'Ollama',
+                    meta: `checking ${baseHost}`,
+                    width,
+                })
+                y += 2
+                drawText(buffer, state?.busyMessage || 'Detecting local Ollama server...', {
+                    x,
+                    y,
+                    maxWidth: width,
+                    style: { fg: THEME.colors.muted },
+                })
+                MenuFooterView.render(buffer, {
+                    x: props.x ?? 0,
+                    y: footerY,
+                    width: props.width,
+                    items: [{ key: 'esc', label: 'back' }],
+                })
+                return
+            }
+
+            if (step === 'custom_url' || step === 'pull_custom') {
+                const isUrl = step === 'custom_url'
+                drawPanelTitle(buffer, {
+                    x,
+                    y,
+                    title: isUrl ? 'Ollama Server URL' : 'Pull Ollama Model',
+                    width,
+                })
+                y += 1
+                drawText(
+                    buffer,
+                    isUrl
+                        ? 'Enter the base URL for your Ollama server'
+                        : 'Enter an Ollama model tag (e.g. qwen3:8b, llama3.1:8b)',
+                    { x, y, maxWidth: width, style: { fg: THEME.colors.muted } }
+                )
+                y += 2
+
+                const rawVal = state?.inputValue || ''
+                const promptGlyph = `${THEME.glyphs.prompt} `
+                drawText(buffer, promptGlyph, { x, y, style: { fg: THEME.colors.brand } })
+                const fieldRoom = Math.max(10, width - promptGlyph.length - 1)
+                const shownVal =
+                    rawVal.length > fieldRoom ? rawVal.slice(rawVal.length - fieldRoom) : rawVal
+                const valRes = drawText(buffer, shownVal, {
+                    x: x + promptGlyph.length,
+                    y,
+                    style: { fg: THEME.colors.text },
+                })
+                requestPanelCursor(valRes.x, y)
+                y += 1
+
+                if (state?.error) {
+                    drawText(buffer, state.error, {
+                        x,
+                        y,
+                        maxWidth: width,
+                        style: { fg: THEME.colors.error },
+                    })
+                }
+
+                MenuFooterView.render(buffer, {
+                    x: props.x ?? 0,
+                    y: footerY,
+                    width: props.width,
+                    items: [
+                        { key: 'enter', label: isUrl ? 'connect' : 'pull' },
+                        { key: 'esc', label: 'back' },
+                    ],
+                })
+                return
+            }
+
+            const title = step === 'no_models' ? 'Ollama Models' : 'Ollama Setup'
+            const meta =
+                step === 'no_models'
+                    ? '0 models installed'
+                    : step === 'installed_not_running'
+                      ? 'installed · server not running'
+                      : `not detected on ${baseHost}`
+            drawPanelTitle(buffer, { x, y, title, meta, width })
+            y += 2
+
+            const actions = state?.actions || []
+            const safeIdx = Math.min(state?.selectedIndex || 0, Math.max(0, actions.length - 1))
+            for (let i = 0; i < actions.length; i++) {
+                const act = actions[i]
+                if (y >= footerY - 1) break
+                drawListRow(buffer, {
+                    x,
+                    y,
+                    width,
+                    selected: i === safeIdx,
+                    label: act.label,
+                    desc: act.desc,
+                })
+                y += 1
+            }
+
+            if (step === 'not_installed' && y + 4 <= footerY) {
+                y += 1
+                const guideLines = [
+                    'Manual setup:',
+                    '  1. Install from ollama.com/download',
+                    '  2. Start server: ollama serve',
+                    '  3. Pull a coding model: ollama pull qwen3:8b',
+                ]
+                for (const line of guideLines) {
+                    if (y >= footerY) break
+                    drawText(buffer, line, {
+                        x,
+                        y,
+                        maxWidth: width,
+                        style: { fg: THEME.colors.muted },
+                    })
+                    y += 1
+                }
+            } else if (state?.error && y < footerY) {
+                drawText(buffer, state.error, {
+                    x,
+                    y,
+                    maxWidth: width,
+                    style: { fg: THEME.colors.error },
+                })
+            }
+
+            MenuFooterView.render(buffer, {
+                x: props.x ?? 0,
+                y: footerY,
+                width: props.width,
+                items: [
+                    { key: '↑/↓', label: 'navigate' },
+                    { key: 'enter', label: step === 'no_models' ? 'pull' : 'select' },
+                    { key: 'r', label: 're-check' },
+                    { key: 'esc', label: 'back' },
+                ],
+            })
+            return
+        }
+
         if (props.mode === 'confirm_replace_byok') {
             const target = props.confirmTarget || { label: 'Provider', value: '' }
 
@@ -533,17 +733,22 @@ export const AuthMenuView = {
                 })
 
                 const labelText = item.label
-                let badge = ''
-                let badgeColor: string = THEME.colors.muted
-                if (item.status) {
-                    badge = ` ${item.status}`
-                    badgeColor = THEME.colors.muted
-                } else if (isCurrent) {
-                    badge = ' active'
-                    badgeColor = THEME.colors.success
+                const badges: { text: string; color: string }[] = []
+                if (item.isLocal) {
+                    badges.push({ text: ' local', color: THEME.colors.muted })
+                } else if (item.status) {
+                    badges.push({ text: ` ${item.status}`, color: THEME.colors.muted })
+                }
+                if (isCurrent) {
+                    badges.push({
+                        text: item.isLocal ? ' · active' : ' active',
+                        color: THEME.colors.success,
+                    })
                 } else if (isConfigured) {
-                    badge = ' connected'
-                    badgeColor = THEME.colors.muted
+                    badges.push({
+                        text: item.isLocal ? ' · connected' : ' connected',
+                        color: THEME.colors.muted,
+                    })
                 }
 
                 drawText(buffer, labelText, {
@@ -554,13 +759,13 @@ export const AuthMenuView = {
                 })
 
                 let labelEnd = x + 2 + labelText.length
-                if (badge) {
-                    drawText(buffer, badge, {
+                for (const b of badges) {
+                    drawText(buffer, b.text, {
                         x: labelEnd,
                         y: rowY,
-                        style: { fg: badgeColor },
+                        style: { fg: b.color },
                     })
-                    labelEnd += badge.length
+                    labelEnd += b.text.length
                 }
 
                 if (isConfirmingDelete) {

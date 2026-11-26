@@ -6,6 +6,8 @@ import { env } from '../../env'
 import { renderOtpEmail } from '../auth/templates/otp.template'
 import { renderWelcomeEmail } from '../auth/templates/welcome.template'
 
+import { EMAIL_QUEUE_NAME } from './email.queue'
+
 import type { EmailJobData, ProcessEmailJobResult } from './email.types'
 
 export const processEmailJob = async (job: Job<EmailJobData>): Promise<ProcessEmailJobResult> => {
@@ -162,7 +164,7 @@ export const createEmailWorker = (connection?: Redis): Worker<EmailJobData> => {
     })
 
     const worker = new Worker<EmailJobData>(
-        'email_jobs',
+        EMAIL_QUEUE_NAME,
         async (job) => {
             return processEmailJob(job)
         },

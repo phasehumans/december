@@ -12,6 +12,7 @@ export interface SwitchItem {
     model?: string
     isActive?: boolean
     account?: string
+    tag?: string
 }
 
 export interface SwitchSelectMenuViewProps {
@@ -59,6 +60,14 @@ export const SwitchSelectMenuView = {
                 const isSelected = i === safeIndex
                 const rowY = y + i
 
+                const rowTag = item.tag
+                    ? item.isActive
+                        ? `${item.tag} · current`
+                        : item.tag
+                    : item.isActive
+                      ? 'current'
+                      : undefined
+
                 // G3, G5: "current" as a muted word, no green, no bold
                 drawListRow(buffer, {
                     x,
@@ -66,12 +75,12 @@ export const SwitchSelectMenuView = {
                     width: Math.max(0, width - x - 2),
                     selected: isSelected,
                     label: item.label,
-                    tag: item.isActive ? 'current' : undefined,
+                    tag: rowTag,
                 })
 
                 // M6.1: the delete confirm stays inline on the row, red, no bold
                 if (item.value === props.confirmDeleteValue) {
-                    const tagWidth = item.isActive ? '  current'.length : 0
+                    const tagWidth = rowTag ? `  ${rowTag}`.length : 0
                     drawInlineConfirm(buffer, {
                         x: x + 2 + item.label.length + tagWidth,
                         y: rowY,

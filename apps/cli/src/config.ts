@@ -678,11 +678,14 @@ export interface ConfiguredProviderItem {
     model: string
     isActive: boolean
     account?: string
+    tag?: string
 }
 
 export function formatProviderName(provider: string): string {
     const norm = (provider || '').toLowerCase().trim()
     switch (norm) {
+        case 'ollama':
+            return 'Ollama'
         case 'openai':
             return 'OpenAI'
         case 'anthropic':
@@ -1045,6 +1048,7 @@ export function getConfiguredProviders(config: DecemberConfig): ConfiguredProvid
                 type: 'byok',
                 model,
                 isActive: active,
+                ...(byokKey === 'ollama' ? { tag: 'local' } : {}),
             })
         }
     }

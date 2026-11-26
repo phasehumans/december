@@ -181,6 +181,6 @@ describe('Email Worker - Unit Tests', () => {
     it('should create email worker without throwing', () => {
         const worker = createEmailWorker()
         expect(worker).toBeDefined()
-        expect(worker.name).toBe('email_jobs')
+        expect(worker.name).toBe('email_jobs_test')
     })
 })

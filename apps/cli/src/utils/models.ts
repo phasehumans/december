@@ -16,6 +16,8 @@ import {
     resolveModelsRequest,
 } from '@december/providers'
 
+import { fetchOllamaTags } from './ollama'
+
 import type { ModelOption, ModelsFailureReason } from '@december/providers'
 
 export const LIVE_MODEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
@@ -310,12 +312,13 @@ export async function fetchLiveProviderModels(
         return { ok: true, models: getCuratedProviderModels(normalized), verified: true }
     }
 
-    if (!apiKey) {
+    const effectiveKey = apiKey || (normalized === 'ollama' ? 'ollama' : '')
+    if (!effectiveKey) {
         return { ok: false, reason: 'no_key' }
     }
 
-    const cacheKey = liveCacheKey(normalized, apiKey, baseUrl)
-    const request = resolveModelsRequest(normalized, apiKey, baseUrl)
+    const cacheKey = liveCacheKey(normalized, effectiveKey, baseUrl)
+    const request = resolveModelsRequest(normalized, effectiveKey, baseUrl)
     const cached = liveModelCache.get(cacheKey)
     if (!options.force && cached && Date.now() - cached.timestamp < LIVE_MODEL_CACHE_TTL_MS) {
         return { ok: true, models: cached.models, verified: request?.verifiesKey ?? true }
@@ -371,7 +374,25 @@ export async function fetchLiveProviderModels(
             return { ok: false, reason: 'no_endpoint', status: res.status }
         }
 
-        const models = orderByCatalog(normalized, live)
+        let enrichedLive = live
+        if (normalized === 'ollama') {
+            const tags = await fetchOllamaTags(baseUrl, fetchFn).catch(() => undefined)
+            if (tags?.reachable && tags.models.length > 0) {
+                const ctxMap = new Map<string, number | undefined>(
+                    tags.models.map((m) => [m.value, m.contextWindow])
+                )
+                enrichedLive = live.map((m) => {
+                    const ctx = ctxMap.get(m.value)
+                    return ctx
+                        ? { ...m, label: m.value, contextWindow: ctx }
+                        : { ...m, label: m.value }
+                })
+            } else {
+                enrichedLive = live.map((m) => ({ ...m, label: m.value }))
+            }
+        }
+
+        const models = orderByCatalog(normalized, enrichedLive)
         // new = not in the previous list; the very first list marks nothing as new
         const previous = newestLiveEntry(normalized)
         const before = new Set((previous?.models || []).map((m) => m.value.toLowerCase()))
@@ -436,6 +457,21 @@ export async function checkProviderKey(
         return { status: 'forbidden', message: result.message, httpStatus: result.status }
     }
     return { status: 'unverified', reason: result.reason, message: result.message }
+}
+
+/** Seeds the live model cache directly (used after local Ollama discovery) */
+export function cacheLiveProviderModels(
+    provider: string,
+    apiKey: string,
+    baseUrl: string | undefined,
+    models: ModelOption[]
+): void {
+    const normalized = (provider || '').toLowerCase().trim()
+    const key = liveCacheKey(normalized, apiKey || 'ollama', baseUrl)
+    liveModelCache.set(key, { timestamp: Date.now(), models, newIds: [] })
+    saveDiskCache().catch(() => {
+        // Intentionally swallowed: cache write failure only costs a refetch
+    })
 }
 
 /** the cached live list for a provider, or undefined when december has not read one yet */
@@ -611,6 +647,7 @@ export const isValidModelForProvider = (provider: string, model?: string): boole
         return true
     if (canonical === 'cohere' && model.startsWith('command')) return true
     if (canonical === 'amazon-q') return true
+    if (canonical === 'ollama') return Boolean(model.trim())
 
     const lower = model.toLowerCase().trim()
     const models = getProviderModels(provider)
@@ -657,6 +694,10 @@ export const modelFallbackHint = (fallback?: string): string =>
         : 'Pick an available model with `/model` or change provider with `/switch`.'
 
 export const getDefaultModelForProvider = (provider: string): string => {
+    const normalized = (provider || '').toLowerCase().trim()
+    if (normalized === 'ollama') {
+        return getLiveProviderModels('ollama')?.[0]?.value || 'qwen3:8b'
+    }
     return pickModelForProvider(provider) || 'gemini-3.8-flash'
 }
 

@@ -8,6 +8,7 @@ import {
     codexResponsesProvider,
     getDynamicEndpoint,
     watsonxProvider,
+    ollamaProvider,
 } from '@december/providers'
 
 import { resolveSubscriptionToken } from '../auth/subscriptions/subscription-manager'
@@ -171,6 +172,8 @@ export function instantiateProvider(
             )
         case 'watsonx':
             return watsonxProvider(apiKey, options?.baseURL)
+        case 'ollama':
+            return ollamaProvider(options?.baseURL, apiKey)
         case 'amazon-q':
         case 'amazonq':
         case 'aws':

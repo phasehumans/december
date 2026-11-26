@@ -285,6 +285,9 @@ export async function handleKeyCommand(options?: {
     }
 
     let finalKey = key
+    if (!finalKey && provider === 'ollama') {
+        finalKey = 'ollama'
+    }
     if (!finalKey) {
         const readline = await import('node:readline/promises')
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout })

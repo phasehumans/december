@@ -47,6 +47,7 @@ export interface ProviderMenuItem {
     label: string
     value: string
     isSubscription?: boolean
+    isLocal?: boolean
     section?: 'subscription' | 'popular' | 'all'
     status?: string
 }
@@ -69,10 +70,23 @@ export const SUBSCRIPTION_PROVIDER_ITEMS: ProviderMenuItem[] = [
     { label: 'OpenAI (ChatGPT)', value: 'codex', isSubscription: true, section: 'subscription' },
 ]
 
-export const BYOK_PROVIDER_ITEMS: ProviderMenuItem[] = PROVIDER_MENU_ITEMS.map((item) => ({
-    ...item,
-    section: 'all' as const,
-}))
+export const LOCAL_PROVIDER_ITEMS: ProviderMenuItem[] = [
+    {
+        label: 'Ollama',
+        value: 'ollama',
+        isLocal: true,
+        status: 'local',
+        section: 'all',
+    },
+]
+
+export const BYOK_PROVIDER_ITEMS: ProviderMenuItem[] = [
+    ...PROVIDER_MENU_ITEMS.map((item) => ({
+        ...item,
+        section: 'all' as const,
+    })),
+    ...LOCAL_PROVIDER_ITEMS,
+].sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase()))
 
 export const UNIFIED_PROVIDER_MENU_ITEMS: ProviderMenuItem[] = [
     ...SUBSCRIPTION_PROVIDER_ITEMS,
@@ -81,6 +95,7 @@ export const UNIFIED_PROVIDER_MENU_ITEMS: ProviderMenuItem[] = [
 
 export const PROVIDER_NAMES: Record<string, string> = {
     ...Object.fromEntries(PROVIDER_MENU_ITEMS.map((item) => [item.value, item.label])),
+    ollama: 'Ollama',
     'amazon-q': 'Amazon (Q Developer)',
     aws: 'Amazon (Q Developer)',
     codewhisperer: 'Amazon (Q Developer)',

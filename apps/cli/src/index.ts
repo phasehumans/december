@@ -1428,6 +1428,153 @@ async function main() {
             }
         },
         switchItems: getConfiguredProviders(config),
+        onSwitchMenuOpen: async () => {
+            const cfg = await loadConfig()
+            if (cfg.providers?.ollama) return
+            const { probeOllama } = await import('./utils/ollama')
+            const probe = await probeOllama(cfg.providerBaseUrls?.ollama, { timeoutMs: 400 })
+            if (probe.status === 'not_installed') return
+            const currentItems = differentialApp.state.switchItems
+            const existingIdx = currentItems.findIndex((it) => it.value === 'provider:ollama')
+            const tag =
+                probe.status === 'ready' || probe.status === 'no_models'
+                    ? 'local · running'
+                    : 'local · installed'
+            if (existingIdx === -1) {
+                currentItems.push({
+                    label: 'Ollama',
+                    value: 'provider:ollama',
+                    tag,
+                    isDetectedLocal: true,
+                } as any)
+            } else if ((currentItems[existingIdx] as any).isDetectedLocal) {
+                currentItems[existingIdx]!.tag = tag
+            }
+            differentialApp.render()
+        },
+        onProbeOllama: async (baseUrl?: string) => {
+            const cfg = await loadConfig()
+            const { probeOllama, OLLAMA_STARTER_MODELS } = await import('./utils/ollama')
+            const effectiveUrl = baseUrl || cfg.providerBaseUrls?.ollama
+            const probe = await probeOllama(effectiveUrl)
+            return {
+                status: probe.status,
+                baseUrl: probe.baseUrl,
+                installCommand: probe.installSpec?.command,
+                models: probe.models,
+                starterModels: [...OLLAMA_STARTER_MODELS],
+            }
+        },
+        onStartOllama: async (baseUrl?: string) => {
+            const cfg = await loadConfig()
+            const { startOllamaServer, OLLAMA_STARTER_MODELS } = await import('./utils/ollama')
+            const effectiveUrl = baseUrl || cfg.providerBaseUrls?.ollama
+            const probe = await startOllamaServer(effectiveUrl)
+            return {
+                status: probe.status,
+                baseUrl: probe.baseUrl,
+                installCommand: probe.installSpec?.command,
+                models: probe.models,
+                starterModels: [...OLLAMA_STARTER_MODELS],
+                ...(probe.status === 'installed_not_running'
+                    ? {
+                          error: 'Ollama did not start on localhost:11434. Try `ollama serve` manually.',
+                      }
+                    : {}),
+            }
+        },
+        onInstallOllama: async (command: string, baseUrl?: string) => {
+            const { spawn } = await import('node:child_process')
+            const { probeOllama, OLLAMA_STARTER_MODELS } = await import('./utils/ollama')
+            console.log(`\nRunning: ${command}\n`)
+            const exitCode = await new Promise<number>((resolve) => {
+                const child = spawn(command, { stdio: 'inherit', shell: true })
+                ;(child as any).on('exit', (code: number | null) => resolve(code ?? 1))
+                ;(child as any).on('error', () => resolve(1))
+            })
+            const probe = await probeOllama(baseUrl)
+            return {
+                status: probe.status,
+                baseUrl: probe.baseUrl,
+                installCommand: probe.installSpec?.command,
+                models: probe.models,
+                starterModels: [...OLLAMA_STARTER_MODELS],
+                ...(exitCode !== 0 && probe.status === 'not_installed'
+                    ? { error: `Installer exited with status ${exitCode}.` }
+                    : {}),
+            }
+        },
+        onPullOllamaModel: async (modelTag: string, baseUrl?: string) => {
+            const { spawn } = await import('node:child_process')
+            const { detectOllamaBinary, probeOllama, OLLAMA_STARTER_MODELS } =
+                await import('./utils/ollama')
+            const binary = detectOllamaBinary() || 'ollama'
+            console.log(`\nRunning: ${binary} pull ${modelTag}\n`)
+            const exitCode = await new Promise<number>((resolve) => {
+                const child = spawn(binary, ['pull', modelTag], { stdio: 'inherit' })
+                ;(child as any).on('exit', (code: number | null) => resolve(code ?? 1))
+                ;(child as any).on('error', () => resolve(1))
+            })
+            const probe = await probeOllama(baseUrl)
+            return {
+                status: probe.status,
+                baseUrl: probe.baseUrl,
+                installCommand: probe.installSpec?.command,
+                models: probe.models,
+                starterModels: [...OLLAMA_STARTER_MODELS],
+                ...(exitCode !== 0 && probe.models.length === 0
+                    ? { error: `Failed to pull '${modelTag}' (exit ${exitCode}).` }
+                    : {}),
+            }
+        },
+        onConnectOllama: async (baseUrl, models) => {
+            const { normalizeOllamaBaseUrl } = await import('@december/providers')
+            const { cacheLiveProviderModels, ensureValidModelForProvider } =
+                await import('./utils/models')
+            const normalizedBaseUrl = normalizeOllamaBaseUrl(baseUrl)
+            const cfg = await loadConfig()
+            cfg.providers = cfg.providers || {}
+            cfg.providers.ollama = 'ollama'
+            cfg.providerBaseUrls = cfg.providerBaseUrls || {}
+            cfg.providerBaseUrls.ollama = normalizedBaseUrl
+            cacheLiveProviderModels('ollama', 'ollama', normalizedBaseUrl, models)
+            const targetModel = ensureValidModelForProvider(
+                'ollama',
+                cfg.lastUsedModels?.ollama || models[0]?.value
+            )
+            cfg.activeProvider = 'ollama'
+            cfg.activeModel = targetModel
+            cfg.authPriority = 'byok'
+            await saveConfig(cfg)
+            differentialApp.state.selectedProvider = 'ollama'
+            differentialApp.state.authMethod = 'byok'
+            differentialApp.state.activeModel = targetModel
+            differentialApp.state.modelLabel = getModelLabel(targetModel)
+            differentialApp.state.maxContextTokens = getModelContextWindow(targetModel, 'ollama')
+            differentialApp.state.switchItems = getConfiguredProviders(cfg)
+            differentialApp.state.isAuthenticated = true
+            differentialApp.refreshModelsForProvider('ollama')
+            if (agent) {
+                const { instantiateProvider } = await import('./utils/provider-factory')
+                const llm = instantiateProvider('ollama', 'ollama', {
+                    authMethod: 'byok',
+                    baseURL: normalizedBaseUrl,
+                })
+                agent.setLLM(llm)
+                if (agent.modelOptions) {
+                    agent.modelOptions.model = targetModel
+                }
+            }
+            differentialApp.render()
+            return { model: targetModel }
+        },
+        onOpenOllamaDownload: async () => {
+            const { openUrl } = await import('./utils/open')
+            const { OLLAMA_DOWNLOAD_URL } = await import('./utils/ollama')
+            await openUrl(OLLAMA_DOWNLOAD_URL).catch(() => {
+                // Intentionally swallowed: browser launch fallback
+            })
+        },
         onSwitchSelect: async (value: string) => {
             const { resolveSwitchTarget, applyProviderSwitch, getProviderConfig } =
                 await import('./config')

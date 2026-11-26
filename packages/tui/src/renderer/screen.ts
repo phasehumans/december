@@ -84,6 +84,27 @@ export class DifferentialScreen {
         this.terminal.cleanup()
     }
 
+    /** Temporarily leaves alt-screen & raw mode so an interactive child command can use the TTY */
+    suspend(): void {
+        if (!this.isRunning) return
+        this.terminal.write('\x1b[?1006l\x1b[?1002l\x1b[?1000l\x1b[?1007l\x1b[?2004l\x1b[?1004l')
+        this.terminal.disableRawMode()
+        this.terminal.showCursor()
+        this.terminal.exitAlternateScreen()
+    }
+
+    /** Restores alt-screen & raw mode after an interactive child command finishes */
+    resume(): void {
+        if (!this.isRunning) return
+        this.terminal.enterAlternateScreen()
+        this.terminal.hideCursor()
+        this.terminal.enableRawMode()
+        this.terminal.write('\x1b[?1000h\x1b[?1006h\x1b[?2004h\x1b[?1004h')
+        this.forceFullRedraw = true
+        this.backBuffer.clear()
+        this.render()
+    }
+
     onResize(listener: (cols: number, rows: number) => void): () => void {
         this.resizeListeners.add(listener)
         return () => {

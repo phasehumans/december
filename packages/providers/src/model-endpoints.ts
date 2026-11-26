@@ -1,5 +1,6 @@
 import { MODEL_CATALOG } from './models.ts'
 import { DYNAMIC_ENDPOINTS } from './providers/dynamic-registry.ts'
+import { normalizeOllamaBaseUrl } from './providers/ollama.ts'
 import {
     IBM_IAM_TOKEN_URL,
     parseWatsonxCredential,
@@ -105,7 +106,8 @@ export function resolveModelsRequest(
     const normalized = (provider || '').toLowerCase().trim()
     const canonical = MODEL_CATALOG.aliases[normalized] || normalized
     const ignoresKey =
-        !baseUrl && (LIST_IGNORES_KEY.has(normalized) || LIST_IGNORES_KEY.has(canonical))
+        normalized === 'ollama' ||
+        (!baseUrl && (LIST_IGNORES_KEY.has(normalized) || LIST_IGNORES_KEY.has(canonical)))
     return { ...request, verifiesKey: !ignoresKey }
 }
 
@@ -305,6 +307,16 @@ function buildModelsRequest(
     if (normalized === 'openai') {
         const base = baseUrl ? stripSlash(baseUrl) : 'https://api.openai.com/v1'
         return { url: `${base}/models`, method: 'GET', headers: authHeaders, parser: 'openai' }
+    }
+
+    if (normalized === 'ollama') {
+        const base = normalizeOllamaBaseUrl(baseUrl)
+        return {
+            url: `${base}/models`,
+            method: 'GET',
+            headers: apiKey && apiKey !== 'ollama' ? authHeaders : headers,
+            parser: 'openai',
+        }
     }
 
     const dynamic = DYNAMIC_ENDPOINTS[normalized] || DYNAMIC_ENDPOINTS[canonical]

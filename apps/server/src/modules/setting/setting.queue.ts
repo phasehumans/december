@@ -5,7 +5,8 @@ import { env } from '../../env'
 
 import type { DataExportJobData } from './setting.types'
 
-export const DATA_EXPORT_QUEUE = 'data_export'
+// tests use their own queue, so the dev server's worker never builds and emails a test export
+export const DATA_EXPORT_QUEUE = env.NODE_ENV === 'test' ? 'data_export_test' : 'data_export'
 
 type DataExportQueue = Pick<Queue<DataExportJobData>, 'add'>
 
