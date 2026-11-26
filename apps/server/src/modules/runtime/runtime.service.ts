@@ -1,4 +1,3 @@
-import { prisma } from '@december/database'
 import { AppError } from '../../shared/appError'
 import { runtimeRepository } from './runtime.repository'
 
@@ -104,12 +103,9 @@ const recordRuntimeStatus = (data: RecordRuntimeStatus) => {
 const startPreview = async (data: StartPreview): Promise<RuntimePreviewStatus> => {
     const { userId, projectId: sessionId, port } = data
     cancelPendingDeletion(sessionId)
+    // vmStatus is the agent run's status (the Running list, the counts, the run limit).
+    // a preview does not start or stop the agent, so it does not write vmStatus
     const { session } = await loadSession(data)
-
-    await prisma.session.update({
-        where: { id: sessionId },
-        data: { vmStatus: 'RUNNING' },
-    }).catch(() => {})
 
     const previewUrl = buildPreviewUrl(session.id, port)
 
@@ -179,10 +175,6 @@ const deletePreview = async (data: PreviewIdentifier) => {
 
     previewStatusStore.delete(previewId)
     sessionListeningPorts.delete(previewId)
-    await prisma.session.update({
-        where: { id: previewId },
-        data: { vmStatus: 'STOPPED' },
-    }).catch(() => {})
 
     return { deleted: true }
 }

@@ -2,6 +2,7 @@ import React from 'react'
 
 import { SheetRow, useBottomSheet } from '@/shared/components/ui/BottomSheet'
 import { Icons } from '@/shared/components/ui/Icons'
+import { cn } from '@/shared/lib/utils'
 
 // the one session menu (Q3-a): the Sessions page rows and the sidebar Recent rows show the
 // same items. desktop is a dropdown in three groups (open, manage, Delete), phones are
@@ -26,16 +27,19 @@ export interface SessionMenuProps {
     onNewInRepo?: MenuHandler
 }
 
+// the size of the sort and filter menu of the sidebar Recent header, on the Sessions page
+// rows and the sidebar Recent rows: 12px text, 28px rows, no icons. 152 wide: the longest
+// row (Open pull request) with room to spare
 const itemClass =
-    'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[#D6D5C9] transition-colors hover:bg-[#262626] focus-visible:bg-[#262626] outline-none cursor-pointer'
+    'flex w-full items-center rounded-lg px-2.5 py-1.5 text-left text-[12px] text-[#CBCACA] whitespace-nowrap transition-colors hover:bg-[#2A2A2A] hover:text-white focus-visible:bg-[#2A2A2A] focus-visible:text-white outline-none cursor-pointer'
 
-/** the width of the dropdown in px (w-52), for menus placed at the pointer */
-export const SESSION_MENU_WIDTH = 208
+/** the width of the dropdown in px, for menus placed at the pointer */
+export const SESSION_MENU_WIDTH = 152
 
 export const sessionMenuPanelClass =
-    'z-[200] flex w-52 flex-col rounded-xl border border-[#272727] bg-[#1E1E1E] p-1 shadow-xl font-sans'
+    'z-[200] flex w-[152px] flex-col rounded-xl border border-[#2E2D2C] bg-[#1E1E1E] p-1 shadow-2xl font-sans text-left'
 
-const divider = <div className="mx-1.5 my-1 h-px bg-[#282828]" />
+const divider = <div className="mx-1 my-1 h-px bg-[#2B2A29]" />
 
 /** dropdown items for desktop */
 export const SessionMenuItems: React.FC<SessionMenuProps> = ({
@@ -50,56 +54,67 @@ export const SessionMenuItems: React.FC<SessionMenuProps> = ({
     onDelete,
     onOpenPullRequest,
     onNewInRepo,
-}) => (
-    <>
-        {onOpenPullRequest && (
-            <button type="button" role="menuitem" onClick={onOpenPullRequest} className={itemClass}>
-                <Icons.GitPullRequest className="h-3.5 w-3.5 text-[#7B7A79]" /> Open pull request
+}) => {
+    return (
+        <>
+            {onOpenPullRequest && (
+                <button
+                    type="button"
+                    role="menuitem"
+                    onClick={onOpenPullRequest}
+                    className={itemClass}
+                >
+                    Open pull request
+                </button>
+            )}
+            {onNewInRepo && (
+                <button type="button" role="menuitem" onClick={onNewInRepo} className={itemClass}>
+                    New in this repo
+                </button>
+            )}
+            {(onOpenPullRequest || onNewInRepo) && divider}
+            {onTogglePin && !isArchived && (
+                <button type="button" role="menuitem" onClick={onTogglePin} className={itemClass}>
+                    {isPinned ? 'Unpin' : 'Pin'}
+                </button>
+            )}
+            <button type="button" role="menuitem" onClick={onRename} className={itemClass}>
+                Rename
             </button>
-        )}
-        {onNewInRepo && (
-            <button type="button" role="menuitem" onClick={onNewInRepo} className={itemClass}>
-                <Icons.Plus className="h-3.5 w-3.5 text-[#7B7A79]" /> New session in this repo
+            <button type="button" role="menuitem" onClick={onTags} className={itemClass}>
+                Tags
             </button>
-        )}
-        {(onOpenPullRequest || onNewInRepo) && divider}
-        {onTogglePin && !isArchived && (
-            <button type="button" role="menuitem" onClick={onTogglePin} className={itemClass}>
-                <Icons.Pin className="h-3.5 w-3.5 text-[#7B7A79]" />
-                {isPinned ? 'Unpin' : 'Pin'}
+            <button type="button" role="menuitem" onClick={onToggleArchive} className={itemClass}>
+                {isArchived ? 'Unarchive' : 'Archive'}
             </button>
-        )}
-        <button type="button" role="menuitem" onClick={onRename} className={itemClass}>
-            <Icons.Edit className="h-3.5 w-3.5 text-[#7B7A79]" /> Rename
-        </button>
-        <button type="button" role="menuitem" onClick={onTags} className={itemClass}>
-            <Icons.Tag className="h-3.5 w-3.5 text-[#7B7A79]" /> Tags
-        </button>
-        <button type="button" role="menuitem" onClick={onToggleArchive} className={itemClass}>
-            <Icons.Archive className="h-3.5 w-3.5 text-[#7B7A79]" />
-            {isArchived ? 'Unarchive' : 'Archive'}
-        </button>
-        {canStop && onStop && (
+            {canStop && onStop && (
+                <button
+                    type="button"
+                    role="menuitem"
+                    onClick={onStop}
+                    className={cn(
+                        itemClass,
+                        'text-amber-400 hover:text-amber-300 focus-visible:text-amber-300'
+                    )}
+                >
+                    Stop
+                </button>
+            )}
+            {divider}
             <button
                 type="button"
                 role="menuitem"
-                onClick={onStop}
-                className={`${itemClass} text-amber-400 hover:text-amber-300`}
+                onClick={onDelete}
+                className={cn(
+                    itemClass,
+                    'text-red-400 hover:text-red-300 focus-visible:text-red-300'
+                )}
             >
-                <Icons.X className="h-3.5 w-3.5" /> Stop
+                Delete
             </button>
-        )}
-        {divider}
-        <button
-            type="button"
-            role="menuitem"
-            onClick={onDelete}
-            className={`${itemClass} text-red-400 hover:text-red-300`}
-        >
-            <Icons.Trash className="h-3.5 w-3.5" /> Delete
-        </button>
-    </>
-)
+        </>
+    )
+}
 
 /** bottom sheet rows for phones. with confirmDelete the first tap on Delete turns the row
  * red and only the second tap deletes (P7-b). the two "open" rows leave the page, so they

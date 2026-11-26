@@ -1,5 +1,7 @@
 import { prisma } from '@december/database'
 
+import { escapeLike } from '../../shared/escape-like'
+
 import type { Prisma } from '@december/database'
 
 async function findManyNotifications(data: {
@@ -323,7 +325,10 @@ async function findUserIdsByEmails(emails: string[]) {
     if (emails.length === 0) return []
     const users = await prisma.user.findMany({
         where: {
-            OR: emails.map((email) => ({ email: { equals: email, mode: 'insensitive' as const } })),
+            // escaped: else "a_b@x.com" also finds the account "aXb@x.com"
+            OR: emails.map((email) => ({
+                email: { equals: escapeLike(email), mode: 'insensitive' as const },
+            })),
             emailVerified: true,
             isDeleted: false,
         },

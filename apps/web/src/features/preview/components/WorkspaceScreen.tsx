@@ -99,7 +99,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
     onRuntimeError,
     showStructureOnly = false,
     onSelectVersion,
-    onDownload,
     onOpenFile,
 }) => {
     const navigate = useNavigate()
@@ -576,7 +575,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                         void handleSaveMobileTag(tags)
                     }}
                     isSavingTags={isMobileUpdatingTag}
-                    onDownload={onDownload}
                     isArchived={isMobileArchived}
                     onToggleArchive={() => {
                         void handleToggleMobileArchive()
@@ -594,7 +592,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                     activeVersionId={activeVersionId}
                     isVersionLoading={isVersionLoading}
                     onSelectVersion={onSelectVersion}
-                    onDownload={onDownload}
                     isSidebarCollapsed={isChatSidebarCollapsed}
                     onToggleSidebar={() => setIsChatSidebarCollapsed(!isChatSidebarCollapsed)}
                     isPreviewCollapsed={isPreviewPanelCollapsed}
@@ -676,7 +673,6 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                             activeVersionId={activeVersionId}
                             isVersionLoading={isVersionLoading}
                             onSelectVersion={onSelectVersion}
-                            onDownload={onDownload}
                             previewSession={previewSession}
                             previewSessionError={
                                 importState.status === 'failed'

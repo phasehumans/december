@@ -1,6 +1,7 @@
 import { Prisma, prisma } from '@december/database'
 
 import { AppError } from '../../shared/appError'
+import { escapeLike } from '../../shared/escape-like'
 
 import { splitRepoFilter } from './session.utils'
 
@@ -19,7 +20,9 @@ import type {
  * end of the link.
  */
 const repoFilterWhere = (repo: string): Prisma.SessionWhereInput => {
-    const { owner, name } = splitRepoFilter(repo)
+    const split = splitRepoFilter(repo)
+    const owner = split.owner === null ? null : escapeLike(split.owner)
+    const name = escapeLike(split.name)
     return {
         OR: owner
             ? [
@@ -62,7 +65,7 @@ export async function findManySessions(userId: string, filters?: SessionFilters)
     }
 
     if (filters?.search && filters.search.trim().length > 0) {
-        const searchTerms = filters.search.trim()
+        const searchTerms = escapeLike(filters.search.trim())
         const titleMatch: Prisma.SessionWhereInput = {
             title: { contains: searchTerms, mode: 'insensitive' },
         }
@@ -88,7 +91,7 @@ export async function findManySessions(userId: string, filters?: SessionFilters)
     if (filters?.titleAny && filters.titleAny.length > 0) {
         and.push({
             OR: filters.titleAny.map((word) => ({
-                title: { contains: word, mode: 'insensitive' as const },
+                title: { contains: escapeLike(word), mode: 'insensitive' as const },
             })),
         })
     }
@@ -134,6 +137,9 @@ export async function findManySessions(userId: string, filters?: SessionFilters)
 
     return {
         sessions,
+        firstPrompts: await findFirstPrompts(
+            sessions.filter((session) => !session.title?.trim()).map((session) => session.id)
+        ),
         pagination: {
             total,
             page,
@@ -141,6 +147,18 @@ export async function findManySessions(userId: string, filters?: SessionFilters)
             totalPages: Math.ceil(total / limit),
         },
     }
+}
+
+/** the first prompt of the user in each session, by session id: an untitled row's name */
+async function findFirstPrompts(sessionIds: string[]): Promise<Record<string, string>> {
+    if (sessionIds.length === 0) return {}
+    const rows = await prisma.message.findMany({
+        where: { sessionId: { in: sessionIds }, role: 'USER' },
+        orderBy: [{ sessionId: 'asc' }, { sequence: 'asc' }],
+        distinct: ['sessionId'],
+        select: { sessionId: true, content: true },
+    })
+    return Object.fromEntries(rows.map((row) => [row.sessionId, row.content]))
 }
 
 export async function createSession(data: Prisma.SessionUncheckedCreateInput) {
@@ -608,12 +626,13 @@ export async function findPullRequests(userId: string, filters: PullRequestFilte
     if (filters.search && filters.search.trim()) {
         const needle = filters.search.trim().replace(/^#/, '')
         const asNumber = /^\d+$/.test(needle) ? Number(needle) : null
+        const pattern = escapeLike(needle)
         and.push({
             OR: [
-                { title: { contains: needle, mode: 'insensitive' } },
-                { prTitle: { contains: needle, mode: 'insensitive' } },
-                { prBranch: { contains: needle, mode: 'insensitive' } },
-                { githubRepoName: { contains: needle, mode: 'insensitive' } },
+                { title: { contains: pattern, mode: 'insensitive' } },
+                { prTitle: { contains: pattern, mode: 'insensitive' } },
+                { prBranch: { contains: pattern, mode: 'insensitive' } },
+                { githubRepoName: { contains: pattern, mode: 'insensitive' } },
                 ...(asNumber !== null ? [{ prNumber: asNumber }] : []),
             ],
         })
@@ -732,6 +751,8 @@ export async function archiveSessionsOnMerge(sessionIds: string[]) {
 /** the sequence of the user message for this prompt; reuses an unanswered same prompt */
 export async function saveUserPrompt(sessionId: string, prompt: string) {
     return prisma.$transaction(async (tx) => {
+        // the session row is locked, so two prompts at once get the next numbers in turn
+        await tx.$executeRaw`SELECT 1 FROM "Session" WHERE "id" = ${sessionId} FOR UPDATE`
         const last = await tx.message.findFirst({
             where: { sessionId },
             orderBy: { sequence: 'desc' },
@@ -742,6 +763,38 @@ export async function saveUserPrompt(sessionId: string, prompt: string) {
         await tx.message.create({ data: { sessionId, role: 'USER', content: prompt, sequence } })
         return sequence
     })
+}
+
+/**
+ * adds a message after the last one and returns its sequence. the session row is locked
+ * first, so two requests at once cannot take the same sequence (a unique key)
+ */
+export async function appendMessage(data: {
+    sessionId: string
+    role: 'USER' | 'ASSISTANT'
+    content: string
+}) {
+    const { sessionId, role, content } = data
+    return prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT 1 FROM "Session" WHERE "id" = ${sessionId} FOR UPDATE`
+        const last = await tx.message.findFirst({
+            where: { sessionId },
+            orderBy: { sequence: 'desc' },
+            select: { sequence: true },
+        })
+        const sequence = (last?.sequence ?? 0) + 1
+        await tx.message.create({ data: { sessionId, role, content, sequence } })
+        return sequence
+    })
+}
+
+/** true when the project is a project of this user */
+export async function isProjectOfUser(projectId: string, userId: string) {
+    const project = await prisma.project.findFirst({
+        where: { id: projectId, userId },
+        select: { id: true },
+    })
+    return project !== null
 }
 
 /** the saved web preferences of a user (#636), for `messageWhileWorking` (#637) */
@@ -796,6 +849,8 @@ export async function saveSessionRunConfig(
 }
 
 export const sessionRepository = {
+    appendMessage,
+    isProjectOfUser,
     saveUserPrompt,
     findUserPreferences,
     findSessionsForDeleteAll,

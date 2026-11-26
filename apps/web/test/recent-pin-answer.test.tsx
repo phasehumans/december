@@ -150,6 +150,7 @@ describe('Recent list: pin, needs answer, archive merged', () => {
 
         fireEvent.click(optionsOf('Pinned one'))
         fireEvent.click(screen.getByRole('menuitem', { name: /Archive/ }))
+        fireEvent.click(await screen.findByRole('button', { name: 'Archive' }))
         fireEvent.click(await screen.findByText('Undo'))
         await waitFor(() =>
             expect(unarchive).toHaveBeenCalledWith(['a'], [{ sessionId: 'a', pinnedAt }])

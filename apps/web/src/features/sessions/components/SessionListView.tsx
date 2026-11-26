@@ -34,6 +34,8 @@ interface SessionListViewProps {
     onToggleMenu: (id: string, event: React.MouseEvent) => void
     onCloseMenu: () => void
     onToggleArchiveFromMenu: RowAction
+    /** after an archive: "Archived · Undo" at this place in the list for a few seconds */
+    archivedUndo?: { index: number; onUndo: () => void } | null
     onTogglePinFromMenu?: RowAction
     onOpenRename: RowAction
     onOpenDelete: RowAction
@@ -58,6 +60,23 @@ interface SessionListViewProps {
     onStopSession?: (id: string, event?: React.MouseEvent) => void
 }
 
+/** where an archived row was, for a few seconds (A1). the same words as the sidebar */
+const ArchivedUndoLine: React.FC<{ onUndo: () => void }> = ({ onUndo }) => (
+    <div
+        role="status"
+        className="flex items-center justify-between rounded-lg px-2.5 py-3 text-[13px] text-[#8F8E8D]"
+    >
+        Archived
+        <button
+            type="button"
+            onClick={onUndo}
+            className="font-medium text-[#E8E8E8] hover:text-white cursor-pointer"
+        >
+            Undo
+        </button>
+    </div>
+)
+
 export const SessionListView: React.FC<SessionListViewProps> = ({
     projects: sessions,
     onOpenProject,
@@ -70,6 +89,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
     onToggleMenu,
     onCloseMenu,
     onToggleArchiveFromMenu,
+    archivedUndo = null,
     onTogglePinFromMenu,
     onOpenRename,
     onOpenDelete,
@@ -89,7 +109,8 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
     runningCount,
     onStopSession,
 }) => {
-    const hasSessions = sessions.length > 0
+    // the undo line keeps the list on screen when the archived row was the last one
+    const hasSessions = sessions.length > 0 || Boolean(archivedUndo)
     // a load error with nothing to show replaces the list; other errors stay in the header
     const showLoadError = Boolean(errorMessage) && !hasSessions && !isInitialLoading
     const headerError = actionError ?? (showLoadError ? null : errorMessage)
@@ -142,7 +163,7 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                 <SessionListSkeleton />
             ) : showLoadError ? (
                 <ListErrorState message="Could not load sessions" onRetry={() => onRetry?.()} />
-            ) : !hasUnfilteredSessions ? (
+            ) : !hasUnfilteredSessions && !archivedUndo ? (
                 <ListEmptyState title="No sessions yet">
                     {onShowArchived && (
                         <button
@@ -177,24 +198,31 @@ export const SessionListView: React.FC<SessionListViewProps> = ({
                             : 'opacity-100 duration-150'
                     )}
                 >
-                    {sessions.map((session) => (
-                        <SessionListRow
-                            key={session.id}
-                            project={session}
-                            isMenuOpen={menuOpenId === session.id}
-                            onOpenProject={onOpenProject}
-                            onToggleMenu={onToggleMenu}
-                            onCloseMenu={onCloseMenu}
-                            onToggleArchiveFromMenu={onToggleArchiveFromMenu}
-                            onTogglePinFromMenu={onTogglePinFromMenu}
-                            onOpenRename={onOpenRename}
-                            onOpenDelete={onOpenDelete}
-                            onOpenTags={onOpenTags}
-                            onStopSession={onStopSession}
-                            timeField={view.sort === 'updated' ? 'updated' : 'created'}
-                            dimArchived={!view.archived}
-                        />
+                    {sessions.map((session, index) => (
+                        <React.Fragment key={session.id}>
+                            {archivedUndo?.index === index && (
+                                <ArchivedUndoLine onUndo={archivedUndo.onUndo} />
+                            )}
+                            <SessionListRow
+                                project={session}
+                                isMenuOpen={menuOpenId === session.id}
+                                onOpenProject={onOpenProject}
+                                onToggleMenu={onToggleMenu}
+                                onCloseMenu={onCloseMenu}
+                                onToggleArchiveFromMenu={onToggleArchiveFromMenu}
+                                onTogglePinFromMenu={onTogglePinFromMenu}
+                                onOpenRename={onOpenRename}
+                                onOpenDelete={onOpenDelete}
+                                onOpenTags={onOpenTags}
+                                onStopSession={onStopSession}
+                                timeField={view.sort === 'updated' ? 'updated' : 'created'}
+                                dimArchived={!view.archived}
+                            />
+                        </React.Fragment>
                     ))}
+                    {archivedUndo && archivedUndo.index >= sessions.length && (
+                        <ArchivedUndoLine onUndo={archivedUndo.onUndo} />
+                    )}
                 </div>
             )}
         </>

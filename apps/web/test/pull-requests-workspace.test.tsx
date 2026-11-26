@@ -23,6 +23,30 @@ describe('Functional Pull Requests Workspace (Ticket #587)', () => {
         cleanup()
     })
 
+    test('a pull request saved on the session shows no made-up checks or base branch', async () => {
+        // the server sends only what the session row saved
+        useAppStore.setState({
+            pullRequest: {
+                prNumber: 21,
+                title: 'Add dark mode',
+                url: 'https://github.com/acme/web/pull/21',
+                state: 'merged',
+                headRef: 'december/dark-mode',
+                diffSummary: { additions: 40, deletions: 3 },
+            },
+        })
+
+        render(<PullRequestsWorkspace sessionId="sess-saved-21" />)
+
+        expect(screen.getByText('Add dark mode')).not.toBeNull()
+        expect(screen.getByText('+40')).not.toBeNull()
+        expect(screen.getByText('-3')).not.toBeNull()
+        expect(screen.queryByText('main')).toBeNull()
+        expect(screen.queryByText('Continuous Integration')).toBeNull()
+        expect(screen.queryByText('All checks passed')).toBeNull()
+        expect(screen.queryByText(/files? changed/)).toBeNull()
+    })
+
     test('renders live PR status badge, number, title, branches, diff summary, and github link', async () => {
         const mockPr = {
             prNumber: 88,

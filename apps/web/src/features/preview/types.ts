@@ -67,7 +67,6 @@ export interface WorkspaceScreenProps {
     onRuntimeError?: (error: PreviewRuntimeError) => Promise<void> | void
     showStructureOnly?: boolean
     onSelectVersion?: (versionId: string) => void
-    onDownload?: () => void
     onOpenFile?: (path: string) => void
 }
 
@@ -88,7 +87,6 @@ export interface WorkspaceHeaderProps {
     activeVersionId?: string | null
     isVersionLoading?: boolean
     onSelectVersion?: (versionId: string) => void
-    onDownload?: () => void
     onRefresh?: () => void
     sessionTag?: string | null
 }

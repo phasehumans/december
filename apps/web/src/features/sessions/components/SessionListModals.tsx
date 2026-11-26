@@ -42,6 +42,7 @@ export const SessionListModals: React.FC<SessionListModalsProps> = ({
             <SessionRenameModal
                 isOpen={renameModal.isOpen}
                 value={renameModal.value}
+                initialValue={renameModal.project?.title ?? ''}
                 isPending={isRenamePending}
                 onClose={onCloseRename}
                 onChange={onRenameChange}

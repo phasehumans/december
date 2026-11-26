@@ -165,9 +165,13 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
         </Tooltip>
     )
 
-    // a pin before the title, and "Needs answer" after it when the agent waits
+    // after the title, beside the archived mark and in the same small box
     const pinMark = session.isPinned && (
-        <Icons.Pin aria-label="Pinned" className="h-3.5 w-3.5 shrink-0 text-[#7B7A79]" />
+        <Tooltip position="top" content="This session is pinned">
+            <span className="flex items-center justify-center rounded bg-[#242323] p-1 shrink-0">
+                <Icons.Pin aria-label="Pinned" className="h-3 w-3 text-[#7B7A79]" />
+            </span>
+        </Tooltip>
     )
     const needsAnswerMark = session.needsAnswer && (
         <span className="shrink-0 text-[12px] text-amber-400">Needs answer</span>
@@ -205,12 +209,12 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
             >
                 <div className="flex items-center justify-between gap-2 min-w-0">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {pinMark}
                         <span className="truncate text-[14px] font-medium text-[#D6D5C9]">
                             {title}
                         </span>
                         {needsAnswerMark}
                         <RunStatus vmStatus={session.vmStatus} />
+                        {pinMark}
                         {archivedIcon}
                     </div>
                     <div onClick={(e) => e.stopPropagation()}>{menuButton('')}</div>
@@ -264,7 +268,6 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
             >
                 <div className="flex flex-1 flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
-                        {pinMark}
                         <a
                             href={sessionPath(session.id)}
                             draggable={false}
@@ -285,6 +288,7 @@ export const SessionListRow: React.FC<SessionListRowProps> = ({
                         </a>
                         {needsAnswerMark}
                         <RunStatus vmStatus={session.vmStatus} />
+                        {pinMark}
                         {archivedIcon}
                     </div>
                     <ListMeta session={session} timeField={timeField} />

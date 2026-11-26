@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import React, { useCallback, useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { ARCHIVE_UNDO_MS } from '../hooks/useSessionActions'
 import { useSessionListMutations } from '../hooks/useSessionListMutations'
 import {
     useInfiniteSessions,
@@ -10,6 +11,7 @@ import {
     useSessions,
 } from '../hooks/useSessions'
 
+import { useArchiveConfirm } from './SessionArchiveModal'
 import { SessionListModals } from './SessionListModals'
 import { SessionListView } from './SessionListView'
 
@@ -135,6 +137,7 @@ export const SessionList: React.FC<{
         isOpen: false,
         project: null,
     })
+    const { confirmArchive, archiveModal } = useArchiveConfirm()
     const [tagsModal, setTagsModal] = useState<{
         isOpen: boolean
         project: any | null
@@ -210,11 +213,51 @@ export const SessionList: React.FC<{
 
     const closeMenu = useCallback(() => setMenuOpenId(null), [])
 
+    // archive leaves "Archived · Undo" in place of the row for a few seconds, like the
+    // sidebar Recent list (A1). unarchive in the Archived view leaves no line
+    const [archivedUndo, setArchivedUndo] = useState<{ session: any; index: number } | null>(null)
+    const undoTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+    useEffect(
+        () => () => {
+            if (undoTimer.current) clearTimeout(undoTimer.current)
+        },
+        []
+    )
+
     const toggleArchiveFromMenu = (session: any, event?: React.MouseEvent) => {
         event?.stopPropagation()
         setMenuOpenId(null)
-        toggleArchiveMutation.mutate({ sessionId: session.id, isArchived: !session.isArchived })
+        if (session.isArchived) {
+            toggleArchiveMutation.mutate({ sessionId: session.id, isArchived: false })
+            return
+        }
+        // asks first; the undo line still shows after the archive
+        confirmArchive(() => {
+            toggleArchiveMutation.mutate({ sessionId: session.id, isArchived: true })
+            if (undoTimer.current) clearTimeout(undoTimer.current)
+            const index = shownSessions.findIndex((s) => s.id === session.id)
+            setArchivedUndo({ session, index: Math.max(0, index) })
+            undoTimer.current = setTimeout(() => setArchivedUndo(null), ARCHIVE_UNDO_MS)
+        })
     }
+
+    const undoArchive = () => {
+        if (!archivedUndo) return
+        if (undoTimer.current) clearTimeout(undoTimer.current)
+        undoTimer.current = null
+        toggleArchiveMutation.mutate({
+            sessionId: archivedUndo.session.id,
+            isArchived: false,
+            restorePinnedAt: archivedUndo.session.pinnedAt,
+        })
+        setArchivedUndo(null)
+    }
+
+    // where the line goes: where the row was, once the row has left the list
+    const undoAt =
+        archivedUndo && !shownSessions.some((s) => s.id === archivedUndo.session.id)
+            ? Math.min(archivedUndo.index, shownSessions.length)
+            : -1
 
     const togglePinFromMenu = (session: any, event?: React.MouseEvent) => {
         event?.stopPropagation()
@@ -303,6 +346,7 @@ export const SessionList: React.FC<{
                     onToggleMenu={toggleMenu}
                     onCloseMenu={closeMenu}
                     onToggleArchiveFromMenu={toggleArchiveFromMenu}
+                    archivedUndo={undoAt >= 0 ? { index: undoAt, onUndo: undoArchive } : null}
                     onTogglePinFromMenu={togglePinFromMenu}
                     onOpenRename={openRenameModal}
                     onOpenDelete={openDeleteModal}
@@ -350,6 +394,7 @@ export const SessionList: React.FC<{
                 onCloseTags={() => setTagsModal({ isOpen: false, project: null })}
                 onSaveTags={handleSaveTags}
             />
+            {archiveModal}
         </div>
     )
 }

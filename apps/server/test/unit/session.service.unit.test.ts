@@ -295,18 +295,17 @@ describe('Session Service - Unit Tests', () => {
                         updatedAt: new Date(),
                         projectId: null,
                         project: null,
-                        messages: [
-                            {
-                                content:
-                                    'First message text that is quite long and needs truncation',
-                            },
-                        ],
+                        // the newest message is the agent's answer: it does not name the row
+                        messages: [{ content: 'Done. I changed three files.' }],
                         user: { githubUsername: null, email: 'fallback@example.com', name: null },
                         vmStatus: 'STOPPED',
                         prNumber: null,
                         prState: 'open',
                     },
                 ],
+                firstPrompts: {
+                    'sess-2': 'First message text that is quite long and needs truncation',
+                },
                 pagination: { total: 2, page: 1, limit: 50, totalPages: 1 },
             })) as any
 
@@ -331,7 +330,11 @@ describe('Session Service - Unit Tests', () => {
                 expect(result.sessions[1]?.prState).toBeNull()
                 expect(result.sessions[1]?.prUrl).toBeNull()
 
-                expect(result.sessions[1]?.title).toContain('First message text')
+                // the first prompt names an untitled row, cut at 50 characters
+                expect(result.sessions[1]?.title).toBe(
+                    'First message text that is quite long and needs tr...'
+                )
+                expect(result.sessions[1]?.lastMessage).toBe('Done. I changed three files.')
                 expect(result.sessions[1]?.createdBy).toBe('@fallback')
                 expect(result.sessions[1]?.createdByName).toBe('fallback@example.com')
             } finally {
@@ -501,7 +504,7 @@ describe('Session Service - Unit Tests', () => {
             }
         })
 
-        it('throws 403 if non-creator tries to delete session', async () => {
+        it("answers 404 for another user's session, like a missing one", async () => {
             const originalFindOwner = sessionRepository.findSessionOwner
             sessionRepository.findSessionOwner = mock(async () => ({
                 id: testSessionId,
@@ -511,9 +514,7 @@ describe('Session Service - Unit Tests', () => {
             try {
                 await expect(
                     sessionService.deleteSession({ userId: testUserId, sessionId: testSessionId })
-                ).rejects.toThrow(
-                    new AppError('Only the session creator can delete this session', 403)
-                )
+                ).rejects.toThrow(new AppError('Session not found', 404))
             } finally {
                 sessionRepository.findSessionOwner = originalFindOwner
             }
@@ -564,6 +565,7 @@ describe('Session Service - Unit Tests', () => {
                             user: { githubUsername: 'testuser' },
                         },
                     ],
+                    firstPrompts: {},
                     pagination: { page: 1, limit: 50, total: 1, totalPages: 1 },
                 }
             }) as any
@@ -572,6 +574,7 @@ describe('Session Service - Unit Tests', () => {
                 id: testSessionId,
                 userId: testUserId,
                 title: 'Original Title',
+                updatedAt: new Date(),
             })) as any
 
             sessionRepository.updateSession = (async (_id, _userId, data) => ({
@@ -605,6 +608,80 @@ describe('Session Service - Unit Tests', () => {
                 sessionRepository.findManySessions = originalFindMany
                 sessionRepository.findSessionById = originalFindById
                 sessionRepository.updateSession = originalUpdate
+            }
+        })
+    })
+
+    describe('list cache time', () => {
+        const row = (vmStatus: string) => ({
+            id: testSessionId,
+            title: 't',
+            type: 'WEB',
+            isArchived: false,
+            tags: [],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            messages: [],
+            user: { githubUsername: 'testuser' },
+            vmStatus,
+        })
+
+        const ttlsOf = async (run: () => Promise<unknown>) => {
+            const ttls: number[] = []
+            const originalSet = appCache.set.bind(appCache)
+            appCache.set = (async (key: string, value: unknown, ttl?: number) => {
+                ttls.push(ttl as number)
+                return originalSet(key, value, ttl)
+            }) as any
+            try {
+                await run()
+            } finally {
+                appCache.set = originalSet
+            }
+            return ttls
+        }
+
+        it('keeps a list for 30 s, but only 4 s while a session in it works', async () => {
+            const originalFindMany = sessionRepository.findManySessions
+            let status = 'STOPPED'
+            sessionRepository.findManySessions = (async () => ({
+                sessions: [row(status)],
+                firstPrompts: {},
+                pagination: { page: 1, limit: 50, total: 1, totalPages: 1 },
+            })) as any
+            try {
+                expect(
+                    await ttlsOf(() => sessionService.getUserSessions({ userId: testUserId }))
+                ).toEqual([30])
+                await appCache.clearAll()
+                status = 'PROVISIONING'
+                expect(
+                    await ttlsOf(() => sessionService.getUserSessions({ userId: testUserId }))
+                ).toEqual([4])
+            } finally {
+                sessionRepository.findManySessions = originalFindMany
+            }
+        })
+
+        it('keeps the counts for 4 s while something runs, else 30 s', async () => {
+            const originalCount = sessionRepository.countSessions
+            let running = 0
+            sessionRepository.countSessions = (async () => ({
+                running,
+                openPullRequests: 0,
+                merged: 0,
+            })) as any
+            try {
+                expect(
+                    await ttlsOf(() => sessionService.getSessionCounts({ userId: testUserId }))
+                ).toEqual([30])
+                await appCache.clearAll()
+                running = 2
+                expect(
+                    await ttlsOf(() => sessionService.getSessionCounts({ userId: testUserId }))
+                ).toEqual([4])
+            } finally {
+                sessionRepository.countSessions = originalCount
             }
         })
     })

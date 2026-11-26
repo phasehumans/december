@@ -302,7 +302,7 @@ describe('sidebar Recent list', () => {
         fireEvent.click(optionsOf('Merged one'))
         let menu = screen.getByRole('menu', { name: 'Session options' })
         expect(menu.textContent).not.toContain('Open pull request')
-        expect(menu.textContent).not.toContain('New session in this repo')
+        expect(menu.textContent).not.toContain('New in this repo')
         expect(menu.textContent).not.toContain('Open in new tab')
         fireEvent.keyDown(document, { key: 'Escape' })
         expect(screen.queryByRole('menu', { name: 'Session options' })).toBeNull()
@@ -318,7 +318,7 @@ describe('sidebar Recent list', () => {
         fireEvent.click(optionsOf('Running one'))
         menu = screen.getByRole('menu', { name: 'Session options' })
         expect(menu.textContent).not.toContain('Open pull request')
-        fireEvent.click(screen.getByRole('menuitem', { name: 'New session in this repo' }))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'New in this repo' }))
         expect(asked).toHaveBeenCalledTimes(1)
         const prefill = takeHomePrefill()
         expect(prefill?.repo?.fullName).toBe('phasehumans/december')
@@ -407,6 +407,10 @@ describe('sidebar Recent list', () => {
         }
 
         fireEvent.click(screen.getByRole('menuitem', { name: /Archive/ }))
+        // it asks first: nothing is archived until the dialog's Archive
+        expect(await screen.findByText('Archive session')).toBeTruthy()
+        expect(archive).not.toHaveBeenCalled()
+        fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
         await waitFor(() => expect(archive).toHaveBeenCalledWith('run'))
         expect(await screen.findByText('Undo')).toBeTruthy()
 
@@ -421,7 +425,7 @@ describe('sidebar Recent list', () => {
 describe('delete modal copy', () => {
     afterEach(() => cleanup())
 
-    test('says session and shows the name', () => {
+    test('says session and shows no name', () => {
         render(
             <SessionDeleteModal
                 isOpen
@@ -432,7 +436,7 @@ describe('delete modal copy', () => {
             />
         )
         expect(screen.getByText('Delete session')).toBeTruthy()
-        expect(screen.getByText('Refactor session repository')).toBeTruthy()
+        expect(screen.queryByText('Refactor session repository')).toBeNull()
         expect(screen.queryByText(/project/i)).toBeNull()
     })
 })

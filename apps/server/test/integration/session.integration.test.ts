@@ -218,13 +218,14 @@ describe('Session Integration Tests', () => {
         expect(res.body.data.targetHost).toContain('3000')
     })
 
-    it('13. DELETE /api/v1/session/:id - non-creator cannot delete (403)', async () => {
+    it('13. DELETE /api/v1/session/:id - non-creator gets 404, so ids do not leak', async () => {
         const res = await request(app)
             .delete(`/api/v1/session/${createdSessionId}`)
             .set('x-forwarded-for', getRandomIP())
             .set('Authorization', `Bearer ${user2Token}`)
 
-        expect(res.status).toBe(403)
+        expect(res.status).toBe(404)
+        expect(await prisma.session.count({ where: { id: createdSessionId } })).toBe(1)
     })
 
     it('14. DELETE /api/v1/session/:id - creator deletes session successfully', async () => {

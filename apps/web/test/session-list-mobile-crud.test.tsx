@@ -112,7 +112,7 @@ describe('SessionListRow', () => {
             .map((item) => item.textContent?.trim())
         expect(rows).toEqual([
             'Open pull request',
-            'New session in this repo',
+            'New in this repo',
             'Rename',
             'Tags',
             'Archive',

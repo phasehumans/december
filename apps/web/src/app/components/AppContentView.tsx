@@ -52,7 +52,6 @@ interface AppContentViewProps {
     onNewProject: () => void
     onOpenProject: (projectId: string) => void
     onSelectVersion: (versionId: string) => void
-    onDownloadProject: () => void
     onSignOut: () => void
     onOpenFile?: (path: string) => void
     onResetImportState?: () => void
@@ -102,7 +101,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
     onNewProject,
     onOpenProject,
     onSelectVersion,
-    onDownloadProject,
     onSignOut,
     onOpenFile,
     onResetImportState,
@@ -154,7 +152,6 @@ export const AppContentView: React.FC<AppContentViewProps> = ({
                                 onPromptSubmit={onOutputPromptSubmit}
                                 onRuntimeError={onPreviewRuntimeError}
                                 onSelectVersion={onSelectVersion}
-                                onDownload={onDownloadProject}
                                 onOpenFile={onOpenFile}
                             />
                         </AnimatedPage>

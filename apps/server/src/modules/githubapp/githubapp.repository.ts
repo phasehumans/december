@@ -1,5 +1,7 @@
 import { prisma } from '@december/database'
 
+import { escapeLike } from '../../shared/escape-like'
+
 import type { ProcessInstallation } from './githubapp.types'
 
 const upsertInstallation = async (data: ProcessInstallation) => {
@@ -98,7 +100,7 @@ const findByOwnerAndUser = async (owner: string, userId?: string) => {
         const userInstallation = await prisma.githubAppInstallation.findFirst({
             where: {
                 userId,
-                accountLogin: { equals: owner, mode: 'insensitive' },
+                accountLogin: { equals: escapeLike(owner), mode: 'insensitive' },
             },
         })
         if (userInstallation) {
@@ -108,7 +110,7 @@ const findByOwnerAndUser = async (owner: string, userId?: string) => {
 
     return prisma.githubAppInstallation.findFirst({
         where: {
-            accountLogin: { equals: owner, mode: 'insensitive' },
+            accountLogin: { equals: escapeLike(owner), mode: 'insensitive' },
         },
     })
 }
@@ -145,8 +147,9 @@ const findSessionByPullRequest = async (data: {
     return prisma.session.findFirst({
         where: {
             prNumber,
-            githubRepoOwner: { equals: repoOwner, mode: 'insensitive' },
-            githubRepoName: { equals: repoName, mode: 'insensitive' },
+            // escaped: else the pull request of "my_repo" is found on "myXrepo"
+            githubRepoOwner: { equals: escapeLike(repoOwner), mode: 'insensitive' },
+            githubRepoName: { equals: escapeLike(repoName), mode: 'insensitive' },
             deletedAt: null,
         },
         select: { userId: true },

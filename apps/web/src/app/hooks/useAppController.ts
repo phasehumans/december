@@ -16,7 +16,6 @@ import { sessionAPI } from '@/features/sessions/api/session'
 import { useSessionController } from '@/features/sessions/hooks/useSessionController'
 import { ApiError } from '@/shared/api/client'
 import { NEW_SESSION_REQUEST_EVENT, OPEN_SESSION_EVENT } from '@/shared/lib/appEvents'
-import { downloadBlob } from '@/shared/lib/downloadBlob'
 import { clearLoggedInCookie, setLoggedInCookie } from '@/shared/utils/logged-in-cookie'
 
 export const useAppController = () => {
@@ -284,27 +283,6 @@ export const useAppController = () => {
         navigate('/sessions')
     }, [activeProjectId, navigate, resetGenerationRefs])
 
-    const handleDownloadProject = React.useCallback(async () => {
-        if (!activeProjectId) return
-
-        try {
-            const result = await sessionAPI.downloadSession(activeProjectId)
-            const username = (profile?.name || 'user')
-                .toLowerCase()
-                .replace(/\s+/g, '-')
-                .replace(/[^a-z0-9_-]/g, '')
-            const projectName = (activeProjectName || 'project')
-                .toLowerCase()
-                .replace(/\s+/g, '-')
-                .replace(/[^a-z0-9_-]/g, '')
-            downloadBlob(result.blob, `december-${username}-${projectName}.zip`)
-        } catch (error) {
-            setProjectLoadError(
-                error instanceof Error ? error.message : 'Failed to download project'
-            )
-        }
-    }, [activeProjectId, profile?.name, activeProjectName, setProjectLoadError])
-
     // deep-link resolution
     React.useEffect(() => {
         if (!isAuthenticated || activeProjectId || isProjectOpening || isNavigatingHomeRef.current)
@@ -503,7 +481,6 @@ export const useAppController = () => {
         handleBackFromOutput,
         handleOpenProject,
         handleSelectVersion,
-        handleDownloadProject,
         handleOpenFile: setActiveGeneratedFilePath,
         resetImportState: handleResetImportState,
         needsOnboarding,

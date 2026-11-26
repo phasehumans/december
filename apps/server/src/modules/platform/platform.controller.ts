@@ -1,6 +1,3 @@
-import { Readable } from 'node:stream'
-import { pipeline } from 'node:stream/promises'
-
 import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
@@ -14,33 +11,6 @@ import {
 import { platformService } from './platform.service'
 
 import type { Request, Response } from 'express'
-
-const downloadProject = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-    const sessionId = req.params.sessionId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    if (!sessionId) {
-        throw new AppError('session id is required', 400)
-    }
-
-    const result = await platformService.downloadSession({
-        userId,
-        sessionId,
-    })
-
-    res.setHeader('Content-Type', 'application/zip')
-    res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`)
-    if (result.stream) {
-        res.status(200)
-        await pipeline(Readable.fromWeb(result.stream as any), res)
-        return
-    }
-    return res.status(200).send(Buffer.from(result.zip || ''))
-})
 
 const getUserGithubRepos = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
@@ -161,7 +131,6 @@ const unlinkGithubRepo = asyncHandler(async (req: Request, res: Response) => {
 })
 
 export const platformController = {
-    downloadProject,
     getUserGithubRepos,
     getUserGitlabRepos,
     checkRepoBranch,

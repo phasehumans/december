@@ -171,6 +171,25 @@ export type PullRequestState = (typeof PULL_REQUEST_STATES)[number]
 export const toPullRequestState = (value: unknown): PullRequestState =>
     PULL_REQUEST_STATES.includes(value as PullRequestState) ? (value as PullRequestState) : 'open'
 
+/** the agent of the session starts or works: "Running" in the list and the counts */
+export const isWorkingVmStatus = (vmStatus: unknown): boolean =>
+    vmStatus === 'PROVISIONING' || vmStatus === 'RUNNING'
+
+const LIST_TITLE_CHARS = 50
+
+/**
+ * The title of a row in the sessions list: the saved title, else the start of the first
+ * prompt of the user, else "New Chat". The newest message is often the agent's answer, so
+ * it does not name the session.
+ */
+export const toListTitle = (title: string | null | undefined, firstPrompt?: string | null) => {
+    const saved = title?.trim()
+    if (saved) return saved
+    const prompt = firstPrompt?.trim().replace(/\s+/g, ' ')
+    if (!prompt) return 'New Chat'
+    return prompt.length > LIST_TITLE_CHARS ? `${prompt.slice(0, LIST_TITLE_CHARS)}...` : prompt
+}
+
 /**
  * The tags of a list request as one part of its cache key (#641): sorted, so the order in
  * the request does not matter, and encoded, so a tag cannot look like another key part.

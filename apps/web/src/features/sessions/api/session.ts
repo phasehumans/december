@@ -387,35 +387,6 @@ export const sessionAPI = {
         return res.session
     },
 
-    // the live sandbox, else the pushed branch of the repository (platform module)
-    downloadSession: async (sessionId: string) => {
-        const res = await apiFetch(`/platform/${encodeURIComponent(sessionId)}/download`, {})
-
-        if (!res.ok) {
-            let payload: { message?: string; errors?: unknown } | null
-
-            try {
-                payload = await res.json()
-            } catch {
-                payload = null
-            }
-
-            const message =
-                (typeof payload?.errors === 'string' && payload.errors) ||
-                payload?.message ||
-                `Request failed with status ${res.status}`
-
-            throw new ApiError(message, res.status, payload?.errors)
-        }
-
-        return {
-            blob: await res.blob(),
-            fileName:
-                res.headers.get('Content-Disposition')?.match(/filename="?([^";]+)"?/)?.[1] ??
-                `${sessionId}.zip`,
-        }
-    },
-
     renameSession: async (id: string, title: string): Promise<BackendSession> => {
         const res = await apiRequest<{ session: BackendSession }>(`/session/${id}/rename`, {
             method: 'PATCH',
@@ -664,5 +635,4 @@ export const projectAPI = {
     updateProject: (id: string, data: { rename: string }) =>
         sessionAPI.renameSession(id, data.rename),
     deleteProject: sessionAPI.deleteSession,
-    downloadProject: sessionAPI.downloadSession,
 }

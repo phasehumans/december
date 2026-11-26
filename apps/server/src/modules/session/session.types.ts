@@ -400,19 +400,35 @@ export type GetSessionPlan = {
     sessionId: string
 }
 
+export type SavedPullRequestRow = {
+    title: string | null
+    branch: string | null
+    prNumber: number | null
+    prUrl: string | null
+    prState: string | null
+    prTitle: string | null
+    prBranch: string | null
+    prAdditions: number | null
+    prDeletions: number | null
+    prOpenedAt: Date | null
+    prCheckedAt: Date | null
+}
+
+// what the worker caches after a run, or what the session row saved. a field that is not
+// known is left out, so the web shows nothing for it instead of a guess
 export type SessionPullRequest = {
     prNumber?: number
     url?: string
     title: string
     state: string
     headRef: string
-    baseRef: string
-    diffSummary: {
+    baseRef?: string
+    diffSummary?: {
         additions: number
         deletions: number
-        changedFiles: number
+        changedFiles?: number
     }
-    ciStatus: 'passing' | 'pending' | 'failed'
+    ciStatus?: 'passing' | 'pending' | 'failed'
     createdAt?: string
     updatedAt?: string
 }

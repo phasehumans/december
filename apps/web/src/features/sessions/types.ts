@@ -42,6 +42,8 @@ export interface ProjectListRowProps {
 export interface ProjectRenameModalProps {
     isOpen: boolean
     value: string
+    /** the name when the dialog opened. Save stays off until the name differs */
+    initialValue?: string
     isPending: boolean
     onClose: () => void
     onChange: (nextValue: string) => void

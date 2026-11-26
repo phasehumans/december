@@ -421,10 +421,10 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({
             session,
             index,
             place: {
-                // the right edge under the ⋯, but never past the left edge of the window:
-                // the menu is wider than the space left of the ⋯ in the sidebar
-                left: Math.max(8, rect.right - SESSION_MENU_WIDTH),
-                ...(up ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
+                // like the sort and filter menu of the header: the left edge at the ⋯, so the
+                // menu opens out of the sidebar over the page, kept inside the window
+                left: Math.max(8, Math.min(rect.left, window.innerWidth - SESSION_MENU_WIDTH - 8)),
+                ...(up ? { bottom: window.innerHeight - rect.top + 6 } : { top: rect.bottom + 6 }),
             },
         })
     }

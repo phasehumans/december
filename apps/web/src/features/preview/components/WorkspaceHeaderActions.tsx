@@ -1,10 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { MoreHorizontal, Pencil, Tag, Archive, ArchiveRestore, Download } from 'lucide-react'
+import { MoreHorizontal, Pencil, Tag, Archive, ArchiveRestore } from 'lucide-react'
 import React, { useState } from 'react'
 
 import type { BackendProjectVersionSummary } from '@/features/sessions/api/session'
 
 import { sessionAPI } from '@/features/sessions/api/session'
+import { useArchiveConfirm } from '@/features/sessions/components/SessionArchiveModal'
 import { Button } from '@/shared/components/ui/Button'
 import { Icons } from '@/shared/components/ui/Icons'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
@@ -16,7 +17,6 @@ interface WorkspaceHeaderActionsProps {
     activeVersionId?: string | null
     isVersionLoading?: boolean
     onSelectVersion?: (versionId: string) => void
-    onDownload?: () => void
     isSidebarCollapsed?: boolean
     onToggleSidebar?: () => void
     isPreviewCollapsed?: boolean
@@ -33,9 +33,9 @@ export const WorkspaceHeaderActions: React.FC<WorkspaceHeaderActionsProps> = ({
     onTogglePreview,
     onStartRename,
     onOpenTagsModal,
-    onDownload,
 }) => {
     const queryClient = useQueryClient()
+    const { confirmArchive, archiveModal } = useArchiveConfirm()
     const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false)
     const moreMenuRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -183,15 +183,6 @@ export const WorkspaceHeaderActions: React.FC<WorkspaceHeaderActionsProps> = ({
                 },
             },
             {
-                id: 'download',
-                label: 'Download ZIP',
-                icon: <Download className="w-3.5 h-3.5" />,
-                action: () => {
-                    setIsMoreMenuOpen(false)
-                    onDownload?.()
-                },
-            },
-            {
                 id: isArchived ? 'unarchive' : 'archive',
                 label: isArchived ? 'Unarchive' : 'Archive',
                 icon: isArchived ? (
@@ -199,14 +190,23 @@ export const WorkspaceHeaderActions: React.FC<WorkspaceHeaderActionsProps> = ({
                 ) : (
                     <Archive className="w-3.5 h-3.5" />
                 ),
-                action: () => handleToggleArchive(),
+                // an archive asks first, an unarchive does not
+                action: () => {
+                    if (isArchived) {
+                        void handleToggleArchive()
+                        return
+                    }
+                    setIsMoreMenuOpen(false)
+                    confirmArchive(() => void handleToggleArchive())
+                },
             },
         ],
-        [isArchived, onStartRename, onOpenTagsModal, onDownload, handleToggleArchive]
+        [isArchived, onStartRename, onOpenTagsModal, handleToggleArchive, confirmArchive]
     )
 
     return (
         <div className="flex items-center gap-1">
+            {archiveModal}
             {/* Archived indicator badge */}
             {isArchived && (
                 <div

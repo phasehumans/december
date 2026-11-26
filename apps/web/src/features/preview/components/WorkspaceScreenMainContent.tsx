@@ -44,7 +44,6 @@ interface WorkspaceScreenMainContentProps {
     activeVersionId?: string | null
     isVersionLoading?: boolean
     onSelectVersion?: (versionId: string) => void
-    onDownload?: () => void
     previewSession?: PreviewSessionStatus | null
     previewSessionError?: string | null
     projectType?: 'generated' | 'github' | 'zip'

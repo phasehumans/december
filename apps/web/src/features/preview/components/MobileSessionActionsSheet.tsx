@@ -17,7 +17,6 @@ interface MobileSessionActionsSheetProps {
     onRename: (title: string) => void
     onSaveTags: (tags: string[]) => void
     isSavingTags: boolean
-    onDownload?: () => void
     isArchived: boolean
     onToggleArchive: () => void
 }
@@ -47,7 +46,7 @@ const PrIcon: React.FC = () => (
 )
 
 // session ⋯ sheet on phones: tag and PR # on top, then rename, tags, pull request,
-// download and archive. rename and tags open as a second level inside the sheet.
+// and archive. rename and tags open as a second level inside the sheet.
 export const MobileSessionActionsSheet: React.FC<MobileSessionActionsSheetProps> = ({
     isOpen,
     onClose,
@@ -58,7 +57,6 @@ export const MobileSessionActionsSheet: React.FC<MobileSessionActionsSheetProps>
     onRename,
     onSaveTags,
     isSavingTags,
-    onDownload,
     isArchived,
     onToggleArchive,
 }) => {
@@ -225,16 +223,6 @@ export const MobileSessionActionsSheet: React.FC<MobileSessionActionsSheetProps>
                         trailing={<ExternalLink className="w-3.5 h-3.5 text-[#7B7A79]" />}
                         onClick={() => {
                             onOpenPullRequest()
-                            onClose()
-                        }}
-                    />
-                )}
-                {onDownload && (
-                    <SheetRow
-                        icon={<Icons.Download className="w-[17px] h-[17px]" />}
-                        label="Download ZIP"
-                        onClick={() => {
-                            onDownload()
                             onClose()
                         }}
                     />

@@ -79,16 +79,17 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
         url,
         state = 'open',
         headRef: pullRequestBranch,
-        baseRef = 'main',
+        // a pull request saved on the session has no base branch or checks: show none
+        baseRef,
         diffSummary,
-        ciStatus = 'passing',
+        ciStatus,
     } = pullRequest
 
     // the branch of the pull request, or the saved branch of the session
     const headRef = pullRequestBranch || branch || null
     const additions = diffSummary?.additions ?? 0
     const deletions = diffSummary?.deletions ?? 0
-    const changedFiles = diffSummary?.changedFiles ?? 0
+    const changedFiles: number | undefined = diffSummary?.changedFiles
 
     const isMerged = state.toLowerCase() === 'merged'
     const isClosed = state.toLowerCase() === 'closed'
@@ -148,13 +149,15 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
                                     <GitBranch className="w-3.5 h-3.5 text-[#8E8D8C]" />
                                     <span>{headRef}</span>
                                 </div>
-                                <ArrowRight className="w-3.5 h-3.5 text-[#6E6E73]" />
+                                {baseRef && <ArrowRight className="w-3.5 h-3.5 text-[#6E6E73]" />}
                             </>
                         )}
-                        <div className="flex items-center gap-1.5 bg-[#202022] px-2 py-1 rounded border border-[#2E2E31] text-[#A1A1AA]">
-                            <GitCommit className="w-3.5 h-3.5 text-[#8E8D8C]" />
-                            <span>{baseRef}</span>
-                        </div>
+                        {baseRef && (
+                            <div className="flex items-center gap-1.5 bg-[#202022] px-2 py-1 rounded border border-[#2E2E31] text-[#A1A1AA]">
+                                <GitCommit className="w-3.5 h-3.5 text-[#8E8D8C]" />
+                                <span>{baseRef}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -173,45 +176,49 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
                             <div className="flex items-center gap-1 text-rose-400">
                                 <span>-{deletions}</span>
                             </div>
-                            <span className="text-xs text-[#8E8D8C]">
-                                {changedFiles}{' '}
-                                {changedFiles === 1 ? 'file changed' : 'files changed'}
-                            </span>
+                            {changedFiles !== undefined && (
+                                <span className="text-xs text-[#8E8D8C]">
+                                    {changedFiles}{' '}
+                                    {changedFiles === 1 ? 'file changed' : 'files changed'}
+                                </span>
+                            )}
                         </div>
                     </div>
 
-                    {/* CI Status Card */}
-                    <div className="p-4 rounded-xl bg-[#1A1A1C] border border-[#2A2A2D] flex flex-col gap-3">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-[#8E8D8C] uppercase tracking-wider">
-                            <span>Continuous Integration</span>
+                    {/* CI Status Card: only when the checks are known */}
+                    {ciStatus && (
+                        <div className="p-4 rounded-xl bg-[#1A1A1C] border border-[#2A2A2D] flex flex-col gap-3">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-[#8E8D8C] uppercase tracking-wider">
+                                <span>Continuous Integration</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {ciStatus === 'passing' && (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                        <span className="text-xs font-medium text-emerald-300">
+                                            All checks passed
+                                        </span>
+                                    </>
+                                )}
+                                {ciStatus === 'pending' && (
+                                    <>
+                                        <Clock className="w-4 h-4 text-amber-400 animate-spin" />
+                                        <span className="text-xs font-medium text-amber-300">
+                                            Checks running
+                                        </span>
+                                    </>
+                                )}
+                                {ciStatus === 'failed' && (
+                                    <>
+                                        <AlertCircle className="w-4 h-4 text-rose-400" />
+                                        <span className="text-xs font-medium text-rose-300">
+                                            Checks failed
+                                        </span>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            {ciStatus === 'passing' && (
-                                <>
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                    <span className="text-xs font-medium text-emerald-300">
-                                        All checks passed
-                                    </span>
-                                </>
-                            )}
-                            {ciStatus === 'pending' && (
-                                <>
-                                    <Clock className="w-4 h-4 text-amber-400 animate-spin" />
-                                    <span className="text-xs font-medium text-amber-300">
-                                        Checks running
-                                    </span>
-                                </>
-                            )}
-                            {ciStatus === 'failed' && (
-                                <>
-                                    <AlertCircle className="w-4 h-4 text-rose-400" />
-                                    <span className="text-xs font-medium text-rose-300">
-                                        Checks failed
-                                    </span>
-                                </>
-                            )}
-                        </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Verification Notes */}

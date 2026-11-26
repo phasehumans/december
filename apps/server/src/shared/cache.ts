@@ -168,7 +168,11 @@ class AppCache {
     /**
      * Cache-aside wrapper: returns cached value or executes fn and caches the result.
      */
-    async wrap<T>(key: string, ttlSeconds: number, fn: () => Promise<T>): Promise<T> {
+    async wrap<T>(
+        key: string,
+        ttlSeconds: number | ((value: T) => number),
+        fn: () => Promise<T>
+    ): Promise<T> {
         const cached = await this.get<T>(key)
         if (cached !== null) {
             return cached
@@ -176,7 +180,9 @@ class AppCache {
 
         const fresh = await fn()
         if (fresh !== undefined && fresh !== null) {
-            await this.set(key, fresh, ttlSeconds)
+            // a function picks the time from the value, e.g. shorter while something runs
+            const ttl = typeof ttlSeconds === 'function' ? ttlSeconds(fresh) : ttlSeconds
+            await this.set(key, fresh, ttl)
         }
         return fresh
     }

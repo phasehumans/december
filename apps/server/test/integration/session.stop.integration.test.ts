@@ -392,12 +392,12 @@ describe('stop and running sandboxes', () => {
             }
         })
 
-        it("answers 403 for another user's session and stops nothing", async () => {
+        it("answers 404 for another user's session and stops nothing", async () => {
             const session = await workingSession('delete-not-yours')
 
             const res = await del(stranger.token, session.id)
 
-            expect(res.status).toBe(403)
+            expect(res.status).toBe(404)
             expect(queued).toEqual([])
             expect(interrupts()).toEqual([])
             expect(await prisma.session.count({ where: { id: session.id } })).toBe(1)

@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import React from 'react'
 import { useLocation } from 'react-router-dom'
 
+import { useArchiveConfirm } from '../components/SessionArchiveModal'
 import { SessionDeleteModal } from '../components/SessionDeleteModal'
 import { SessionRenameModal } from '../components/SessionRenameModal'
 import { SessionTagsModal } from '../components/SessionTagsModal'
@@ -59,6 +60,7 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
     const [deleteModal, setDeleteModal] = React.useState<DeleteModalState>(closedDelete)
     const [tagsModal, setTagsModal] = React.useState(closedTags)
     const [undo, setUndo] = React.useState<ArchivedUndo | null>(null)
+    const { confirmArchive, archiveModal } = useArchiveConfirm()
     const undoTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
     const [mergedUndo, setMergedUndo] = React.useState<ArchivedMergedUndo | null>(null)
     const mergedUndoTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -108,11 +110,14 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
             toggleArchiveMutation.mutate({ sessionId: session.id, isArchived: false })
             return
         }
-        toggleArchiveMutation.mutate({ sessionId: session.id, isArchived: true })
-        if (undoTimer.current) clearTimeout(undoTimer.current)
-        setUndo({ session, index })
-        undoTimer.current = setTimeout(() => setUndo(null), ARCHIVE_UNDO_MS)
-        leaveIfCurrent(session.id)
+        // asks first; the undo line still shows after the archive
+        confirmArchive(() => {
+            toggleArchiveMutation.mutate({ sessionId: session.id, isArchived: true })
+            if (undoTimer.current) clearTimeout(undoTimer.current)
+            setUndo({ session, index })
+            undoTimer.current = setTimeout(() => setUndo(null), ARCHIVE_UNDO_MS)
+            leaveIfCurrent(session.id)
+        })
     }
 
     const undoArchive = () => {
@@ -178,9 +183,11 @@ export const useSessionActions = (onLeaveCurrent: () => void) => {
 
     const modals = (
         <>
+            {archiveModal}
             <SessionRenameModal
                 isOpen={renameModal.isOpen}
                 value={renameModal.value}
+                initialValue={renameModal.project?.title ?? ''}
                 isPending={renameMutation.isPending}
                 onClose={() => setRenameModal(closedRename)}
                 onChange={(value) => setRenameModal((prev) => ({ ...prev, value }))}

@@ -172,7 +172,6 @@ describe('Ticket #401: Workspace Header Actions, PR Badge, and Feedback Integrat
                     <WorkspaceHeaderActions
                         projectId="session-insights-test"
                         projectName="Test App"
-                        onDownload={() => {}}
                     />
                 </MemoryRouter>
             </QueryClientProvider>
@@ -188,11 +187,11 @@ describe('Ticket #401: Workspace Header Actions, PR Badge, and Feedback Integrat
             ) || moreButtons[moreButtons.length - 1]
         fireEvent.click(threeDotsButton)
 
-        // Menu items should show Rename, Tags, Archive, Download ZIP
+        // Menu items should show Rename, Tags and Archive, and no Download ZIP (removed)
         expect(await screen.findByRole('button', { name: /Rename/i })).not.toBeNull()
         expect(await screen.findByRole('button', { name: /Tags/i })).not.toBeNull()
         expect(await screen.findByRole('button', { name: /Archive/i })).not.toBeNull()
-        expect(await screen.findByRole('button', { name: /Download ZIP/i })).not.toBeNull()
+        expect(screen.queryByRole('button', { name: /Download ZIP/i })).toBeNull()
 
         // Session insights should not be in the menu
         expect(screen.queryByRole('button', { name: /Session insights/i })).toBeNull()

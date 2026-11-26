@@ -2,65 +2,68 @@ import React from 'react'
 
 import type { SessionRenameModalProps } from '@/features/sessions/types'
 
+import { ModalActions, inputClass } from '@/features/connections/components/ConnectionsUi'
 import { Modal } from '@/shared/components/ui/Modal'
+
+/** the server takes a name up to this long */
+const MAX_TITLE_LENGTH = 100
 
 export const SessionRenameModal: React.FC<SessionRenameModalProps> = ({
     isOpen,
     value,
+    initialValue,
     isPending,
     onClose,
     onChange,
     onSubmit,
 }) => {
-    const isDisabled = isPending
+    const inputRef = React.useRef<HTMLInputElement>(null)
+    const trimmed = value.trim()
+    // Save stays off until the name changes (R1)
+    const isUnchanged = trimmed === (initialValue ?? '').trim()
+
+    // the name is selected on open, so typing replaces it (R2)
+    React.useEffect(() => {
+        if (isOpen) inputRef.current?.select()
+    }, [isOpen])
 
     // sent at once: closing the modal can no longer rename a moment later
     const handleSubmit = (event: React.FormEvent) => {
         event.preventDefault()
-        if (!value.trim() || isDisabled) return
+        if (!trimmed || isUnchanged || isPending) return
         onSubmit(event)
     }
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Rename session" variant="premium">
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title="Rename session"
+            description="Shows in the sidebar and on the Sessions page."
+            variant="premium"
+            showLogo={false}
+            sheetOnPhone
+        >
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div>
-                    <input
-                        id="project-rename-input"
-                        type="text"
-                        autoFocus
-                        value={value}
-                        onChange={(e) => onChange(e.target.value)}
-                        className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg px-3.5 py-2.5 text-white text-[13px] focus:outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
-                        placeholder="Session name"
-                        disabled={isDisabled}
-                    />
-                </div>
-
-                <div className="mt-1 flex items-center justify-end gap-2.5">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={isDisabled}
-                        className="bg-transparent text-white hover:bg-white/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-50"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={!value.trim() || isDisabled}
-                        className="bg-white text-black hover:bg-neutral-200 active:scale-95 transition-[transform,background-color,border-color,color] duration-200 text-[13px] font-medium px-4 py-2 rounded-lg focus:outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center min-w-[85px]"
-                    >
-                        {isPending ? (
-                            <div className="flex items-center gap-1.5 justify-center">
-                                <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                                <span>Saving...</span>
-                            </div>
-                        ) : (
-                            'Save'
-                        )}
-                    </button>
-                </div>
+                <input
+                    ref={inputRef}
+                    id="project-rename-input"
+                    type="text"
+                    autoFocus
+                    aria-label="Session name"
+                    maxLength={MAX_TITLE_LENGTH}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className={inputClass}
+                    placeholder="Session name"
+                    disabled={isPending}
+                />
+                <ModalActions
+                    onCancel={onClose}
+                    submitLabel="Save"
+                    submitDisabled={!trimmed || isUnchanged}
+                    isPending={isPending}
+                />
             </form>
         </Modal>
     )

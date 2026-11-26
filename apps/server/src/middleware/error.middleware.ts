@@ -6,7 +6,14 @@ import { AppError } from '../shared/appError'
 
 import type { Request, Response, NextFunction } from 'express'
 
-export const errorHandler = (err: any, req: Request, res: Response, _next: NextFunction) => {
+export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+    // a streamed answer (a search answer, a file) failed after its headers went out: no
+    // JSON error can follow. Express's own handler closes the connection
+    if (res.headersSent) {
+        logger.error({ err, path: req.originalUrl }, 'error after the response started')
+        return next(err)
+    }
+
     const isCliRoute =
         req.originalUrl?.includes('/api/v1/cli') ||
         req.baseUrl?.includes('/api/v1/cli') ||

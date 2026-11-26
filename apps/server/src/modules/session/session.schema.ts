@@ -8,7 +8,8 @@ export const getSessionsSchema = z.object({
             z.boolean().optional()
         )
         .optional(),
-    tags: z.string().optional(),
+    // tags joined by commas; each tag is at most 30 characters
+    tags: z.string().max(500).optional(),
     // one repository: owner/name, or a name alone for that name under any owner (#641)
     repoName: z.string().trim().min(1).max(200).optional(),
     sortBy: z.enum(['updatedAt', 'createdAt']).optional(),
@@ -149,7 +150,8 @@ export const renameSessionParamsSchema = z.object({
     id: z.string().uuid('Invalid session ID'),
 })
 export const renameSessionBodySchema = z.object({
-    title: z.string().min(1, 'title is required').max(100),
+    // spaces alone are not a title: the row would show no name
+    title: z.string().trim().min(1, 'title is required').max(100),
 })
 
 export const archiveSessionParamsSchema = z.object({
@@ -190,6 +192,10 @@ export const updateSessionTagsBodySchema = z.object({
         .array(
             z
                 .string()
+                // the list filter trims each tag, so a saved tag is trimmed too, else the
+                // filter never finds it
+                .trim()
+                .min(1, 'A tag cannot be empty')
                 .max(30)
                 .regex(/^[^,]*$/, 'A tag cannot contain a comma')
         )

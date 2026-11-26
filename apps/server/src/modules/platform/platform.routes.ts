@@ -9,9 +9,6 @@ const platformRouter = Router()
 // protected routes
 platformRouter.use(authMiddleware)
 
-// general
-platformRouter.get('/:sessionId/download', platformController.downloadProject)
-
 // github
 platformRouter.get('/github/repos', platformController.getUserGithubRepos)
 platformRouter.get('/gitlab/repos', platformController.getUserGitlabRepos)

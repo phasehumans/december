@@ -1,5 +1,7 @@
 import { prisma } from '@december/database'
 
+import { escapeLike } from '../../shared/escape-like'
+
 import type { InviteRole, TeamRole } from './team.types'
 
 const teamSelect = { id: true, name: true, ownerId: true, createdAt: true } as const
@@ -103,7 +105,7 @@ async function findJoinedTeams(userId: string) {
 
 async function findMemberByEmail(teamId: string, email: string) {
     return prisma.teamMember.findFirst({
-        where: { teamId, user: { email: { equals: email, mode: 'insensitive' } } },
+        where: { teamId, user: { email: { equals: escapeLike(email), mode: 'insensitive' } } },
         select: { userId: true },
     })
 }

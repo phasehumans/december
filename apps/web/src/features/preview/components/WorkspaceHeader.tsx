@@ -23,7 +23,6 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
     activeVersionId,
     isVersionLoading,
     onSelectVersion,
-    onDownload,
     sessionTag,
 }) => {
     const queryClient = useQueryClient()
@@ -185,7 +184,6 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
                 activeVersionId={activeVersionId}
                 isVersionLoading={isVersionLoading}
                 onSelectVersion={onSelectVersion}
-                onDownload={onDownload}
                 isSidebarCollapsed={isSidebarCollapsed}
                 onToggleSidebar={onToggleSidebar}
                 isPreviewCollapsed={isPreviewCollapsed}

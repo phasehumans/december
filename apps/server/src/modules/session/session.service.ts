@@ -18,6 +18,7 @@ import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { appCache } from '../../shared/cache'
 import { claimOnce, setFlag, takeFlag } from '../../shared/claim-once'
+import { escapeLike } from '../../shared/escape-like'
 import {
     sessionPrefix,
     sessionWorkspaceKey,
@@ -48,6 +49,7 @@ import {
     parseSmartSearchFilters,
     decidePromptRoute,
     isLimitQuestionId,
+    isWorkingVmStatus,
     readMessageWhileWorking,
     toHeldRunParts,
     toCreditTier,
@@ -55,6 +57,7 @@ import {
     toSessionFacets,
     toTagsCacheKey,
     toLimitQuestionPrompt,
+    toListTitle,
 } from './session.utils'
 
 import type {
@@ -88,6 +91,7 @@ import type {
     GetSessionFileTree,
     GetSessionFileContent,
     GetSessionPullRequests,
+    SavedPullRequestRow,
     SessionPullRequest,
     GetSessionPlan,
     GetSessionTests,
@@ -164,6 +168,12 @@ const invalidateRecentSessions = async (data: InvalidateRecentSessions) => {
     await invalidateUserRecentSessions(userId)
 }
 
+// the list, counts and facets: long enough to save reads, and a write clears them. while a
+// session works, its status can change in the worker, which does not clear them, so a
+// list that shows a working session is kept only for a few seconds
+const LIST_CACHE_SECONDS = 30
+const WORKING_LIST_CACHE_SECONDS = 4
+
 const getUserSessions = async (data: GetUserSessions) => {
     const { userId, filters } = data
 
@@ -174,11 +184,7 @@ const getUserSessions = async (data: GetUserSessions) => {
 
             return {
                 id: session.id,
-                title:
-                    session.title ||
-                    (session.messages?.[0]?.content
-                        ? session.messages[0].content.substring(0, 50) + '...'
-                        : 'New Chat'),
+                title: toListTitle(session.title, result.firstPrompts[session.id]),
                 type: session.type,
                 isArchived: session.isArchived,
                 isPinned: Boolean(session.pinnedAt),
@@ -248,7 +254,14 @@ const getUserSessions = async (data: GetUserSessions) => {
         toTagsCacheKey(filters?.tags)
     )
 
-    return appCache.wrap(cacheKey, 30, fetchSessions)
+    return appCache.wrap(
+        cacheKey,
+        (result) =>
+            result.sessions.some((session) => isWorkingVmStatus(session.vmStatus))
+                ? WORKING_LIST_CACHE_SECONDS
+                : LIST_CACHE_SECONDS,
+        fetchSessions
+    )
 }
 
 const getMaxConcurrentSessions = (userId?: string, requestedLimit?: number): number => {
@@ -321,6 +334,11 @@ const createSession = async (data: CreateSession) => {
                 409
             )
         }
+    }
+
+    // a project of another user, or one that does not exist, reads as missing
+    if (projectId && !(await sessionRepository.isProjectOfUser(projectId, userId))) {
+        throw new AppError('Project not found', 404)
     }
 
     // the github* columns hold the repo on any git host until they get neutral names (#627)
@@ -628,7 +646,11 @@ const renameSession = async (data: RenameSession) => {
     const { userId, sessionId, title } = data
     const existing = await sessionRepository.findSessionById(sessionId, userId)
     if (!existing) throw new AppError('Session not found', 404)
-    const updated = await sessionRepository.updateSession(sessionId, userId, { title })
+    // the same updatedAt, so a rename does not move the session to the top of the list
+    const updated = await sessionRepository.updateSession(sessionId, userId, {
+        title,
+        updatedAt: existing.updatedAt,
+    })
     await invalidateUserRecentSessions(userId)
     return updated
 }
@@ -704,10 +726,16 @@ const archiveMergedSessions = async (data: ArchiveMergedSessions) => {
 /** the undo of an archive: only sessions of this user change, and their pins come back */
 const unarchiveSessions = async (data: UnarchiveSessions) => {
     const { userId, sessionIds, pins } = data
+    // the pin times come from the client: one in the future would sit above every new pin
+    const now = Date.now()
+    const restorePins = (pins ?? []).map((pin) => ({
+        sessionId: pin.sessionId,
+        pinnedAt: new Date(Math.min(pin.pinnedAt.getTime(), now)),
+    }))
     const changed = await sessionRepository.unarchiveSessions(
         userId,
         sessionIds,
-        pins ?? [],
+        restorePins,
         MAX_PINNED_SESSIONS
     )
     if (changed.length > 0) await invalidateUserRecentSessions(userId)
@@ -845,8 +873,9 @@ const applyPullRequestEvent = async (data: ApplyPullRequestEvent) => {
     const sessions = await sessionRepository.updatePullRequestFields(
         {
             gitProvider,
-            githubRepoOwner: { equals: repoOwner, mode: 'insensitive' },
-            githubRepoName: { equals: repoName, mode: 'insensitive' },
+            // escaped: else "my_repo" also matches the pull request of "myXrepo"
+            githubRepoOwner: { equals: escapeLike(repoOwner), mode: 'insensitive' },
+            githubRepoName: { equals: escapeLike(repoName), mode: 'insensitive' },
             prNumber: number,
             deletedAt: null,
         },
@@ -882,7 +911,11 @@ const applyPullRequestEvent = async (data: ApplyPullRequestEvent) => {
 const getSessionCounts = async (data: GetSessionCounts): Promise<SessionCounts> => {
     const { userId } = data
     const cacheKey = appCache.key('sessions', 'recent', userId, 'counts')
-    return appCache.wrap(cacheKey, 30, () => sessionRepository.countSessions(userId))
+    return appCache.wrap(
+        cacheKey,
+        (counts) => (counts.running > 0 ? WORKING_LIST_CACHE_SECONDS : LIST_CACHE_SECONDS),
+        () => sessionRepository.countSessions(userId)
+    )
 }
 
 // the repositories and tags for the sort and filter menu (#641). under the recent list
@@ -890,7 +923,7 @@ const getSessionCounts = async (data: GetSessionCounts): Promise<SessionCounts> 
 const getSessionFacets = async (data: GetSessionFacets): Promise<SessionFacets> => {
     const { userId, hasPr = false } = data
     const cacheKey = appCache.key('sessions', 'recent', userId, hasPr ? 'facets-pr' : 'facets')
-    return appCache.wrap(cacheKey, 30, async () =>
+    return appCache.wrap(cacheKey, LIST_CACHE_SECONDS, async () =>
         toSessionFacets(await sessionRepository.findSessionFacets(userId, hasPr))
     )
 }
@@ -900,7 +933,11 @@ const updateSessionTags = async (data: UpdateSessionTags) => {
     const existing = await sessionRepository.findSessionById(sessionId, userId)
     if (!existing) throw new AppError('Session not found', 404)
     const singleTag = tags ? tags.slice(0, 1) : []
-    const updated = await sessionRepository.updateSession(sessionId, userId, { tags: singleTag })
+    // the same updatedAt, so a tag change does not move the session to the top of the list
+    const updated = await sessionRepository.updateSession(sessionId, userId, {
+        tags: singleTag,
+        updatedAt: existing.updatedAt,
+    })
     await invalidateUserRecentSessions(userId)
     return updated
 }
@@ -919,10 +956,15 @@ const endSessionRuns = async (data: EndSessionRuns) => {
             console.warn('[Session] could not stop the run of a deleted session', error)
         }
 
+        // the sockets leave only the rooms of this session. a socket is one browser tab,
+        // shared with the user's notifications and other sessions, and a socket the
+        // server disconnects does not connect again, so a disconnect cut every other tab
         try {
-            getIO().in(`session:${sessionId}`).disconnectSockets()
-        } catch (e) {
-            console.warn('Socket not connected or io not available', e)
+            const io = getIO()
+            io.in(`session:${sessionId}`).socketsLeave(`session:${sessionId}`)
+            io.in(`session_terminal:${sessionId}`).socketsLeave(`session_terminal:${sessionId}`)
+        } catch (error) {
+            console.warn('[Session] could not take sockets out of a deleted session', error)
         }
     }
 
@@ -1004,11 +1046,10 @@ const deleteSession = async (data: DeleteSession) => {
     const { userId, sessionId } = data
 
     const owner = await sessionRepository.findSessionOwner(sessionId)
-    if (!owner) {
+    // another user's session reads as missing, like every other session route, so a
+    // delete does not tell which session ids exist
+    if (!owner || owner.userId !== userId) {
         throw new AppError('Session not found', 404)
-    }
-    if (owner.userId !== userId) {
-        throw new AppError('Only the session creator can delete this session', 403)
     }
 
     // like delete all: the sandbox stops first, so it does not run on without its session
@@ -1116,6 +1157,11 @@ const streamSearchResponse = async (data: StreamSearchResponse) => {
     if (!session) {
         throw new AppError('Session not found', 404)
     }
+    // a coding session talks to its agent; a search answer there would mix into its chat
+    // and be charged as search
+    if (session.type !== 'SEARCH') {
+        throw new AppError('Search works only in a search session', 400)
+    }
 
     const hasBalance = await usageService.hasMinimumBalance({
         userId,
@@ -1133,18 +1179,8 @@ const streamSearchResponse = async (data: StreamSearchResponse) => {
         orderBy: { sequence: 'asc' },
     })
 
-    const lastSequence =
-        existingMessages.length > 0 ? Math.max(...existingMessages.map((m) => m.sequence)) : 0
-
-    const userMessageSequence = lastSequence + 1
-    await prisma.message.create({
-        data: {
-            sessionId,
-            role: 'USER',
-            content: prompt,
-            sequence: userMessageSequence,
-        },
-    })
+    // locked, so prompts sent at once each get their own sequence
+    await sessionRepository.appendMessage({ sessionId, role: 'USER', content: prompt })
 
     if (!session.title || session.title === 'New Session' || session.title === 'Untitled Session') {
         const titleSnippet = prompt.length > 50 ? prompt.slice(0, 47) + '...' : prompt
@@ -1246,14 +1282,11 @@ const streamSearchResponse = async (data: StreamSearchResponse) => {
             }
         }
 
-        const assistantMessageSequence = userMessageSequence + 1
-        await prisma.message.create({
-            data: {
-                sessionId,
-                role: 'ASSISTANT',
-                content: fullAssistantContent,
-                sequence: assistantMessageSequence,
-            },
+        // after another prompt of the same session, when two were sent at once
+        const assistantMessageSequence = await sessionRepository.appendMessage({
+            sessionId,
+            role: 'ASSISTANT',
+            content: fullAssistantContent,
         })
 
         const calculatedCost = usageService.calculateGenerationCost({
@@ -1290,15 +1323,13 @@ const streamSearchResponse = async (data: StreamSearchResponse) => {
         )
     } catch (err: any) {
         console.error('[Search Stream Error]:', err)
+        // the log has the details; the client gets a plain line, never database or
+        // provider error text
+        const message = 'The answer could not be finished. Try again.'
         if (!res.headersSent) {
-            throw new AppError(err?.message || 'Failed to stream search response', 500)
+            throw new AppError(message, 500)
         } else {
-            res.write(
-                `event: error\ndata: ${JSON.stringify({
-                    error: err?.message || 'Stream error',
-                    message: err?.message || 'Stream error',
-                })}\n\n`
-            )
+            res.write(`event: error\ndata: ${JSON.stringify({ error: message, message })}\n\n`)
         }
     } finally {
         if (!res.writableEnded) {
@@ -1425,20 +1456,47 @@ const getSessionPullRequests = async (
         throw new AppError('Session not found', 404)
     }
 
+    const saved = toSavedPullRequest(session)
+
     try {
         const redis = getSessionRedis()
         if (redis) {
             const cached = await redis.get(`session_pull_requests:${sessionId}`)
             if (cached) {
                 const parsed = JSON.parse(cached)
-                return { pullRequest: parsed.pullRequest ?? parsed }
+                const pullRequest: SessionPullRequest | null = parsed.pullRequest ?? parsed
+                // the webhook and the list refresh keep the row's state current; the cache
+                // keeps the state of the run's end
+                if (pullRequest && saved && pullRequest.prNumber === saved.prNumber) {
+                    return { pullRequest: { ...pullRequest, state: saved.state } }
+                }
+                if (pullRequest) return { pullRequest }
             }
         }
-    } catch {
-        // Intentionally swallowed: Redis retrieval fallback for pull request
+    } catch (error) {
+        // the saved pull request below still answers
+        console.warn('[Session] could not read the cached pull request', error)
     }
 
-    return { pullRequest: null }
+    // the cache is gone (it is not kept for ever): the pull request saved on the session
+    return { pullRequest: saved }
+}
+
+/** the pull request the worker saved on the session row, or null when it opened none */
+const toSavedPullRequest = (session: SavedPullRequestRow): SessionPullRequest | null => {
+    if (!session.prNumber) return null
+    return {
+        prNumber: session.prNumber,
+        ...(session.prUrl ? { url: session.prUrl } : {}),
+        title: session.prTitle || session.title || `Pull request #${session.prNumber}`,
+        state: toPullRequestState(session.prState),
+        headRef: session.prBranch || session.branch || '',
+        ...(session.prAdditions !== null && session.prDeletions !== null
+            ? { diffSummary: { additions: session.prAdditions, deletions: session.prDeletions } }
+            : {}),
+        ...(session.prOpenedAt ? { createdAt: session.prOpenedAt.toISOString() } : {}),
+        ...(session.prCheckedAt ? { updatedAt: session.prCheckedAt.toISOString() } : {}),
+    }
 }
 
 const getSessionPlan = async (data: GetSessionPlan) => {

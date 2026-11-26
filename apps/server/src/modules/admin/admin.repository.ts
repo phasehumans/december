@@ -1,5 +1,7 @@
 import { Prisma, prisma } from '@december/database'
 
+import { escapeLike } from '../../shared/escape-like'
+
 import type { UserFilter } from './admin.types'
 
 const findAdminUser = async (userId: string) =>
@@ -173,8 +175,8 @@ const userSearch = (q?: string): Prisma.UserWhereInput =>
     q
         ? {
               OR: [
-                  { email: { contains: q, mode: 'insensitive' } },
-                  { name: { contains: q, mode: 'insensitive' } },
+                  { email: { contains: escapeLike(q), mode: 'insensitive' } },
+                  { name: { contains: escapeLike(q), mode: 'insensitive' } },
               ],
           }
         : {}

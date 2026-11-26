@@ -51,7 +51,6 @@ const App: React.FC = () => {
         handleBackFromOutput,
         handleOpenProject,
         handleSelectVersion,
-        handleDownloadProject,
         handleOpenFile,
         resetImportState,
         needsOnboarding,
@@ -185,7 +184,6 @@ const App: React.FC = () => {
                         onNewProject={handleNewThread}
                         onOpenProject={handleOpenProject}
                         onSelectVersion={handleSelectVersion}
-                        onDownloadProject={handleDownloadProject}
                         onSignOut={handleSignOut}
                         onOpenFile={handleOpenFile}
                         onResetImportState={resetImportState}
