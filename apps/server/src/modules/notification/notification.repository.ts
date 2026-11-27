@@ -178,10 +178,8 @@ async function findUserNotifyPrefs(userId: string) {
     return prisma.user.findUnique({
         where: { id: userId },
         select: {
-            email: true,
             isDeleted: true,
             notifyLevel: true,
-            notifyEmail: true,
             notifyPush: true,
         },
     })
@@ -264,59 +262,19 @@ async function updateNotifyPush(userId: string, notifyPush: boolean) {
     })
 }
 
-async function findDigestUsers() {
-    return prisma.user.findMany({
-        where: { digestEnabled: true, isDeleted: false },
-        select: {
-            id: true,
-            email: true,
-            digestTime: true,
-            timezone: true,
-            lastDigestAt: true,
-        },
-    })
-}
-
-async function summarizeSince(userId: string, since: Date) {
-    const [sessionsFinished, pullRequestsOpened, credits] = await Promise.all([
-        // finished: December worked on it since then (the worker saves a 'done' message for
-        // each good turn) and its last run ended well (PARKED). a session that still runs
-        // or that failed does not count
-        prisma.session.count({
-            where: {
-                userId,
-                status: 'PARKED',
-                messages: {
-                    some: { role: 'ASSISTANT', status: 'done', createdAt: { gte: since } },
-                },
-            },
-        }),
-        prisma.session.count({ where: { userId, prOpenedAt: { gte: since } } }),
-        prisma.usageEvent.aggregate({
-            where: { userId, billingSource: 'CREDITS', createdAt: { gte: since } },
-            _sum: { costInCents: true },
-        }),
-    ])
-    return {
-        sessionsFinished,
-        pullRequestsOpened,
-        creditsUsedCents: credits._sum.costInCents ?? 0,
-    }
-}
-
-// only a user whose summary is off gets a new start, so saving "on" again changes nothing
-async function startDigestWindow(userId: string, at: Date) {
-    return prisma.user.updateMany({
-        where: { id: userId, digestEnabled: false },
-        data: { lastDigestAt: at },
-    })
-}
-
-async function markDigestSent(userId: string, at: Date) {
-    return prisma.user.update({
-        where: { id: userId },
-        data: { lastDigestAt: at },
+async function hasUnreadNotification(data: { userId: string; title: string; link?: string }) {
+    const { userId, title, link } = data
+    const found = await prisma.notification.findFirst({
+        where: { userId, title, link: link ?? null, isRead: false },
         select: { id: true },
+    })
+    return found !== null
+}
+
+async function markReadByLinks(userId: string, links: string[]) {
+    return prisma.notification.updateMany({
+        where: { userId, isRead: false, link: { in: links } },
+        data: { isRead: true },
     })
 }
 
@@ -350,10 +308,8 @@ export const notificationRepository = {
     deletePushSubscriptionsByIds,
     touchPushSubscriptions,
     updateNotifyPush,
-    findDigestUsers,
-    summarizeSince,
-    startDigestWindow,
-    markDigestSent,
+    hasUnreadNotification,
+    markReadByLinks,
     findManyNotifications,
     countUnreadNotifications,
     findNotificationById,

@@ -5,6 +5,7 @@ import { sendSuccess } from '../../shared/response'
 import {
     NotificationParamsSchema,
     GetNotificationsQuerySchema,
+    SessionReadParamsSchema,
     pushStatusSchema,
     pushSubscribeSchema,
     pushUnsubscribeSchema,
@@ -117,6 +118,19 @@ const markAllAsRead = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, 'notifications marked as read', result)
 })
 
+// N6: the user opened a session, so its unread items are read
+const markSessionRead = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const { sessionId } = SessionReadParamsSchema.parse(req.params)
+    const result = await notificationService.markSessionRead({ userId, sessionId })
+    return sendSuccess(res, 'session notifications marked as read', result)
+})
+
 const getPushConfig = asyncHandler(async (_req: Request, res: Response) => {
     const result = await notificationService.getPushConfig({})
     return sendSuccess(res, 'push config fetched', result)
@@ -177,4 +191,5 @@ export const notificationController = {
     deleteNotification,
     deleteAllReadNotification,
     markAllAsRead,
+    markSessionRead,
 }

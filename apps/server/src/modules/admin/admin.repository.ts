@@ -67,6 +67,15 @@ const countAccountsForNormalizedEmail = async (normalizedEmail: string, excludeU
     return Number(rows[0]?.count ?? 0)
 }
 
+// product emails on, live and verified: the list for announcements (A5)
+const findProductEmailUsers = async () =>
+    prisma.user.findMany({
+        where: { notifyProductUpdates: true, isDeleted: false, emailVerified: true },
+        select: { id: true, name: true, email: true },
+        orderBy: { createdAt: 'asc' },
+        take: 5000,
+    })
+
 const findCreditRequest = async (id: string) =>
     prisma.creditRequest.findUnique({
         where: { id },
@@ -282,10 +291,7 @@ const findUserDetails = async (userId: string) => {
             notifyProductUpdates: true,
             notifySecurityAlerts: true,
             notifyLevel: true,
-            notifyEmail: true,
             notifyPush: true,
-            digestEnabled: true,
-            digestTime: true,
             timezone: true,
             defaultModelSource: true,
             defaultOwnKeyProvider: true,
@@ -331,7 +337,7 @@ const findUserDetails = async (userId: string) => {
     const now = Date.now()
     const since30 = new Date(now - 30 * USER_DAY_MS)
     const since1 = new Date(now - USER_DAY_MS)
-    const live = { deletedAt: null, userId }
+    const ofUser = { userId }
     const credits = { userId, billingSource: 'CREDITS' as const }
     const [
         devices,
@@ -360,17 +366,17 @@ const findUserDetails = async (userId: string) => {
             take: 20,
         }),
         Promise.all([
-            prisma.session.count({ where: live }),
-            prisma.session.count({ where: { ...live, isArchived: true } }),
+            prisma.session.count({ where: ofUser }),
+            prisma.session.count({ where: { ...ofUser, isArchived: true } }),
             prisma.session.count({
-                where: { ...live, sandboxStatus: { in: ['STARTING', 'RUNNING'] } },
+                where: { ...ofUser, sandboxStatus: { in: ['STARTING', 'RUNNING'] } },
             }),
-            prisma.session.count({ where: { ...live, pendingQuestionAt: { not: null } } }),
-            prisma.session.count({ where: { ...live, githubRun: { not: Prisma.AnyNull } } }),
-            prisma.session.count({ where: { ...live, prNumber: { not: null } } }),
-            prisma.session.count({ where: { ...live, prMergedAt: { not: null } } }),
+            prisma.session.count({ where: { ...ofUser, pendingQuestionAt: { not: null } } }),
+            prisma.session.count({ where: { ...ofUser, githubRun: { not: Prisma.AnyNull } } }),
+            prisma.session.count({ where: { ...ofUser, prNumber: { not: null } } }),
+            prisma.session.count({ where: { ...ofUser, prMergedAt: { not: null } } }),
             prisma.session.count({
-                where: { ...live, prClosedAt: { not: null }, prMergedAt: null },
+                where: { ...ofUser, prClosedAt: { not: null }, prMergedAt: null },
             }),
         ]),
         prisma.$queryRaw<Array<{ count: bigint }>>`
@@ -378,11 +384,11 @@ const findUserDetails = async (userId: string) => {
                 NULLIF(CONCAT_WS('/', "githubRepoOwner", "githubRepoName"), ''), "repoUrl"
             ))::bigint AS count
             FROM "Session"
-            WHERE "userId" = ${userId} AND "deletedAt" IS NULL
+            WHERE "userId" = ${userId}
                 AND ("githubRepoName" IS NOT NULL OR "repoUrl" IS NOT NULL)
         `,
         prisma.session.aggregate({
-            where: { ...live, prNumber: { not: null } },
+            where: { ...ofUser, prNumber: { not: null } },
             _sum: { prAdditions: true, prDeletions: true },
         }),
         prisma.usageEvent.aggregate({
@@ -736,6 +742,7 @@ export const adminRepository = {
     findLatestFeedback,
     countRequestsFromIp,
     countAccountsForNormalizedEmail,
+    findProductEmailUsers,
     findCreditRequest,
     approveCreditRequest,
     rejectCreditRequest,

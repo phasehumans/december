@@ -79,7 +79,7 @@ const asPullRequests = (list: any[]) =>
             sessionId: session.id,
             title: session.title,
             tags: session.tags ?? [],
-            gitProvider: 'GITHUB' as const,
+            gitProvider: (session.gitProvider ?? 'GITHUB') as 'GITHUB' | 'GITLAB',
             repo: session.githubRepoName ?? null,
             prNumber: session.prNumber,
             prState: session.prState ?? 'open',
@@ -93,6 +93,7 @@ const asPullRequests = (list: any[]) =>
             prOpenedAt: session.prOpenedAt ?? null,
             prMergedAt: null,
             prClosedAt: null,
+            prUpdatedAt: session.prUpdatedAt ?? null,
             createdAt: session.createdAt,
             updatedAt: session.updatedAt,
         }))
@@ -120,14 +121,24 @@ const serve = (list: any[]) => async (params: ListParams) => {
             const by = (pr: typeof a) =>
                 params.sortBy === 'prOpenedAt'
                     ? time(pr.prOpenedAt ?? pr.createdAt)
-                    : time(pr.updatedAt)
+                    : params.sortBy === 'prUpdatedAt'
+                      ? time(pr.prUpdatedAt ?? pr.updatedAt)
+                      : time(pr.updatedAt)
             return params.sortOrder === 'asc' ? by(a) - by(b) : by(b) - by(a)
         })
-    const page = params.page ?? 1
     const limit = params.limit ?? 50
+    // the real cursor holds the last row's sort values; here the offset is enough
+    const start = params.cursor ? Number(params.cursor) : ((params.page ?? 1) - 1) * limit
+    const end = start + limit
     return {
-        pullRequests: rows.slice((page - 1) * limit, page * limit),
-        pagination: { page, limit, total: rows.length, totalPages: Math.ceil(rows.length / limit) },
+        pullRequests: rows.slice(start, end),
+        pagination: {
+            page: params.page ?? 1,
+            limit,
+            total: rows.length,
+            totalPages: Math.ceil(rows.length / limit),
+            nextCursor: end < rows.length ? String(end) : null,
+        },
     }
 }
 
@@ -144,17 +155,32 @@ const lastRequest = () => requests().at(-1)
 
 const renderPage = (
     list: unknown[] = sessions,
-    options: { githubConnected?: boolean; open?: number; facets?: object } = {}
+    options: {
+        githubConnected?: boolean
+        gitlabConnected?: boolean
+        open?: number
+        facets?: object
+        /** the Open count the first page of the list brings */
+        listOpenCount?: number
+    } = {}
 ) => {
-    const { githubConnected = true, open = 2, facets } = options
-    getPullRequests = spyOn(sessionAPI, 'getPullRequests').mockImplementation(
-        serve(list as any[]) as any
-    )
+    const { githubConnected = true, gitlabConnected = false, open = 2, facets } = options
+    const served = serve(list as any[])
+    getPullRequests = spyOn(sessionAPI, 'getPullRequests').mockImplementation((async (
+        params: ListParams
+    ) => {
+        const page = await served(params)
+        return options.listOpenCount === undefined || params.cursor
+            ? page
+            : { ...page, openCount: options.listOpenCount }
+    }) as any)
     getSessionFacets = spyOn(sessionAPI, 'getSessionFacets').mockImplementation(
         async () => (facets ?? { repos: ['acme/api', 'acme/web'], tags: ['bug'] }) as any
     )
     spyOn(sessionAPI, 'getSessionCounts').mockImplementation(async () => ({
         running: 0,
+        needsAnswer: 0,
+        needsYou: 0,
         openPullRequests: open,
         merged: 0,
     }))
@@ -166,6 +192,11 @@ const renderPage = (
     })
     client.setQueryData(['profile'], { id: 'user-1', githubConnected })
     client.setQueryData(['quickinfo'], { fullName: 'Test', githubConnected })
+    client.setQueryData(['integrations', 'gitlab'], {
+        available: true,
+        connected: gitlabConnected,
+        username: gitlabConnected ? 'tester' : null,
+    })
     const onOpenProject = mock((_id: string) => {})
     const view = render(
         <QueryClientProvider client={client}>
@@ -226,6 +257,41 @@ describe('pull request rows', () => {
         expect(rows[0].url).toBe('https://github.com/acme/other/pull/409')
     })
 
+    test('a link that is not a web link is dropped, so it never reaches an href', () => {
+        const rows = toPullRequestRows(
+            asPullRequests([
+                { ...sessions[0], prUrl: 'javascript:alert(1)' },
+                { ...sessions[1], prUrl: ' data:text/html,hi' },
+            ])
+        )
+        expect(rows.map((row) => row.url)).toEqual([null, null])
+    })
+
+    test('the updated date is the last change of the pull request, the session date before', () => {
+        const rows = toPullRequestRows(
+            asPullRequests([
+                { ...sessions[0], prUpdatedAt: '2026-11-25T09:00:00.000Z' },
+                sessions[1],
+            ])
+        )
+        expect(rows.map((row) => row.updatedAt)).toEqual([
+            '2026-11-25T09:00:00.000Z',
+            sessions[1].updatedAt,
+        ])
+    })
+
+    test('a session that comes twice (a row moved between pages) shows once', () => {
+        const rows = toPullRequestRows(asPullRequests([sessions[0], sessions[1], sessions[0]]))
+        expect(rows.map((row) => row.sessionId)).toEqual(['s1', 's2'])
+    })
+
+    test('the row knows its host', () => {
+        const rows = toPullRequestRows(
+            asPullRequests([sessions[0], { ...sessions[1], gitProvider: 'GITLAB' }])
+        )
+        expect(rows.map((row) => row.gitProvider)).toEqual(['GITHUB', 'GITLAB'])
+    })
+
     test('the row date is the opened date, the session date for old rows', () => {
         const rows = toPullRequestRows(
             asPullRequests([
@@ -259,7 +325,7 @@ describe('pull requests view', () => {
             repo: undefined,
             tag: undefined,
             search: undefined,
-            sortBy: 'updatedAt',
+            sortBy: 'prUpdatedAt',
             sortOrder: 'desc',
         })
         expect(params({ repo: 'acme/api', tag: 'bug' }, false, '  #409 ')).toMatchObject({
@@ -271,7 +337,7 @@ describe('pull requests view', () => {
 
     test('Newest and Oldest sort by the opened date', () => {
         expect(params({ sort: 'updated' })).toMatchObject({
-            sortBy: 'updatedAt',
+            sortBy: 'prUpdatedAt',
             sortOrder: 'desc',
         })
         expect(params({ sort: 'newest' })).toMatchObject({
@@ -320,7 +386,7 @@ describe('Pull requests page', () => {
             repo: undefined,
             tag: undefined,
             search: undefined,
-            sortBy: 'updatedAt',
+            sortBy: 'prUpdatedAt',
             sortOrder: 'desc',
             page: 1,
             limit: 30,
@@ -453,8 +519,8 @@ describe('Pull requests page', () => {
         expect(screen.queryAllByRole('button', { name: 'Clear filters' }).length).toBe(0)
     })
 
-    test('more rows load on scroll, 30 at a time', async () => {
-        const many = Array.from({ length: 35 }, (_, index) => ({
+    const manyPullRequests = () =>
+        Array.from({ length: 35 }, (_, index) => ({
             ...base,
             id: `many-${index}`,
             title: `pull request ${index + 1}`,
@@ -463,20 +529,48 @@ describe('Pull requests page', () => {
             prNumber: 500 + index,
             prState: 'open' as const,
         }))
-        const { container } = renderPage(many)
+
+    // happy-dom lays nothing out: the scroll box gets the sizes a browser would give it
+    const setBoxSize = (
+        box: HTMLElement,
+        size: { scrollHeight: number; clientHeight: number; scrollTop: number }
+    ) => {
+        for (const [key, value] of Object.entries(size)) {
+            Object.defineProperty(box, key, { configurable: true, get: () => value })
+        }
+    }
+
+    test('more rows load on scroll, 30 at a time', async () => {
+        const { container } = renderPage(manyPullRequests())
+        const box = container.firstElementChild as HTMLElement
+        // 30 rows are taller than the screen
+        setBoxSize(box, { scrollHeight: 2000, clientHeight: 800, scrollTop: 0 })
         await screen.findByText('pull request 1')
         expect(screen.getByText('pull request 30')).not.toBeNull()
         expect(screen.queryAllByText('pull request 31').length).toBe(0)
 
-        // the page scrolls inside its own box
-        fireEvent.scroll(container.firstElementChild as HTMLElement)
+        // the page scrolls inside its own box, to near the end
+        setBoxSize(box, { scrollHeight: 2000, clientHeight: 800, scrollTop: 1150 })
+        fireEvent.scroll(box)
         expect(await screen.findByText('pull request 35')).not.toBeNull()
-        expect(getPullRequests.mock.calls.at(-1)[0]).toMatchObject({ page: 2, limit: 30 })
+        expect(getPullRequests.mock.calls.at(-1)[0]).toMatchObject({ cursor: '30', limit: 30 })
 
         // every row is loaded: another scroll asks for nothing
         const calls = getPullRequests.mock.calls.length
-        fireEvent.scroll(container.firstElementChild as HTMLElement)
+        fireEvent.scroll(box)
         expect(getPullRequests.mock.calls.length).toBe(calls)
+    })
+
+    test('on a tall screen the next rows load when the first ones fit with no scroll', async () => {
+        const { container } = renderPage(manyPullRequests())
+        // the screen is taller than 30 rows: no scroll bar, so no scroll ever comes
+        setBoxSize(container.firstElementChild as HTMLElement, {
+            scrollHeight: 900,
+            clientHeight: 1400,
+            scrollTop: 0,
+        })
+        expect(await screen.findByText('pull request 35')).not.toBeNull()
+        expect(getPullRequests.mock.calls.at(-1)[0]).toMatchObject({ cursor: '30', limit: 30 })
     })
 
     test('a row opens its session on the pull request view', async () => {
@@ -492,6 +586,31 @@ describe('Pull requests page', () => {
         expect(link.getAttribute('href')).toBe('https://github.com/acme/web/pull/412')
         fireEvent.click(link)
         expect(onOpenProject).not.toHaveBeenCalled()
+    })
+
+    test('the Open count comes with the rows when the server sends it', async () => {
+        // the counts query says 2; the list, read after the host was asked, says 5
+        renderPage(sessions, { open: 2, listOpenCount: 5 })
+        await screen.findByText('fix: login redirect loop')
+        await waitFor(() => expect(openSwitch().textContent).toBe('Open5'))
+    })
+
+    test('the search box takes no more than the server does', async () => {
+        renderPage()
+        const box = screen.getByRole('textbox', { name: 'Search pull requests' })
+        expect(box.getAttribute('maxlength')).toBe('200')
+    })
+
+    test('a GitLab row names GitLab on its link', async () => {
+        renderPage([{ ...sessions[0], gitProvider: 'GITLAB' }])
+        expect(await screen.findByLabelText('Open pull request 412 on GitLab')).not.toBeNull()
+        expect(screen.queryAllByLabelText('Open pull request 412 on GitHub').length).toBe(0)
+    })
+
+    test('a user with GitLab connected is not asked to connect GitHub', async () => {
+        renderPage([], { githubConnected: false, gitlabConnected: true })
+        expect(await screen.findByText('No pull requests yet')).not.toBeNull()
+        expect(screen.queryAllByText('Connect GitHub to see pull requests').length).toBe(0)
     })
 
     test('empty states', async () => {

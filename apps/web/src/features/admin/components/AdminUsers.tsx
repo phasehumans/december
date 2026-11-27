@@ -385,6 +385,36 @@ const FILTERS: Array<{ id: AdminUserFilter; label: string }> = [
     { id: 'feedback', label: 'Feedback' },
 ]
 
+/**
+ * A5: copies "name, email, turn-off link" for every person with product emails on, ready to
+ * paste into scripts/users.txt for announce.py. Nothing is shown on the page.
+ */
+const ProductEmailListButton: React.FC = () => {
+    const [state, setState] = useState<'idle' | 'busy' | 'done' | 'failed'>('idle')
+    const [count, setCount] = useState(0)
+    const copy = async () => {
+        setState('busy')
+        try {
+            const list = await adminAPI.getProductEmailList()
+            await navigator.clipboard.writeText(list.text)
+            setCount(list.count)
+            setState('done')
+        } catch (error) {
+            console.error('[admin] product email list:', error)
+            setState('failed')
+        }
+    }
+    return (
+        <AdminButton onClick={() => void copy()} disabled={state === 'busy'}>
+            {state === 'done'
+                ? `Copied ${count} ${count === 1 ? 'person' : 'people'}`
+                : state === 'failed'
+                  ? 'Could not copy, try again'
+                  : 'Copy product-email list'}
+        </AdminButton>
+    )
+}
+
 /** The Users tab. The filter lives in the page address (#users/asked), so links can open it. */
 export const AdminUsers: React.FC<{
     filter: AdminUserFilter
@@ -443,6 +473,7 @@ export const AdminUsers: React.FC<{
                         {money(ledger.cap.userCapCents)} a user
                     </Muted>
                 )}
+                <ProductEmailListButton />
             </div>
 
             {/* one row that scrolls sideways on a phone */}

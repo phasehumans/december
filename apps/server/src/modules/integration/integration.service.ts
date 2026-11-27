@@ -36,25 +36,13 @@ const connectGithub = async (data: ConnectGithub) => {
     }
 
     try {
-        const updatedUser = await integrationRepository.updateUserGithub({
+        // no inbox item: the user just did it and the Connections page shows it (R1)
+        return await integrationRepository.updateUserGithub({
             id: userId,
             username,
             accessToken,
             githubId: githubIdToSave,
         })
-
-        try {
-            await notificationService.sendNotificationToUser({
-                userId,
-                title: 'GitHub Connected',
-                message: `Successfully connected with GitHub integration as @${username}!`,
-                type: 'SUCCESS',
-            })
-        } catch (error) {
-            console.error('Failed to send github connection notification:', error)
-        }
-
-        return updatedUser
     } catch (error: any) {
         if (error.code === 'P2025') {
             throw new AppError('user not found', 404)
@@ -169,17 +157,7 @@ const connectGitlab = async (data: ConnectGitlab) => {
         expiresAt: tokens.expiresAt,
     })
 
-    try {
-        await notificationService.sendNotificationToUser({
-            userId,
-            title: 'GitLab Connected',
-            message: `Successfully connected with GitLab as @${connection.username}!`,
-            type: 'SUCCESS',
-        })
-    } catch (error) {
-        console.error('Failed to send gitlab connection notification:', error)
-    }
-
+    // no inbox item: the user just did it and the Connections page shows it (R1)
     return connection
 }
 
@@ -216,6 +194,18 @@ const getGitlabAccessToken = async (data: GitlabUser): Promise<string> => {
         })
     } catch (error) {
         if (error instanceof GitProviderError) {
+            // N5: one "Reconnect GitLab" item while it stays unread, not one per failed call
+            await notificationService
+                .sendNotificationOnce({
+                    userId,
+                    title: 'Reconnect GitLab',
+                    message: 'December could not renew your GitLab sign-in. Connect it again.',
+                    type: 'WARNING',
+                    link: '/settings/connections',
+                })
+                .catch((noticeError) => {
+                    console.error('[Integration] reconnect notice failed:', noticeError)
+                })
             throw new AppError(error.message, 401)
         }
         throw error

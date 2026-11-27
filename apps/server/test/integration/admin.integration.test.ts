@@ -315,6 +315,16 @@ describe('admin api', () => {
             const notes = await prisma.notification.count({ where: { userId: requester.userId } })
             expect(notes).toBe(1)
             expect(await auditRows('credit_request.approve', approveId)).toBe(1)
+
+            // the user gets the mail; the admin gets one inbox item and no mail
+            expect(sentTo).toContain(`requester-${stamp}@example.com`)
+            const adminItems = await prisma.notification.findMany({
+                where: { userId: admin.userId, title: 'Free credits approved: $5.00' },
+            })
+            expect(adminItems.map((row) => row.message)).toEqual([
+                `requester-${stamp}@example.com got $5.00 in free credits.`,
+            ])
+            expect(sentTo.map((to) => to.toLowerCase())).not.toContain(adminEmail)
         })
 
         it('a rejection is final: the email cannot request again', async () => {
@@ -332,6 +342,61 @@ describe('admin api', () => {
                 .set('Authorization', `Bearer ${rejected.token}`)
             expect(status.body.data.status).toBe('REJECTED')
             expect(status.body.data.rejectReason).toBe('throwaway inbox')
+
+            // N1: the user hears back in the inbox with the reason, and gets no mail
+            const notes = await prisma.notification.findMany({ where: { userId: rejected.userId } })
+            expect(notes).toHaveLength(1)
+            expect(notes[0]).toMatchObject({
+                title: 'Free credit request declined',
+                message: 'throwaway inbox',
+                link: '/settings/billing',
+            })
+            expect(sentTo).not.toContain(`rejected-${stamp}@yopmail.com`)
+
+            // and the admin sees the decline in their inbox, not by mail
+            const adminItem = await prisma.notification.findFirst({
+                where: { userId: admin.userId, title: 'Free credit request declined' },
+            })
+            expect(adminItem?.message).toBe(`rejected-${stamp}@yopmail.com: throwaway inbox`)
+            expect(sentTo.map((to) => to.toLowerCase())).not.toContain(adminEmail)
+        })
+    })
+
+    describe('A5 product-email list', () => {
+        it('lists only live, verified people with product emails on, with their turn-off link, audited', async () => {
+            const optedIn = await createSignedInUser({
+                email: `news-yes-${stamp}@example.com`,
+                name: 'Ada, Lovelace',
+            })
+            const optedOut = await createSignedInUser({ email: `news-no-${stamp}@example.com` })
+            const deleted = await createSignedInUser({ email: `news-gone-${stamp}@example.com` })
+            extraUserIds.push(optedIn.userId, optedOut.userId, deleted.userId)
+            await prisma.user.update({
+                where: { id: optedOut.userId },
+                data: { notifyProductUpdates: false },
+            })
+            await prisma.user.update({ where: { id: deleted.userId }, data: { isDeleted: true } })
+
+            const res = await as(admin.token).get('/product-email-list')
+            expect(res.status).toBe(200)
+            const lines: string[] = res.body.data.text.split('\n')
+            expect(res.body.data.count).toBe(lines.length)
+            const mine = lines.find((line) => line.includes(`news-yes-${stamp}@example.com`))
+            // the comma in the name would split the line in announce.py
+            expect(mine).toBe(
+                `Ada Lovelace, news-yes-${stamp}@example.com, ${buildUnsubscribeUrl(optedIn.userId)}`
+            )
+            expect(res.body.data.text).not.toContain(`news-no-${stamp}`)
+            expect(res.body.data.text).not.toContain(`news-gone-${stamp}`)
+            expect(
+                await prisma.adminAuditLog.count({
+                    where: { action: 'users.product_email_list', adminUserId: admin.userId },
+                })
+            ).toBeGreaterThanOrEqual(1)
+        })
+
+        it('is admin only', async () => {
+            expect((await as(member.token).get('/product-email-list')).status).toBe(404)
         })
     })
 
@@ -369,6 +434,12 @@ describe('admin api', () => {
             expect(note?.message).toBe('$2.00 is in your wallet.')
             expect(note?.link).toBe('/settings/billing')
             expect(sentTo.map((to) => to.toLowerCase())).toContain(`added-${stamp}@example.com`)
+            // the admin: an inbox item, never a mail
+            const adminItem = await prisma.notification.findFirst({
+                where: { userId: admin.userId, title: 'Credits added: $2.00' },
+            })
+            expect(adminItem?.message).toContain(`added-${stamp}@example.com`)
+            expect(sentTo.map((to) => to.toLowerCase())).not.toContain(adminEmail)
         })
 
         it('added credits stop at the 24-hour cap, and the ledger shows the cap', async () => {
@@ -600,6 +671,31 @@ describe('admin api', () => {
                 .type('form')
                 .send({ u: admin.userId, t })
             expect(forged.status).toBe(400)
+        })
+
+        it('a mail app one-click unsubscribe (RFC 8058) posts to the link itself', async () => {
+            const person = await createSignedInUser({ email: `one-click-${stamp}@example.com` })
+            extraUserIds.push(person.userId)
+            const url = new URL(buildUnsubscribeUrl(person.userId))
+
+            const res = await request(app)
+                .post(`${url.pathname}${url.search}`)
+                .set('x-forwarded-for', getRandomIP())
+                .type('form')
+                .send({ 'List-Unsubscribe': 'One-Click' })
+            expect(res.status).toBe(200)
+            const user = await prisma.user.findUniqueOrThrow({ where: { id: person.userId } })
+            expect(user.notifyProductUpdates).toBe(false)
+
+            // a wrong token in the link is refused the same way
+            const bad = new URL(buildUnsubscribeUrl(member.userId))
+            bad.searchParams.set('t', 'f'.repeat(64))
+            const refused = await request(app)
+                .post(`${bad.pathname}${bad.search}`)
+                .set('x-forwarded-for', getRandomIP())
+                .type('form')
+                .send({ 'List-Unsubscribe': 'One-Click' })
+            expect(refused.status).toBe(400)
         })
     })
 

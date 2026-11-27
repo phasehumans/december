@@ -3,12 +3,7 @@ import Redis from 'ioredis'
 
 import { env } from '../../env'
 
-import type {
-    EmailJobData,
-    SendMessageJobData,
-    SendOtpEmailParams,
-    SendWelcomeEmailParams,
-} from './email.types'
+import type { EmailJobData, SendMessageJobData, SendOtpEmailParams } from './email.types'
 
 /**
  * tests use their own queue: the dev server shares the same local redis, and its worker
@@ -61,21 +56,6 @@ export const enqueueOtpJob = async (data: SendOtpEmailParams) => {
         },
         {
             priority: 1,
-        }
-    )
-}
-
-export const enqueueWelcomeJob = async (data: SendWelcomeEmailParams) => {
-    const queue = getEmailQueue()
-    return queue.add(
-        'send_welcome',
-        {
-            type: 'welcome',
-            to: data.to,
-            name: data.name,
-        },
-        {
-            priority: 5,
         }
     )
 }

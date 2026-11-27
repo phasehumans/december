@@ -265,7 +265,7 @@ describe('account page: browser push', () => {
             expect(screen.queryByRole('switch', { name: 'Browser push' })).toBeNull()
         )
         // the other rows are there
-        expect(screen.getByRole('switch', { name: 'Email' })).toBeDefined()
+        expect(screen.getByRole('switch', { name: 'Product updates' })).toBeDefined()
     })
 
     test('the switch shows the server state for this user, not what the browser has', async () => {

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import React from 'react'
 
-import { SettingsInput, SettingsRow, SettingsSection } from './SettingsUi'
+import { SettingsRow, SettingsSection } from './SettingsUi'
 
 import { ChoiceGroup, Switch } from '@/features/connections/components/ConnectionsUi'
 import {
@@ -17,25 +17,14 @@ const LEVELS: { value: NotifyLevel; label: string }[] = [
     { value: 'NONE', label: 'Nothing' },
 ]
 
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
-
-/** the time zone of this browser, so the summary comes at the user's local time */
-const browserTimezone = () => {
-    try {
-        return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-    } catch {
-        // Intentionally swallowed: an old browser without Intl time zones gets UTC
-        return 'UTC'
-    }
-}
-
 interface AccountNotificationsSectionProps {
     onNotificationChange: (settings: UpdateNotificationInput) => void
 }
 
 /**
- * Notifications, a section of the Account page (N1-D, #636): the level, email, browser push
- * for this device, the daily summary, then product updates and security alerts (always on).
+ * Notifications, a section of the Account page (N1-D, #636): the level, browser push for
+ * this device, then product updates and security alerts (always on). December sends no
+ * email for these: the inbox and push only (inbox review S1, S2).
  */
 export const AccountNotificationsSection: React.FC<AccountNotificationsSectionProps> = ({
     onNotificationChange,
@@ -44,9 +33,6 @@ export const AccountNotificationsSection: React.FC<AccountNotificationsSectionPr
     const push = useBrowserPush()
 
     const level = profile?.notifyLevel ?? 'IMPORTANT'
-    const savedTime = profile?.digestTime ?? '09:00'
-    const [digestTime, setDigestTime] = React.useState(savedTime)
-    React.useEffect(() => setDigestTime(savedTime), [savedTime])
 
     const showPush = push.state !== 'unsupported' && push.state !== 'unavailable'
 
@@ -61,13 +47,6 @@ export const AccountNotificationsSection: React.FC<AccountNotificationsSectionPr
                     options={LEVELS}
                     value={level}
                     onChange={(value) => onNotificationChange({ notifyLevel: value })}
-                />
-            </SettingsRow>
-            <SettingsRow label="Email">
-                <Switch
-                    label="Email"
-                    checked={profile?.notifyEmail ?? true}
-                    onChange={(value) => onNotificationChange({ notifyEmail: value })}
                 />
             </SettingsRow>
             {showPush && (
@@ -87,27 +66,6 @@ export const AccountNotificationsSection: React.FC<AccountNotificationsSectionPr
                     />
                 </SettingsRow>
             )}
-            <SettingsRow label="Daily summary">
-                <SettingsInput
-                    label="Daily summary time"
-                    type="time"
-                    value={digestTime}
-                    onChange={(value) => {
-                        setDigestTime(value)
-                        if (TIME_PATTERN.test(value) && value !== savedTime) {
-                            onNotificationChange({ digestTime: value, timezone: browserTimezone() })
-                        }
-                    }}
-                    className="w-[136px]"
-                />
-                <Switch
-                    label="Daily summary"
-                    checked={profile?.digestEnabled ?? false}
-                    onChange={(value) =>
-                        onNotificationChange({ digestEnabled: value, timezone: browserTimezone() })
-                    }
-                />
-            </SettingsRow>
             <SettingsRow label="Product updates">
                 <Switch
                     label="Product updates"

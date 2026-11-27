@@ -8,22 +8,11 @@ export type SendOtpEmailParams = {
     type?: OtpType
 }
 
-export type SendWelcomeEmailParams = {
-    to: string
-    name: string
-}
-
 export type SendOtpJobData = {
     type: 'otp'
     to: string
     otp: string
     otpType?: OtpType
-}
-
-export type SendWelcomeJobData = {
-    type: 'welcome'
-    to: string
-    name: string
 }
 
 export type SendMessageEmailParams = {
@@ -42,7 +31,7 @@ export type SendMessageJobData = {
     text: string
 }
 
-export type EmailJobData = SendOtpJobData | SendWelcomeJobData | SendMessageJobData
+export type EmailJobData = SendOtpJobData | SendMessageJobData
 
 export type ProcessEmailJobResult = {
     success: boolean

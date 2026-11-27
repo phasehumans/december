@@ -1,11 +1,6 @@
 import { describe, it, expect, mock, beforeEach } from 'bun:test'
 
-import {
-    getEmailQueue,
-    setEmailQueue,
-    enqueueOtpJob,
-    enqueueWelcomeJob,
-} from '../../src/modules/email/email.queue'
+import { getEmailQueue, setEmailQueue, enqueueOtpJob } from '../../src/modules/email/email.queue'
 
 describe('Email Queue - Unit Tests', () => {
     let mockQueue: any
@@ -57,23 +52,5 @@ describe('Email Queue - Unit Tests', () => {
 
         expect(result.data.otpType).toBe('signup')
         expect(result.opts.priority).toBe(1)
-    })
-
-    it('should enqueue welcome email job with priority 5 and correct payload', async () => {
-        const result: any = await enqueueWelcomeJob({
-            to: 'welcome@example.com',
-            name: 'Alex Developer',
-        })
-
-        expect(mockQueue.add).toHaveBeenCalledTimes(1)
-        expect(result.name).toBe('send_welcome')
-        expect(result.data).toEqual({
-            type: 'welcome',
-            to: 'welcome@example.com',
-            name: 'Alex Developer',
-        })
-        expect(result.opts).toEqual({
-            priority: 5,
-        })
     })
 })

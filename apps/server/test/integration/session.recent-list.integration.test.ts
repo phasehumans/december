@@ -344,7 +344,13 @@ describe('Session recent list (pin, needs answer, archive merged)', () => {
 
             const res = await as(ownerToken).get('/counts')
             expect(res.status).toBe(200)
-            expect(res.body.data).toEqual({ running: 2, openPullRequests: 2, merged: 0 })
+            expect(res.body.data).toEqual({
+                running: 2,
+                needsAnswer: 0,
+                needsYou: 2,
+                openPullRequests: 2,
+                merged: 0,
+            })
         })
 
         it('counts every session of a user with more than 100, not one page of them', async () => {
@@ -384,7 +390,13 @@ describe('Session recent list (pin, needs answer, archive merged)', () => {
 
             const res = await as(ownerToken).get('/counts')
             expect(res.status).toBe(200)
-            expect(res.body.data).toEqual({ running: 139, openPullRequests: 118, merged: 103 })
+            expect(res.body.data).toEqual({
+                running: 139,
+                needsAnswer: 0,
+                needsYou: 139,
+                openPullRequests: 118,
+                merged: 103,
+            })
         })
     })
 })

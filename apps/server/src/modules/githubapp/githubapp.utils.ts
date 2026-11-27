@@ -394,8 +394,12 @@ export const toPullRequestStateEvent = (
             ? 'draft'
             : 'open'
 
+    const repoId = payload?.repository?.id
     return {
         gitProvider: 'GITHUB',
+        ...(typeof repoId === 'number' || (typeof repoId === 'string' && repoId)
+            ? { repoId: String(repoId) }
+            : {}),
         repoOwner,
         repoName,
         number: pr.number,
@@ -406,5 +410,6 @@ export const toPullRequestStateEvent = (
         openedAt: pr.created_at ?? null,
         mergedAt: pr.merged_at ?? null,
         closedAt: pr.closed_at ?? null,
+        updatedAt: typeof pr.updated_at === 'string' ? pr.updated_at : null,
     }
 }

@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 
 import { useInbox } from '../hooks/useInbox'
+import { useMarkSessionRead } from '../hooks/useMarkSessionRead'
 import { useNotificationLive } from '../hooks/useNotificationLive'
 
 import { useIsPhone } from '@/shared/lib/useIsPhone'
@@ -14,6 +15,7 @@ const SHOW_MS = 6000
 // phones, in the inbox popover's style. clicking it marks it read and opens its link.
 export const NotificationToast: React.FC<{ isAuthenticated: boolean }> = ({ isAuthenticated }) => {
     const { toast, dismiss } = useNotificationLive(isAuthenticated)
+    useMarkSessionRead(isAuthenticated)
     const { markAsRead } = useInbox(false)
     const isPhone = useIsPhone()
     const navigate = useNavigate()

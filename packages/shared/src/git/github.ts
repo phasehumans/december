@@ -1,6 +1,6 @@
 import { createIssueComment } from '../utils/github'
 
-import { GitProviderError, decodeRepoFile } from './types'
+import { GitProviderError, PULL_REQUEST_READ_TIMEOUT_MS, decodeRepoFile } from './types'
 
 import type { CiStatus, GitProvider, GitRepo, PullRequest, RepoDirEntry, TokenSet } from './types'
 
@@ -54,6 +54,7 @@ const toPullRequest = (pr: any): PullRequest => ({
     updatedAt: pr.updated_at,
     mergedAt: pr.merged_at ?? null,
     closedAt: pr.closed_at ?? null,
+    ...(pr.base?.repo?.id != null ? { repoId: String(pr.base.repo.id) } : {}),
 })
 
 const parseRepoUrl: GitProvider['parseRepoUrl'] = (url) => {
@@ -154,6 +155,7 @@ const getPullRequest: GitProvider['getPullRequest'] = async (data) => {
     const { token, repoPath, number } = data
     const res = await fetch(`${API}/repos/${repoPath}/pulls/${number}`, {
         headers: headers(token),
+        signal: AbortSignal.timeout(PULL_REQUEST_READ_TIMEOUT_MS),
     }).catch(() => null)
     if (!res?.ok) return null
     return toPullRequest(await res.json())

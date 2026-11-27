@@ -57,10 +57,7 @@ export interface AdminUserDetails {
         onboardingDoneAt: string | null
         timezone: string
         notifyLevel: 'ALL' | 'IMPORTANT' | 'NONE'
-        notifyEmail: boolean
         notifyPush: boolean
-        // HH:mm when the daily summary is on
-        digest: string | null
         productEmails: boolean
         securityAlerts: boolean
         lastExport: { status: string; createdAt: string } | null
@@ -472,6 +469,9 @@ const post = <T>(path: string, body: object = {}) =>
 
 export const adminAPI = {
     getMe: () => apiRequest<AdminMe>('/admin/me'),
+    // A5: "name, email, turn-off link" per person with product emails on, for announce.py
+    getProductEmailList: () =>
+        apiRequest<{ count: number; text: string }>('/admin/product-email-list'),
     startTotpSetup: () => post<{ qrDataUrl: string; key: string }>('/admin/totp/setup'),
     enableTotp: (code: string) => post<AdminTotpStatus>('/admin/totp/enable', { code }),
     verifyTotp: (code: string) => post<AdminTotpStatus>('/admin/totp/verify', { code }),

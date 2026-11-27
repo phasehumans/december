@@ -17,7 +17,8 @@ export interface SessionMenuProps {
     onTogglePin?: MenuHandler
     /** true while the session is running or starting: shows Stop */
     canStop: boolean
-    onRename: MenuHandler
+    /** left out on the Pull requests page: its rows show the pull request title */
+    onRename?: MenuHandler
     onTags: MenuHandler
     onToggleArchive: MenuHandler
     onStop?: MenuHandler
@@ -25,6 +26,10 @@ export interface SessionMenuProps {
     /** the "open" rows. each one shows only when its handler is given (see useSessionLinks) */
     onOpenPullRequest?: MenuHandler
     onNewInRepo?: MenuHandler
+    /** the words of the open pull request row. the Pull requests page names the host */
+    openPullRequestLabel?: string
+    /** its sheet icon, when the label names a host */
+    openPullRequestIcon?: React.ReactNode
 }
 
 // the size of the sort and filter menu of the sidebar Recent header, on the Sessions page
@@ -54,6 +59,7 @@ export const SessionMenuItems: React.FC<SessionMenuProps> = ({
     onDelete,
     onOpenPullRequest,
     onNewInRepo,
+    openPullRequestLabel = 'Open pull request',
 }) => {
     return (
         <>
@@ -64,7 +70,7 @@ export const SessionMenuItems: React.FC<SessionMenuProps> = ({
                     onClick={onOpenPullRequest}
                     className={itemClass}
                 >
-                    Open pull request
+                    {openPullRequestLabel}
                 </button>
             )}
             {onNewInRepo && (
@@ -78,9 +84,11 @@ export const SessionMenuItems: React.FC<SessionMenuProps> = ({
                     {isPinned ? 'Unpin' : 'Pin'}
                 </button>
             )}
-            <button type="button" role="menuitem" onClick={onRename} className={itemClass}>
-                Rename
-            </button>
+            {onRename && (
+                <button type="button" role="menuitem" onClick={onRename} className={itemClass}>
+                    Rename
+                </button>
+            )}
             <button type="button" role="menuitem" onClick={onTags} className={itemClass}>
                 Tags
             </button>
@@ -131,6 +139,8 @@ export const SessionSheetItems: React.FC<SessionMenuProps & { confirmDelete?: bo
     onDelete,
     onOpenPullRequest,
     onNewInRepo,
+    openPullRequestLabel = 'Open pull request',
+    openPullRequestIcon,
     confirmDelete,
 }) => {
     const [armed, setArmed] = React.useState(false)
@@ -139,8 +149,8 @@ export const SessionSheetItems: React.FC<SessionMenuProps & { confirmDelete?: bo
         <>
             {onOpenPullRequest && (
                 <SheetRow
-                    icon={<Icons.GitPullRequest className="h-4 w-4" />}
-                    label="Open pull request"
+                    icon={openPullRequestIcon ?? <Icons.GitPullRequest className="h-4 w-4" />}
+                    label={openPullRequestLabel}
                     onClick={() => closeThen(() => onOpenPullRequest())}
                 />
             )}
@@ -158,7 +168,13 @@ export const SessionSheetItems: React.FC<SessionMenuProps & { confirmDelete?: bo
                     onClick={onTogglePin}
                 />
             )}
-            <SheetRow icon={<Icons.Edit className="h-4 w-4" />} label="Rename" onClick={onRename} />
+            {onRename && (
+                <SheetRow
+                    icon={<Icons.Edit className="h-4 w-4" />}
+                    label="Rename"
+                    onClick={onRename}
+                />
+            )}
             <SheetRow icon={<Icons.Tag className="h-4 w-4" />} label="Tags" onClick={onTags} />
             <SheetRow
                 icon={<Icons.Archive className="h-4 w-4" />}

@@ -73,6 +73,11 @@ export type ProcessUninstallation = {
     installationId: string
 }
 
+export type NotifyInstallationLost = {
+    installationId: string
+    reason: 'removed' | 'suspended'
+}
+
 export type VerifySignature = {
     payload: string
     signature: string
@@ -307,6 +312,8 @@ export type FindPullRequestOwner = {
 /** a pull request changed on github: the state december saves on its sessions (#632) */
 export type PullRequestStateEvent = {
     gitProvider: 'GITHUB'
+    /** github's id of the repository: it stays the same when the repository is renamed */
+    repoId?: string
     repoOwner: string
     repoName: string
     number: number
@@ -317,4 +324,6 @@ export type PullRequestStateEvent = {
     openedAt?: string | null
     mergedAt?: string | null
     closedAt?: string | null
+    /** the last change of the pull request on github */
+    updatedAt?: string | null
 }

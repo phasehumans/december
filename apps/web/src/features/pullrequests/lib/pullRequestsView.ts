@@ -78,7 +78,8 @@ export type PullRequestsViewParams = Pick<
 /**
  * the view as GET /session/pull-requests filters. onlyOpen is the All | Open switch: a
  * draft is still open, so it shows under Open. Merged and Closed together ask for both
- * states. Newest and Oldest sort by the opened date of the pull request.
+ * states. Last updated sorts by the last change of the pull request on the host, Newest
+ * and Oldest by its opened date.
  */
 export const pullRequestsViewParams = (
     view: PullRequestsView,
@@ -93,7 +94,7 @@ export const pullRequestsViewParams = (
         repo: view.repo || undefined,
         tag: view.tag || undefined,
         search: search.trim() || undefined,
-        sortBy: view.sort === 'updated' ? 'updatedAt' : 'prOpenedAt',
+        sortBy: view.sort === 'updated' ? 'prUpdatedAt' : 'prOpenedAt',
         sortOrder: view.sort === 'oldest' ? 'asc' : 'desc',
     }
 }

@@ -36,6 +36,23 @@ export type SessionFilters = {
     needsAnswer?: boolean
 }
 
+/** prUpdatedAt: the last change of the pull request on the host */
+export type PullRequestSortBy = 'updatedAt' | 'createdAt' | 'prOpenedAt' | 'prUpdatedAt'
+
+/**
+ * where the last page ended: the sort values and the id of its last row. the next page
+ * starts after it, so a row that moves while the user scrolls is not shown twice or skipped
+ */
+export type PullRequestCursor = {
+    sortBy: PullRequestSortBy
+    sortOrder: 'asc' | 'desc'
+    /** ISO date of the sort column; null when the row has none (it sorts last) */
+    value: string | null
+    /** ISO date of the column that orders rows with the same or no value, when there is one */
+    fallback: string | null
+    id: string
+}
+
 export type PullRequestFilters = {
     /** the states to keep; 'open' also matches a row with no saved state */
     states?: Array<'open' | 'draft' | 'merged' | 'closed'>
@@ -45,10 +62,12 @@ export type PullRequestFilters = {
     repo?: string
     tag?: string
     search?: string
-    sortBy?: 'updatedAt' | 'createdAt' | 'prOpenedAt'
+    sortBy?: PullRequestSortBy
     sortOrder?: 'asc' | 'desc'
     page?: number
     limit?: number
+    /** the next page after this cursor; page is not used then */
+    cursor?: PullRequestCursor
 }
 
 export type GetPullRequests = {
@@ -62,6 +81,8 @@ export type RefreshStalePullRequests = {
 
 export type ApplyPullRequestEvent = {
     gitProvider: 'GITHUB' | 'GITLAB'
+    /** the host's id of the repository; rows that saved one match only by it */
+    repoId?: string
     repoOwner: string
     repoName: string
     number: number
@@ -72,6 +93,8 @@ export type ApplyPullRequestEvent = {
     openedAt?: string | null
     mergedAt?: string | null
     closedAt?: string | null
+    /** the last change of the pull request on the host */
+    updatedAt?: string | null
 }
 
 export type GetUserSessions = {
@@ -257,6 +280,10 @@ export type GetSessionCounts = {
 
 export type SessionCounts = {
     running: number
+    /** the agent asked a question and waits */
+    needsAnswer: number
+    /** running or waiting for an answer, each session once (Home Recent count) */
+    needsYou: number
     openPullRequests: number
     merged: number
 }
@@ -401,6 +428,7 @@ export type GetSessionPlan = {
 }
 
 export type SavedPullRequestRow = {
+    gitProvider: 'GITHUB' | 'GITLAB'
     title: string | null
     branch: string | null
     prNumber: number | null
@@ -411,6 +439,7 @@ export type SavedPullRequestRow = {
     prAdditions: number | null
     prDeletions: number | null
     prOpenedAt: Date | null
+    prUpdatedAt: Date | null
     prCheckedAt: Date | null
 }
 
@@ -418,14 +447,17 @@ export type SavedPullRequestRow = {
 // known is left out, so the web shows nothing for it instead of a guess
 export type SessionPullRequest = {
     prNumber?: number
+    /** the host of the repository, so the web names GitHub or GitLab */
+    gitProvider?: 'GITHUB' | 'GITLAB'
     url?: string
     title: string
     state: string
     headRef: string
     baseRef?: string
     diffSummary?: {
-        additions: number
-        deletions: number
+        /** left out when the host does not count lines (GitLab) */
+        additions?: number
+        deletions?: number
         changedFiles?: number
     }
     ciStatus?: 'passing' | 'pending' | 'failed'
@@ -459,6 +491,8 @@ export interface SubmitQuestionAnswer {
 
 export interface MarkQuestionAsked {
     sessionId: string
+    // the agent's first question, shown in the inbox item
+    question?: string
 }
 
 export interface ClearPendingQuestion {

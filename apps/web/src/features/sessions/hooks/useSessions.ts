@@ -9,7 +9,14 @@ const RUNNING_REFRESH_MS = 5000
 const isWorking = (vmStatus?: string | null) =>
     vmStatus === 'RUNNING' || vmStatus === 'PROVISIONING'
 
-export const useSessions = (filters?: SessionFilters, options?: { enabled?: boolean }) => {
+export const useSessions = (
+    filters?: SessionFilters,
+    options?: {
+        enabled?: boolean
+        /** read the list again every 5 s while one of its rows runs or starts */
+        refreshWhileWorking?: boolean
+    }
+) => {
     const isAuthenticated = useAppStore((state) => state.isAuthenticated)
 
     return useQuery({
@@ -17,6 +24,12 @@ export const useSessions = (filters?: SessionFilters, options?: { enabled?: bool
         queryFn: () => sessionAPI.getSessions(filters),
         enabled: isAuthenticated && (options?.enabled ?? true),
         placeholderData: (previousData) => previousData,
+        refetchInterval: options?.refreshWhileWorking
+            ? (query) =>
+                  query.state.data?.sessions?.some((session) => isWorking(session.vmStatus))
+                      ? RUNNING_REFRESH_MS
+                      : false
+            : undefined,
     })
 }
 

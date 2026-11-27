@@ -4,8 +4,14 @@ import {
     createInstallationToken,
     toPullRequestSettings,
 } from '@december/shared'
-import { getGitProvider, gitlabOAuth, resolveAccessToken } from '@december/shared/git'
+import {
+    GitProviderError,
+    getGitProvider,
+    gitlabOAuth,
+    resolveAccessToken,
+} from '@december/shared/git'
 
+import { notifyReconnect } from './inbox-notify'
 import { resolveSecretsEncKey } from './llm-source'
 import {
     branchToSave,
@@ -95,6 +101,12 @@ export const resolveGitToken = async (data: {
             `[GIT] no ${provider.toLowerCase()} token for user ${userId}:`,
             error instanceof Error ? error.message : String(error)
         )
+        // the sign-in ran out and could not be renewed: tell the user once (N5)
+        if (error instanceof GitProviderError) {
+            await notifyReconnect({ userId, provider }).catch((noticeError: unknown) => {
+                console.warn('[GIT] reconnect notice failed:', noticeError)
+            })
+        }
         return null
     }
 }

@@ -20,10 +20,7 @@ export type Profile = {
     notifySecurityAlerts?: boolean
     // what December tells the user about, and where (#636)
     notifyLevel?: NotifyLevel
-    notifyEmail?: boolean
     notifyPush?: boolean
-    digestEnabled?: boolean
-    digestTime?: string
     timezone?: string
     memories?: string | null
     rules?: string | null
@@ -99,10 +96,7 @@ export type NotifyLevel = 'ALL' | 'IMPORTANT' | 'NONE'
 export type UpdateNotificationInput = {
     notifyProductUpdates?: boolean
     notifyLevel?: NotifyLevel
-    notifyEmail?: boolean
     notifyPush?: false
-    digestEnabled?: boolean
-    digestTime?: string
     timezone?: string
 }
 

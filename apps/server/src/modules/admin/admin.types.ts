@@ -47,3 +47,7 @@ export type WriteAuditLog = AdminContext & {
     targetId?: string | null
     metadata?: Record<string, unknown>
 }
+
+export type ListProductEmailUsers = {
+    adminUserId: string
+}

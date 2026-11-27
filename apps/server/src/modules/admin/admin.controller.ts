@@ -85,6 +85,11 @@ const controlSandbox = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, `sandbox ${action} requested`, result)
 })
 
+const listProductEmailUsers = asyncHandler(async (req: Request, res: Response) => {
+    const result = await adminService.listProductEmailUsers({ adminUserId: adminId(req) })
+    return sendSuccess(res, 'product email list fetched', result)
+})
+
 const listCreditLedger = asyncHandler(async (req: Request, res: Response) => {
     const query = creditLedgerQuerySchema.parse(req.query)
     const result = await adminService.listCreditLedger({ adminUserId: adminId(req), ...query })
@@ -92,6 +97,7 @@ const listCreditLedger = asyncHandler(async (req: Request, res: Response) => {
 })
 
 export const adminController = {
+    listProductEmailUsers,
     getMe,
     approveCreditRequest,
     rejectCreditRequest,

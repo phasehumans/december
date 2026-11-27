@@ -12,9 +12,11 @@ import { useAppStore } from '@/app/store'
 import { getViewForPath } from '@/app/types'
 import { notificationAPI } from '@/features/notification/api/notification'
 import { useInbox } from '@/features/notification/hooks/useInbox'
+import { openLabelForLink } from '@/features/notification/lib/notificationLinks'
 import { profileAPI } from '@/features/profile/api/profile'
 import { MobileSettingsLevel } from '@/features/profile/components/MobileSettingsLevel'
 import { ProfileFeedbackModal } from '@/features/profile/components/ProfileFeedbackModal'
+import { ListArt } from '@/features/sessions/components/ListParts'
 import { SessionSheetItems } from '@/features/sessions/components/SessionMenu'
 import { useSessionActions } from '@/features/sessions/hooks/useSessionActions'
 import { useSessionLinks } from '@/features/sessions/hooks/useSessionLinks'
@@ -393,8 +395,16 @@ const InboxList: React.FC<{
                 ))}
             </div>
         )
+    // D1: the inbox tray drawing (88 px, smaller than the list pages), then one title
     if (items.length === 0)
-        return <div className="py-10 text-center text-[13px] text-[#919191]">{emptyText}</div>
+        return (
+            <div className="flex flex-col items-center py-10 text-center">
+                <div className="mb-3 h-[77px] w-[88px] max-w-full text-[#8A8987]">
+                    <ListArt kind="inbox" strokePx={1.8} widthPx={88} />
+                </div>
+                <div className="text-[15px] font-medium text-[#D6D5C9]">{emptyText}</div>
+            </div>
+        )
     return (
         <div className="flex flex-col pb-2">
             {items.map((n) => (
@@ -461,17 +471,8 @@ const exactTime = (iso?: string) => {
     return `${day}, ${time}`
 }
 
-/** the Open button says where it goes (M3-b). unknown links fall back to "Open" */
-export const openLabelForLink = (link: string) => {
-    if (!link.startsWith('/')) return 'Open'
-    if (link.startsWith('/pull-requests')) return 'View pull requests'
-    if (link.startsWith('/settings/billing')) return 'Open billing'
-    if (link.startsWith('/settings/usage')) return 'Open usage'
-    if (link.startsWith('/settings')) return 'Open settings'
-    if (link.startsWith('/sessions/')) return 'Open session'
-    if (link.startsWith('/sessions')) return 'View sessions'
-    return 'Open'
-}
+// the Open button's words, shared with the desktop popover
+export { openLabelForLink }
 
 const NoteDetail: React.FC<{ note: Notification }> = ({ note }) => {
     const { closeThen } = useBottomSheet()

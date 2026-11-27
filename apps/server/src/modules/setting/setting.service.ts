@@ -6,9 +6,7 @@ import { deleteObject, getBinaryFile, putBinaryFile } from '../../shared/project
 import { buildZip, type ZipEntry } from '../../shared/zip'
 import { getAdminPath, isAdminEmail, isValidUnsubscribeToken } from '../admin/admin.utils'
 import { byokService } from '../byok/byok.service'
-import { emailService } from '../email/email.service'
 import { notificationService } from '../notification/notification.service'
-import { appUrl } from '../notification/notification.utils'
 import { sessionService } from '../session/session.service'
 
 import { enqueueDataExport } from './setting.queue'
@@ -41,10 +39,7 @@ export const settingSelect = {
     notifyProductUpdates: true,
     notifySecurityAlerts: true,
     notifyLevel: true,
-    notifyEmail: true,
     notifyPush: true,
-    digestEnabled: true,
-    digestTime: true,
     timezone: true,
 
     creditBalance: true,
@@ -264,25 +259,17 @@ const requestDataExport = async (data: RequestDataExport) => {
     return { export: toDataExportState(created) }
 }
 
-// the last attempt failed: the inbox, and a mail when the user has email on
+// the last attempt failed: the inbox tells the user (no email)
 const tellDataExportFailed = async (data: TellDataExportFailed) => {
-    const { userId, email, notifyEmail } = data
-    const message = 'We could not build your data export. You can ask for it again now.'
+    const { userId } = data
     try {
         await notificationService.sendNotificationToUser({
             userId,
             title: 'Your data export failed',
-            message,
+            message: 'We could not build your data export. You can ask for it again now.',
             type: 'ERROR',
             link: '/settings/account',
         })
-        if (notifyEmail) {
-            await emailService.sendMessageEmail({
-                to: email,
-                subject: 'Your December data export failed',
-                body: `${message}\n\nAsk again on the Account page: ${appUrl()}/settings/account`,
-            })
-        }
     } catch (error) {
         // the export is marked failed in any case, and the user can ask again
         console.error('[Setting] could not tell the user about the failed export:', error)
@@ -290,7 +277,7 @@ const tellDataExportFailed = async (data: TellDataExportFailed) => {
 }
 
 /**
- * The background job: a json file per session in a zip, stored, then emailed as a link.
+ * The background job: a json file per session in a zip, stored, then a link in the inbox.
  * The queue runs a failed job again. Only when the last attempt fails is the export
  * failed and the user told.
  */
@@ -346,7 +333,7 @@ const processDataExport = async (data: ProcessDataExport) => {
 
         const until = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
         const downloadUrl = buildDataExportUrl(exportId)
-        // the inbox always has the link: the mail can fail, and it tells nobody (review C5)
+        // the inbox has the link (no email); the Account page shows it too
         try {
             await notificationService.sendNotificationToUser({
                 userId: record.userId,
@@ -356,22 +343,8 @@ const processDataExport = async (data: ProcessDataExport) => {
                 link: downloadUrl,
             })
         } catch (error) {
-            // the file is ready and the mail below still has the link
+            // the file is ready: the Account page still shows the download link
             console.error('[Setting] could not write the inbox notice of the export:', error)
-        }
-        const sent = await emailService
-            .sendMessageEmail({
-                to: user.email,
-                subject: 'Your December data export',
-                body: [
-                    'Your data export is ready. It has your account and every session with its messages, as JSON files in a zip.',
-                    `Download it here: ${downloadUrl}`,
-                    `The link works until ${until}.`,
-                ].join('\n\n'),
-            })
-            .catch(() => null)
-        if (!sent) {
-            console.warn(`[Setting] the mail of data export ${exportId} was not sent`)
         }
 
         return { status: 'READY', sessions: sessionIds.length, sizeBytes: zip.length }
@@ -383,11 +356,7 @@ const processDataExport = async (data: ProcessDataExport) => {
             throw error
         }
         await settingRepository.markDataExportFailed(exportId, message)
-        await tellDataExportFailed({
-            userId: record.userId,
-            email: record.user.email,
-            notifyEmail: record.user.notifyEmail,
-        })
+        await tellDataExportFailed({ userId: record.userId })
         throw error
     }
 }
@@ -469,11 +438,6 @@ const updateNotifications = async (data: UpdateNotifications) => {
         throw new AppError('at least one notification setting must be provided', 400)
     }
 
-    // before the save: the first summary covers the time from now, not the time it was off
-    if (settings.digestEnabled === true) {
-        await notificationService.startDigestWindow({ userId })
-    }
-
     const updatedUser = await settingRepository.updateNotifications(userId, updateData)
     await invalidateUserSettingCache(userId)
 
@@ -552,6 +516,20 @@ const submitFeedback = async (data: SubmitFeedback) => {
     }
 
     const created = await settingRepository.createFeedback(userId, rating, feedback)
+
+    // A2: the admins see it in their December inbox (no email)
+    try {
+        const text = feedback.replace(/\s+/g, ' ').trim()
+        await notificationService.sendNotificationToAdmins({
+            title: rating ? `Feedback (${rating})` : 'Feedback',
+            message: `${existingUser.email}: ${text.length > 200 ? `${text.slice(0, 199)}…` : text}`,
+            type: 'INFO',
+            link: `${getAdminPath()}#users`,
+        })
+    } catch (error) {
+        // the feedback is saved; the admin still sees it on the Users tab
+        console.error('[Setting] could not tell the admins about new feedback:', error)
+    }
 
     return { id: created.id }
 }

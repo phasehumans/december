@@ -41,6 +41,14 @@ export type SendNotificationToUser = {
 // admin events go to the admins' December inbox, never to their email
 export type SendNotificationToAdmins = Omit<SendNotificationToUser, 'userId'>
 
+// skipped while an unread item with the same title and link is in the inbox
+export type SendNotificationOnce = SendNotificationToUser
+
+export type MarkSessionRead = {
+    userId: string
+    sessionId: string
+}
+
 export type MarkAllAsRead = {
     userId: string
 }
@@ -51,7 +59,7 @@ export type DeleteAllReadNotification = {
 
 export type NotifyLevel = 'ALL' | 'IMPORTANT' | 'NONE'
 
-/** the events that reach email and push (#636). all but SESSION_FINISHED are important */
+/** the events that reach the inbox and push (#636). all but SESSION_FINISHED are important */
 export type NotifyEventKind =
     | 'SESSION_FINISHED'
     | 'SESSION_NEEDS_INPUT'
@@ -82,10 +90,8 @@ export type NotifyEventMessage = {
     title: string
     message: string
     type: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR'
-    // the app path the inbox row, the email and the push open
+    // the app path the inbox row and the push open
     path: string
-    emailSubject: string
-    emailBody: string
 }
 
 export type SendPushToUser = {
@@ -124,19 +130,4 @@ export type RemovePushOnSignOut = {
     userId: string
     // the sign-in that ended. with none, every browser of the user (sign out everywhere)
     authSessionId?: string
-}
-
-export type SendDailyDigests = {
-    now?: Date
-}
-
-export type StartDigestWindow = {
-    userId: string
-    now?: Date
-}
-
-export type DigestSummary = {
-    sessionsFinished: number
-    pullRequestsOpened: number
-    creditsUsedCents: number
 }

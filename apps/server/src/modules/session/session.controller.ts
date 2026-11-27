@@ -41,6 +41,7 @@ import {
     getSessionDesktopViewportParamsSchema,
 } from './session.schema'
 import { sessionService } from './session.service'
+import { decodePullRequestCursor } from './session.utils'
 
 import type { Request, Response } from 'express'
 
@@ -209,12 +210,34 @@ export const unarchiveSessions = asyncHandler(async (req: Request, res: Response
 export const getPullRequests = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId
     if (!userId) throw new AppError('unauthorized', 401)
-    const { state, isArchived, repo, tag, search, sortBy, sortOrder, page, limit } =
+    const { state, isArchived, repo, tag, search, sortBy, sortOrder, page, limit, cursor } =
         getPullRequestsSchema.parse(req.query)
+
+    // a cursor holds the sort it was made for: another sort cannot continue from it
+    const decoded = cursor ? decodePullRequestCursor(cursor) : undefined
+    if (
+        decoded === null ||
+        (decoded &&
+            (decoded.sortBy !== (sortBy ?? 'updatedAt') ||
+                decoded.sortOrder !== (sortOrder ?? 'desc')))
+    ) {
+        throw new AppError('invalid cursor', 400)
+    }
 
     const result = await sessionService.getPullRequests({
         userId,
-        filters: { states: state, isArchived, repo, tag, search, sortBy, sortOrder, page, limit },
+        filters: {
+            states: state,
+            isArchived,
+            repo,
+            tag,
+            search,
+            sortBy,
+            sortOrder,
+            page,
+            limit,
+            cursor: decoded,
+        },
     })
     return sendSuccess(res, 'pull requests fetched successfully', result)
 })

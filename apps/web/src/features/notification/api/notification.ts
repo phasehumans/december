@@ -68,6 +68,14 @@ const markAllAsRead = () => {
     })
 }
 
+// N6: opening a session reads its unread items (input, failed, finished, pull request)
+const markSessionRead = (sessionId: string) => {
+    return apiRequest<{ updated: number }>(
+        `/notification/read-session/${encodeURIComponent(sessionId)}`,
+        { method: 'PATCH' }
+    )
+}
+
 const deleteNotification = (id: string) => {
     return apiRequest<void>(`/notification/${id}`, {
         method: 'DELETE',
@@ -92,6 +100,7 @@ export const notificationAPI = {
     getNotificationById,
     markAsRead,
     markAllAsRead,
+    markSessionRead,
     deleteNotification,
     deleteAllRead,
     deleteAll,

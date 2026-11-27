@@ -99,6 +99,10 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
     } else if (event === 'installation' && payload.action === 'deleted') {
         const installationId = payload.installation.id.toString()
         await githubAppService.processUninstallation({ installationId })
+    } else if (event === 'installation' && payload.action === 'suspend') {
+        // the row stays: an unsuspend makes it work again
+        const installationId = payload.installation.id.toString()
+        await githubAppService.notifyInstallationLost({ installationId, reason: 'suspended' })
     } else if (event === 'issue_comment' && payload.action === 'created') {
         const installationId = payload.installation?.id?.toString()
         if (installationId) {

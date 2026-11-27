@@ -33,6 +33,8 @@ adminRouter.get('/credit-ledger', adminController.listCreditLedger)
 
 // users
 adminRouter.get('/users', adminController.listUsers)
+// the people with product emails on, for scripts/users.txt (A5)
+adminRouter.get('/product-email-list', adminController.listProductEmailUsers)
 adminRouter.get('/users/:id', adminController.getUser)
 // the only user action: add credits, within the daily limits ($10 a user, $50 in total)
 adminRouter.post('/users/:id/credits', adminController.adjustCredits)

@@ -292,8 +292,13 @@ const showUnsubscribe = asyncHandler(async (req: Request, res: Response) => {
         )
 })
 
+// the form on the page sends u and t in the body. a mail app's one-click unsubscribe
+// (List-Unsubscribe-Post, RFC 8058) posts to the link itself, so they are in the query
 const unsubscribe = asyncHandler(async (req: Request, res: Response) => {
-    const { u, t } = unsubscribeQuerySchema.parse(req.body)
+    const { u, t } = unsubscribeQuerySchema.parse({
+        u: req.body?.u ?? req.query.u,
+        t: req.body?.t ?? req.query.t,
+    })
     await settingService.unsubscribe({ userId: u, token: t })
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     return res

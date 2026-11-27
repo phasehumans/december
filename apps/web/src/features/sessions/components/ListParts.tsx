@@ -25,6 +25,8 @@ export const ListSearchInput: React.FC<{
             placeholder={placeholder}
             aria-label={placeholder.replace(/\.+$/, '')}
             value={value}
+            // the server takes searches of 200 characters at most
+            maxLength={200}
             onChange={(e) => onChange(e.target.value)}
             className="w-full rounded-lg border border-[#282828] bg-[#202020] py-1.5 pl-9 pr-4 text-[13px] text-[#949494] transition-colors placeholder:text-[#949494] hover:bg-[#282828] focus:border-[#7B7A79] focus:bg-[#202020] focus:outline-none"
         />
@@ -144,7 +146,13 @@ export const MetaDot: React.FC = () => <span className="text-[#4A4A4A]">·</span
 // D1, then NS3, NP1, GH4, NR2, CL1 and size SZ2). the lines are plain paths in a 128 x 112
 // box; a small displacement filter gives the hand-drawn look. no decoration marks.
 
-export type ListArtKind = 'sessions' | 'pullRequests' | 'connect' | 'noResults' | 'loadError'
+export type ListArtKind =
+    | 'sessions'
+    | 'pullRequests'
+    | 'connect'
+    | 'noResults'
+    | 'loadError'
+    | 'inbox'
 
 const circlePath = (cx: number, cy: number, r: number) =>
     `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`
@@ -199,6 +207,13 @@ const LIST_ART: Record<ListArtKind, ListArtShapes> = {
             'M103 77l19 19',
         ],
     },
+    // an empty inbox (D1): an inbox tray with nothing in it
+    inbox: {
+        lines: [
+            'M14 62L32 22H96L114 62V92a10 10 0 0 1-10 10H24a10 10 0 0 1-10-10Z',
+            'M14 62H44q3 16 20 16t20-16H114',
+        ],
+    },
     // the list could not load: a cloud with a line through it
     loadError: {
         lines: ['M36 88a21 21 0 0 1-2-42a28 28 0 0 1 54-6a23 23 0 0 1 4 48Z'],
@@ -209,16 +224,25 @@ const LIST_ART: Record<ListArtKind, ListArtShapes> = {
 /** the drawing is shown 160 px wide. the line stays 2.4 px on screen at that size */
 const LIST_ART_STROKE = (2.4 * 128) / 160
 
-export const ListArt: React.FC<{ kind: ListArtKind }> = ({ kind }) => {
+/**
+ * strokePx and widthPx: a smaller drawing (the inbox) keeps a line that reads at its size.
+ * Left out, the line is 2.4 px at 160 px wide, as on the list pages.
+ */
+export const ListArt: React.FC<{ kind: ListArtKind; strokePx?: number; widthPx?: number }> = ({
+    kind,
+    strokePx,
+    widthPx,
+}) => {
     // useId can hold characters that do not work inside url(#...)
     const filterId = `list-art-${React.useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
     const art = LIST_ART[kind]
+    const stroke = strokePx && widthPx ? (strokePx * 128) / widthPx : LIST_ART_STROKE
     return (
         <svg
             viewBox="0 0 128 112"
             fill="none"
             stroke="currentColor"
-            strokeWidth={LIST_ART_STROKE}
+            strokeWidth={stroke}
             strokeLinecap="round"
             strokeLinejoin="round"
             className="h-full w-full"
@@ -254,7 +278,7 @@ export const ListArt: React.FC<{ kind: ListArtKind }> = ({ kind }) => {
                         <path
                             d={d}
                             stroke="var(--color-background, #141414)"
-                            strokeWidth={LIST_ART_STROKE * 4.5}
+                            strokeWidth={stroke * 4.5}
                         />
                         <path d={d} />
                     </React.Fragment>

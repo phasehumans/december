@@ -77,7 +77,12 @@ export interface PullRequest {
     updatedAt?: string
     mergedAt?: string | null
     closedAt?: string | null
+    /** the host's id of the repository the pull request is in, when the host sends it */
+    repoId?: string
 }
+
+/** a read of one pull request waits this long at most: a host that hangs is no answer */
+export const PULL_REQUEST_READ_TIMEOUT_MS = 10_000
 
 export interface CiStatusInput {
     token: string

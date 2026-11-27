@@ -17,6 +17,7 @@ notificationRouter.delete('/push/subscribe', notificationController.unsubscribeP
 notificationRouter.get('/unread-count', notificationController.getUnreadCount)
 notificationRouter.get('/', notificationController.getNotifications)
 notificationRouter.patch('/read-all', notificationController.markAllAsRead)
+notificationRouter.patch('/read-session/:sessionId', notificationController.markSessionRead)
 notificationRouter.get('/:id', notificationController.getNotificationById)
 notificationRouter.patch('/:id/read', notificationController.markAsRead)
 notificationRouter.delete('/', notificationController.deleteAllReadNotification)

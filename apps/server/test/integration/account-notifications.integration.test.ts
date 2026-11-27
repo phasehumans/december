@@ -87,7 +87,7 @@ const authed = (token: string) => ({
             .send(body),
 })
 
-// #636 part 2: level, email, push, the run events and the daily summary
+// #636 part 2: level, push and the run events. No email for any of them (inbox review)
 describe('notification settings and delivery', () => {
     const stamp = Date.now()
     const savedSendMessage = emailService.sendMessageEmail
@@ -166,23 +166,33 @@ describe('notification settings and delivery', () => {
         pushes.length = 0
         pushStatus = 201
         await prisma.notification.deleteMany({ where: { userId: user.userId } })
-        await setPrefs({ notifyLevel: 'IMPORTANT', notifyEmail: true, notifyPush: false })
+        await setPrefs({ notifyLevel: 'IMPORTANT', notifyPush: false })
     })
 
     describe('settings', () => {
-        it('a new user gets important events by email, no push and no summary', async () => {
+        it('a new user gets important events, no push, and no email or summary settings', async () => {
             await appCache.del(appCache.key('setting', 'profile', user.userId))
             const res = await authed(user.token).get('/setting')
             expect(res.body.data).toMatchObject({
                 notifyLevel: 'IMPORTANT',
-                notifyEmail: true,
                 notifyPush: false,
-                digestEnabled: false,
-                digestTime: '09:00',
                 timezone: 'UTC',
                 notifySecurityAlerts: true,
             })
             expect(res.body.data.notifyProjectActivity).toBeUndefined()
+            expect(res.body.data.notifyEmail).toBeUndefined()
+            expect(res.body.data.digestEnabled).toBeUndefined()
+        })
+
+        it('refuses the removed email and daily summary settings', async () => {
+            for (const body of [
+                { notifyEmail: true },
+                { digestEnabled: true },
+                { digestTime: '09:00' },
+            ]) {
+                const res = await authed(user.token).patch('/setting/notifications', body)
+                expect(res.status).toBe(400)
+            }
         })
     })
 
@@ -202,46 +212,41 @@ describe('notification settings and delivery', () => {
             await event('SESSION_FAILED', { detail: 'tests failed' })
             await event('LOW_CREDITS', { detail: '42' })
 
-            expect(await inboxTitles()).toEqual([
+            const rows = await prisma.notification.findMany({
+                where: { userId: user.userId },
+                orderBy: { createdAt: 'asc' },
+            })
+            expect(rows.map((row) => row.title)).toEqual([
                 'December needs your input',
                 'A session failed',
                 'Your credits are low',
             ])
-            expect(emailsTo().map((sent) => sent.subject)).toEqual([
-                'December needs your input: "Fix the login page"',
-                'A session failed: "Fix the login page"',
-                'Your December credits are low',
-            ])
-            expect(emailsTo()[1]?.body).toContain('tests failed')
-            expect(emailsTo()[1]?.body).toContain(`/session/${sessionId}`)
-            expect(emailsTo()[2]?.body).toContain('$0.42')
+            expect(rows[1]?.message).toContain('tests failed')
+            // the web path of a session (B3)
+            expect(rows[1]?.link).toBe(`/sessions/${sessionId}`)
+            expect(rows[2]?.message).toContain('$0.42')
+            // the inbox only: no email for session events (round 2 rule)
+            expect(emailsTo()).toHaveLength(0)
         })
 
         it('everything: finished goes out too', async () => {
             await setPrefs({ notifyLevel: 'ALL' })
             await event('SESSION_FINISHED')
             expect(await inboxTitles()).toEqual(['A session finished'])
-            expect(emailsTo()).toHaveLength(1)
+            expect(emailsTo()).toHaveLength(0)
         })
 
         it('nothing: no inbox row and no email', async () => {
             await setPrefs({ notifyLevel: 'NONE' })
             const result = await event('SESSION_FAILED')
-            expect(result).toEqual({ inbox: false, email: false, push: 0 })
+            expect(result).toEqual({ inbox: false, push: 0 })
             expect(await inboxTitles()).toEqual([])
-            expect(emailsTo()).toHaveLength(0)
-        })
-
-        it('email off: the inbox only', async () => {
-            await setPrefs({ notifyEmail: false })
-            await event('SESSION_FAILED')
-            expect(await inboxTitles()).toEqual(['A session failed'])
             expect(emailsTo()).toHaveLength(0)
         })
 
         it('while the user watches the session: the inbox only', async () => {
             const result = await event('SESSION_NEEDS_INPUT', { isWatching: true })
-            expect(result).toEqual({ inbox: true, email: false, push: 0 })
+            expect(result).toEqual({ inbox: true, push: 0 })
             expect(emailsTo()).toHaveLength(0)
         })
     })
@@ -295,7 +300,7 @@ describe('notification settings and delivery', () => {
                 title: 'December needs your input',
                 body: '"Fix the login page" is waiting for your answer.',
             })
-            expect(payload.url).toContain(`/session/${sessionId}`)
+            expect(payload.url).toContain(`/sessions/${sessionId}`)
         })
 
         it('removes a browser that the push service says is gone', async () => {
@@ -358,8 +363,10 @@ describe('notification settings and delivery', () => {
             })
             await sessionService.handleRunEvent({ sessionId: id, event: { type: 'AgentEnd' } })
 
-            expect(await inboxTitles()).toEqual(['A session failed'])
-            expect(emailsTo()[0]?.body).toContain('model timed out')
+            const rows = await prisma.notification.findMany({ where: { userId: user.userId } })
+            expect(rows.map((row) => row.title)).toEqual(['A session failed'])
+            expect(rows[0]?.message).toContain('model timed out')
+            expect(emailsTo()).toHaveLength(0)
         })
 
         it('a run that ends well is "finished", once', async () => {
@@ -372,10 +379,20 @@ describe('notification settings and delivery', () => {
 
         it('a question notifies once, however many nodes see it', async () => {
             const id = await newSession()
-            await sessionService.markQuestionAsked({ sessionId: id })
-            await sessionService.markQuestionAsked({ sessionId: id })
-            expect(await inboxTitles()).toEqual(['December needs your input'])
-            expect(emailsTo()).toHaveLength(1)
+            await sessionService.markQuestionAsked({
+                sessionId: id,
+                question: 'Keep  the old\ncookie?',
+            })
+            await sessionService.markQuestionAsked({
+                sessionId: id,
+                question: 'Keep the old cookie?',
+            })
+            const rows = await prisma.notification.findMany({ where: { userId: user.userId } })
+            expect(rows.map((row) => row.title)).toEqual(['December needs your input'])
+            // the agent's question is in the item (it used to be a second item from the worker)
+            expect(rows[0]?.message).toBe('Run events: Keep the old cookie?')
+            expect(rows[0]?.link).toBe(`/sessions/${id}`)
+            expect(emailsTo()).toHaveLength(0)
         })
 
         it('low credits notifies once with the balance', async () => {
@@ -388,260 +405,66 @@ describe('notification settings and delivery', () => {
                 sessionId: id,
                 event: { type: 'CreditsLow', balanceInCents: 80 },
             })
-            expect(await inboxTitles()).toEqual(['Your credits are low'])
-            expect(emailsTo()[0]?.body).toContain('$0.87')
+            const rows = await prisma.notification.findMany({ where: { userId: user.userId } })
+            expect(rows.map((row) => row.title)).toEqual(['Your credits are low'])
+            expect(rows[0]?.message).toContain('$0.87')
+            expect(emailsTo()).toHaveLength(0)
         })
     })
 
-    describe('daily summary', () => {
-        // 10:00 UTC, an hour after a 09:00 summary time
-        const now = new Date('2026-11-25T10:00:00Z')
-        let busy: { userId: string; token: string }
-        let quiet: { userId: string; token: string }
-
-        /** a session December worked on: the worker saves one assistant message for each turn */
-        const workedOn = (data: {
-            userId: string
-            status: 'PARKED' | 'RUNNING' | 'FAILED'
-            messageStatus: 'done' | 'error'
-            at?: Date
-        }) =>
-            prisma.session.create({
-                data: {
-                    userId: data.userId,
-                    title: `A ${data.status} session`,
-                    status: data.status,
-                    messages: {
-                        create: [
-                            {
-                                role: 'ASSISTANT',
-                                content: 'a turn',
-                                status: data.messageStatus,
-                                sequence: 1,
-                                createdAt: data.at ?? new Date('2026-11-25T07:30:00Z'),
-                            },
-                        ],
-                    },
-                },
-            })
-        const summariesTo = (to: string) =>
-            emails.filter((sent) => sent.subject === 'Your December day' && sent.to === to)
-
-        beforeAll(async () => {
-            busy = await createSignedInUser({ email: `digest-busy-${stamp}@example.com` })
-            quiet = await createSignedInUser({ email: `digest-quiet-${stamp}@example.com` })
-            userIds.push(busy.userId, quiet.userId)
-            for (const id of [busy.userId, quiet.userId]) {
-                await prisma.user.update({
-                    where: { id },
-                    data: {
-                        digestEnabled: true,
-                        digestTime: '09:00',
-                        timezone: 'UTC',
-                        // the summary of the day before
-                        lastDigestAt: new Date('2026-11-24T09:00:00Z'),
-                    },
+    describe('reading a session (N6) and one item at a time (N5)', () => {
+        it('PATCH /notification/read-session/:id reads only that session of this user', async () => {
+            const other = await createSignedInUser({ email: `notify-other-${stamp}@example.com` })
+            userIds.push(other.userId)
+            const make = (userId: string, link: string | null) =>
+                prisma.notification.create({
+                    data: { userId, title: 'Item', message: 'm', link },
                 })
-            }
-            const session = await prisma.session.create({
-                data: {
-                    userId: busy.userId,
-                    title: 'Busy day',
-                    status: 'PARKED',
-                    prOpenedAt: new Date('2026-11-25T08:00:00Z'),
-                    messages: {
-                        create: [
-                            {
-                                role: 'ASSISTANT',
-                                content: 'done',
-                                status: 'done',
-                                sequence: 1,
-                                createdAt: new Date('2026-11-25T07:00:00Z'),
-                            },
-                        ],
-                    },
-                },
-            })
-            // worked on, not finished: one run is still going and one failed
-            await workedOn({ userId: busy.userId, status: 'RUNNING', messageStatus: 'done' })
-            await workedOn({ userId: busy.userId, status: 'FAILED', messageStatus: 'error' })
-            await prisma.usageEvent.create({
-                data: {
-                    userId: busy.userId,
-                    sessionId: session.id,
-                    model: 'test-model',
-                    inputTokens: 1,
-                    outputTokens: 1,
-                    totalTokens: 2,
-                    costInCents: 123,
-                    billingSource: 'CREDITS',
-                    periodStart: new Date('2026-11-01T00:00:00Z'),
-                    periodEnd: new Date('2026-12-01T00:00:00Z'),
-                    createdAt: new Date('2026-11-25T07:00:00Z'),
-                },
-            })
-        })
+            const mine = await make(user.userId, `/sessions/${sessionId}`)
+            const older = await make(user.userId, `/session/${sessionId}`)
+            const elsewhere = await make(user.userId, '/sessions/another-session')
+            const notLinked = await make(user.userId, null)
+            const theirs = await make(other.userId, `/sessions/${sessionId}`)
 
-        it('is not sent before the time the user picked', async () => {
-            await notificationService.sendDailyDigests({ now: new Date('2026-11-25T08:59:00Z') })
-            expect(emails.filter((sent) => sent.subject === 'Your December day')).toHaveLength(0)
-        })
-
-        it('sends what happened, and nothing to a user with a quiet day', async () => {
-            await notificationService.sendDailyDigests({ now })
-
-            const summaries = emails.filter((sent) => sent.subject === 'Your December day')
-            expect(summaries.map((sent) => sent.to)).toEqual([`digest-busy-${stamp}@example.com`])
-            // three sessions were worked on; one of them finished
-            expect(summaries[0]?.body).toContain('1 session finished.')
-            expect(summaries[0]?.body).not.toContain('worked on')
-            expect(summaries[0]?.body).toContain('1 pull request was opened.')
-            expect(summaries[0]?.body).toContain('You used $1.23 of credits.')
-
-            // both are marked, so the quiet one is not checked again today
-            const quietRow = await prisma.user.findUnique({ where: { id: quiet.userId } })
-            expect(quietRow?.lastDigestAt?.toISOString()).toBe(now.toISOString())
-        })
-
-        it('sends once a day', async () => {
-            await notificationService.sendDailyDigests({ now: new Date('2026-11-25T18:00:00Z') })
-            expect(emails.filter((sent) => sent.subject === 'Your December day')).toHaveLength(0)
-        })
-
-        it('follows the time zone of the user', async () => {
-            // 09:30 in Kolkata is 04:00 UTC
-            await prisma.user.update({
-                where: { id: busy.userId },
-                data: {
-                    timezone: 'Asia/Kolkata',
-                    digestTime: '09:30',
-                    lastDigestAt: new Date('2026-11-25T04:00:00Z'),
-                },
-            })
-            await notificationService.sendDailyDigests({ now: new Date('2026-11-26T03:59:00Z') })
-            expect(emails.filter((sent) => sent.to.startsWith('digest-busy'))).toHaveLength(0)
-
-            await notificationService.sendDailyDigests({ now: new Date('2026-11-26T04:00:00Z') })
-            expect(emails.filter((sent) => sent.to.startsWith('digest-busy'))).toHaveLength(1)
-        })
-
-        it('a time late in the day goes out at the first tick after midnight', async () => {
-            const to = `digest-late-${stamp}@example.com`
-            const late = await createSignedInUser({ email: to })
-            userIds.push(late.userId)
-            await prisma.user.update({
-                where: { id: late.userId },
-                data: {
-                    digestEnabled: true,
-                    digestTime: '23:50',
-                    timezone: 'UTC',
-                    // the summary of the day before went out at the midnight tick
-                    lastDigestAt: new Date('2026-11-25T00:00:00Z'),
-                },
-            })
-            await workedOn({
-                userId: late.userId,
-                status: 'PARKED',
-                messageStatus: 'done',
-                at: new Date('2026-11-25T12:00:00Z'),
-            })
-
-            // the ticks run on quarter hours: 23:45 is before the time, 00:00 is the next one
-            await notificationService.sendDailyDigests({ now: new Date('2026-11-25T23:45:00Z') })
-            expect(summariesTo(to)).toHaveLength(0)
-
-            await notificationService.sendDailyDigests({ now: new Date('2026-11-26T00:00:00Z') })
-            expect(summariesTo(to)).toHaveLength(1)
-            expect(summariesTo(to)[0]?.body).toContain('1 session finished.')
-
-            await notificationService.sendDailyDigests({ now: new Date('2026-11-26T00:15:00Z') })
-            expect(summariesTo(to)).toHaveLength(1)
-        })
-
-        it('a summary with no saved start begins at the first tick, with no mail for the time before', async () => {
-            const to = `digest-nostart-${stamp}@example.com`
-            const noStart = await createSignedInUser({ email: to })
-            userIds.push(noStart.userId)
-            await prisma.user.update({
-                where: { id: noStart.userId },
-                data: { digestEnabled: true, digestTime: '09:00', timezone: 'UTC' },
-            })
-            await workedOn({
-                userId: noStart.userId,
-                status: 'PARKED',
-                messageStatus: 'done',
-                at: new Date('2026-11-25T07:00:00Z'),
-            })
-
-            await notificationService.sendDailyDigests({ now: new Date('2026-11-25T10:00:00Z') })
-            expect(summariesTo(to)).toHaveLength(0)
-            const row = await prisma.user.findUnique({ where: { id: noStart.userId } })
-            expect(row?.lastDigestAt?.toISOString()).toBe('2026-11-25T10:00:00.000Z')
-
-            await workedOn({
-                userId: noStart.userId,
-                status: 'PARKED',
-                messageStatus: 'done',
-                at: new Date('2026-11-25T12:00:00Z'),
-            })
-            await notificationService.sendDailyDigests({ now: new Date('2026-11-26T09:00:00Z') })
-            expect(summariesTo(to)).toHaveLength(1)
-            expect(summariesTo(to)[0]?.body).toContain('1 session finished.')
-        })
-
-        // this one runs on the real clock (the PATCH saves the moment), so it is the last
-        it('the first summary after the summary was off starts when it was turned on', async () => {
-            const DAY_MS = 24 * 60 * 60 * 1000
-            const to = `digest-back-${stamp}@example.com`
-            const back = await createSignedInUser({ email: to })
-            userIds.push(back.userId)
-            // off for a while: the last summary is 10 days old
-            await prisma.user.update({
-                where: { id: back.userId },
-                data: {
-                    digestEnabled: false,
-                    digestTime: '00:00',
-                    timezone: 'UTC',
-                    lastDigestAt: new Date(Date.now() - 10 * DAY_MS),
-                },
-            })
-            // finished while the summary was off
-            await workedOn({
-                userId: back.userId,
-                status: 'PARKED',
-                messageStatus: 'done',
-                at: new Date(Date.now() - 3 * DAY_MS),
-            })
-
-            const before = Date.now()
-            const res = await authed(back.token).patch('/setting/notifications', {
-                digestEnabled: true,
-            })
+            const res = await authed(user.token).patch(
+                `/notification/read-session/${sessionId}`,
+                {}
+            )
             expect(res.status).toBe(200)
-            const turnedOn = await prisma.user.findUnique({ where: { id: back.userId } })
-            expect(turnedOn?.lastDigestAt?.getTime()).toBeGreaterThanOrEqual(before)
-            expect(turnedOn?.lastDigestAt?.getTime()).toBeLessThanOrEqual(Date.now())
+            expect(res.body.data).toEqual({ updated: 2 })
 
-            // saving "on" again does not move the start
-            const again = await authed(back.token).patch('/setting/notifications', {
-                digestEnabled: true,
-                digestTime: '00:00',
+            const read = async (id: string) =>
+                (await prisma.notification.findUnique({ where: { id } }))?.isRead
+            expect(await read(mine.id)).toBe(true)
+            expect(await read(older.id)).toBe(true)
+            expect(await read(elsewhere.id)).toBe(false)
+            expect(await read(notLinked.id)).toBe(false)
+            expect(await read(theirs.id)).toBe(false)
+        })
+
+        it('PATCH /notification/read-session/:id needs a sign-in', async () => {
+            const res = await request(app)
+                .patch(`/api/v1/notification/read-session/${sessionId}`)
+                .set('x-forwarded-for', getRandomIP())
+            expect(res.status).toBe(401)
+        })
+
+        it('sendNotificationOnce writes nothing while the same item is unread', async () => {
+            const send = () =>
+                notificationService.sendNotificationOnce({
+                    userId: user.userId,
+                    title: 'Reconnect GitLab',
+                    message: 'Connect it again.',
+                    link: '/settings/connections',
+                })
+            expect(await send()).not.toBeNull()
+            expect(await send()).toBeNull()
+            await prisma.notification.updateMany({
+                where: { userId: user.userId },
+                data: { isRead: true },
             })
-            expect(again.status).toBe(200)
-            const saved = await prisma.user.findUnique({ where: { id: back.userId } })
-            expect(saved?.lastDigestAt?.toISOString()).toBe(turnedOn?.lastDigestAt?.toISOString())
-
-            // finished after the summary was turned on
-            await workedOn({
-                userId: back.userId,
-                status: 'PARKED',
-                messageStatus: 'done',
-                at: new Date(),
-            })
-
-            await notificationService.sendDailyDigests({ now: new Date(Date.now() + DAY_MS) })
-            expect(summariesTo(to)).toHaveLength(1)
-            expect(summariesTo(to)[0]?.body).toContain('1 session finished.')
+            expect(await send()).not.toBeNull()
+            expect(await inboxTitles()).toEqual(['Reconnect GitLab', 'Reconnect GitLab'])
         })
     })
 })

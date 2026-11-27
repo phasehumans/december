@@ -18,6 +18,24 @@ const getErrorMessage = (error: unknown, fallback: string) => {
     return fallback
 }
 
+/**
+ * the session that was last open is gone: nothing may point at it any more. without this
+ * the home check, the preview status polling, the slash menu and the search actions kept
+ * using the deleted id, e.g. after a delete from the Sessions page
+ */
+const clearActiveSessionIf = (sessionId: string) => {
+    const state = useAppStore.getState()
+    if (state.activeProjectId !== sessionId) return
+    state.setActiveProjectId(null)
+    state.setActiveProjectName(null)
+    state.setActiveProjectVersionId(null)
+    state.setProjectVersions([])
+    state.setMessages([])
+    state.setGeneratedFiles({})
+    state.setPreviewSession(null)
+    state.setProjectLoadError(null)
+}
+
 export const useSessionListMutations = ({
     setActionError,
     onRenameMutate,
@@ -49,6 +67,18 @@ export const useSessionListMutations = ({
                             return {
                                 ...page,
                                 sessions: page.sessions.map(updater).filter(Boolean),
+                            }
+                        }
+                        // the Pull requests page: one row per session, keyed by sessionId
+                        if (Array.isArray(page.pullRequests)) {
+                            return {
+                                ...page,
+                                pullRequests: page.pullRequests
+                                    .map((row: any) => {
+                                        const next = updater({ ...row, id: row.sessionId })
+                                        return next ? { ...next, sessionId: row.sessionId } : null
+                                    })
+                                    .filter(Boolean),
                             }
                         }
                         if (Array.isArray(page)) {
@@ -193,6 +223,7 @@ export const useSessionListMutations = ({
 
             updateAllSessionsCache((session) => (session.id === sessionId ? null : session))
             queryClient.removeQueries({ queryKey: ['session', sessionId] })
+            clearActiveSessionIf(sessionId)
 
             onDeleteMutate()
         },

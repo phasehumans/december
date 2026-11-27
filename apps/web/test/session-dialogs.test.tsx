@@ -86,7 +86,7 @@ describe('Tags dialog', () => {
         renderTags(['auth'])
         expect(screen.getByText('Tag')).toBeTruthy()
         expect(
-            screen.getByText('One tag per session. Filter by it on the Sessions page.')
+            screen.getByText('One tag per session. Filter by it on Sessions and Pull requests.')
         ).toBeTruthy()
         expect(screen.queryByText(/quick identification/)).toBeNull()
         expect(screen.getByPlaceholderText('Tag name')).toBeTruthy()

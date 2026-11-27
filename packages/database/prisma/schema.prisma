@@ -239,6 +239,10 @@ model Session {
   issueNumber          Int?
   // the pull request December opened for this session (saved by the worker)
   prNumber             Int?
+  // the host's id of the repository the pull request is in (GitHub repo id, GitLab
+  // project id). webhooks match by it, so a renamed repository, or a new one with an old
+  // name, cannot change the pull request of another repository
+  githubRepoId         String?
   prUrl                String?
   prState              String?
   prTitle              String?
@@ -247,6 +251,9 @@ model Session {
   prOpenedAt           DateTime?
   prMergedAt           DateTime?
   prClosedAt           DateTime?
+  // last change of the pull request on the git host (push, edit, state); the Pull
+  // requests page sorts and shows "Updated" by it
+  prUpdatedAt          DateTime?
   // last time prState was read from the git host (refresh on read for missed webhooks)
   prCheckedAt          DateTime?
   prAdditions          Int?
@@ -281,7 +288,6 @@ model Session {
   sandboxStartedAt     DateTime?
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
-  deletedAt            DateTime?
 
   user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   project         Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)

@@ -56,6 +56,8 @@ export interface ProjectDeleteModalProps {
     isPending: boolean
     onClose: () => void
     onConfirm: () => void
+    /** the grey line under the title. the Pull requests page says the pull request stays */
+    description?: string
 }
 
 export type SessionRenameModalProps = ProjectRenameModalProps

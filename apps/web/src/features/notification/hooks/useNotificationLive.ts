@@ -2,7 +2,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import React from 'react'
 import { io } from 'socket.io-client'
 
-import type { Notification } from '../api/notification'
+import { notificationAPI, type Notification } from '../api/notification'
+
+import { sessionIdFromPath } from './useMarkSessionRead'
 
 import { getWebSocketUrl } from '@/shared/config/env'
 
@@ -34,10 +36,25 @@ export const useNotificationLive = (isAuthenticated: boolean) => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] })
             queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] })
             const next = event?.notification
-            if (!event?.toast || !next) return
-            // already looking at that session: the question is on screen, no toast
-            if (next.link && next.link.startsWith('/') && window.location.pathname === next.link)
+            if (!next) return
+            // already looking at that session: it is on screen, so no toast, and read (N6)
+            const openSession = sessionIdFromPath(window.location.pathname)
+            if (openSession && next.link && sessionIdFromPath(next.link) === openSession) {
+                notificationAPI
+                    .markSessionRead(openSession)
+                    .then(() => {
+                        queryClient.invalidateQueries({ queryKey: ['notifications'] })
+                        queryClient.invalidateQueries({
+                            queryKey: ['notifications-unread-count'],
+                        })
+                    })
+                    .catch((error: unknown) => {
+                        // the item stays unread in the inbox
+                        console.warn('[inbox] could not mark the open session read:', error)
+                    })
                 return
+            }
+            if (!event?.toast) return
             setToast(next)
         }
 

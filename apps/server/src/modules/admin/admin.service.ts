@@ -10,6 +10,7 @@ import { notificationService } from '../notification/notification.service'
 
 import { adminRepository } from './admin.repository'
 import {
+    buildUnsubscribeUrl,
     getAdminLimits,
     getAdminPath,
     getSignupMethod,
@@ -22,6 +23,7 @@ import type {
     GetAdminMe,
     GetUser,
     ListCreditLedger,
+    ListProductEmailUsers,
     ListUsers,
     RejectCreditRequest,
     ReviewCreditRequest,
@@ -56,6 +58,29 @@ const alertAdmins = async (data: { title: string; message: string }) => {
         type: 'WARNING',
         link: `${getAdminPath()}#system`,
     })
+}
+
+/**
+ * An admin action that the user hears about (a mail or an inbox item) is also an item in
+ * every admin's December inbox, so the admins see what happened. Admins get no email for
+ * admin work. A failed item never blocks the action.
+ */
+const tellAdmins = async (data: {
+    title: string
+    message: string
+    type: 'INFO' | 'SUCCESS' | 'WARNING'
+}) => {
+    const { title, message, type } = data
+    try {
+        await notificationService.sendNotificationToAdmins({
+            title,
+            message,
+            type,
+            link: `${getAdminPath()}#users`,
+        })
+    } catch (err) {
+        console.error('[admin] admin inbox item failed:', err)
+    }
 }
 
 const dollars = (cents: number) => `$${(Math.abs(cents) / 100).toFixed(2)}`
@@ -150,6 +175,12 @@ const approveCreditRequest = async (data: ReviewCreditRequest) => {
         subject: 'your free december credits are ready',
         body: `hi ${personalize('{name}', result.user.name)},\n\nwe added ${amount} in free credits to your december wallet. start a task here: ${appUrl()}\n\nwe would love your feedback when you have tried it: just reply to this email.`,
     })
+    // the user gets the mail; the admins get an inbox item, never a mail
+    await tellAdmins({
+        title: `Free credits approved: ${amount}`,
+        message: `${result.user.email} got ${amount} in free credits.`,
+        type: 'SUCCESS',
+    })
 
     return { id: requestId, status: 'APPROVED', creditBalance: result.user.creditBalance }
 }
@@ -170,6 +201,27 @@ const rejectCreditRequest = async (data: RejectCreditRequest) => {
         targetId: requestId,
         metadata: { reason },
     })
+
+    // N1: the user hears back in their inbox, with the reason (no email)
+    const request = await adminRepository.findCreditRequest(requestId)
+    await tellAdmins({
+        title: 'Free credit request declined',
+        message: `${request?.user?.email ?? request?.normalizedEmail ?? requestId}: ${reason}`,
+        type: 'INFO',
+    })
+    if (request?.userId && !request.user?.isDeleted) {
+        try {
+            await notificationService.sendNotificationToUser({
+                userId: request.userId,
+                title: 'Free credit request declined',
+                message: reason,
+                type: 'WARNING',
+                link: '/settings/billing',
+            })
+        } catch (err) {
+            console.error('[admin] decline notification failed:', err)
+        }
+    }
     return { id: requestId, status: 'REJECTED' }
 }
 
@@ -266,9 +318,7 @@ const getUser = async (data: GetUser) => {
             onboardingDoneAt: user.onboardingCompletedAt,
             timezone: user.timezone,
             notifyLevel: user.notifyLevel,
-            notifyEmail: user.notifyEmail,
             notifyPush: user.notifyPush,
-            digest: user.digestEnabled ? user.digestTime : null,
             productEmails: user.notifyProductUpdates,
             securityAlerts: user.notifySecurityAlerts,
             lastExport: details.lastExport,
@@ -493,7 +543,32 @@ const listCreditLedger = async (data: ListCreditLedger) => {
     }
 }
 
+/**
+ * A5 + E6: the people who said yes to product emails (live, verified accounts), one line each
+ * as "name, email, turn-off link" for scripts/users.txt. Every copy is in the audit log.
+ */
+const listProductEmailUsers = async (data: ListProductEmailUsers) => {
+    const { adminUserId } = data
+    const users = await adminRepository.findProductEmailUsers()
+    await audit({
+        adminUserId,
+        action: 'users.product_email_list',
+        targetType: 'users',
+        metadata: { count: users.length },
+    })
+    // a comma in a name would split the line in announce.py
+    const lines = users.map((user) =>
+        [
+            (user.name ?? '').replace(/[,\s]+/g, ' ').trim() || 'there',
+            user.email,
+            buildUnsubscribeUrl(user.id),
+        ].join(', ')
+    )
+    return { count: users.length, text: lines.join('\n') }
+}
+
 export const adminService = {
+    listProductEmailUsers,
     getMe,
     approveCreditRequest,
     rejectCreditRequest,

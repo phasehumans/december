@@ -1,66 +1,35 @@
 import { prisma } from '@december/database'
 
-import type Redis from 'ioredis'
+import type { GitProviderName } from '@december/shared/git'
 
-type AgentQuestionNotice = {
-    sessionId: string
-    question: string
-    redis?: Pick<Redis, 'publish'> | null
-}
+const PROVIDER_NAMES: Record<GitProviderName, string> = { GITHUB: 'GitHub', GITLAB: 'GitLab' }
 
-// "December needs your input": the agent asked a question and waits for an answer.
-// one unread notice per session at a time, so a run of questions does not flood the inbox
-export const notifyAgentQuestion = async (data: AgentQuestionNotice) => {
-    const { sessionId, question, redis } = data
+/**
+ * N5: the git host token could not be renewed, so the run works on a local branch only. One
+ * "Reconnect GitLab" item in the inbox while it stays unread, not one per run. The same
+ * title and link as the server's notice, so the two never stack.
+ */
+export const notifyReconnect = async (data: { userId: string; provider: GitProviderName }) => {
+    const { userId, provider } = data
+    const name = PROVIDER_NAMES[provider] ?? provider
+    const title = `Reconnect ${name}`
+    const link = '/settings/connections'
 
-    const session = await prisma.session.findUnique({
-        where: { id: sessionId },
-        select: { userId: true, title: true },
-    })
-    if (!session?.userId) return null
-
-    const link = `/sessions/${sessionId}`
-    const title = 'December needs your input'
     const pending = await prisma.notification.findFirst({
-        where: { userId: session.userId, link, title, isRead: false },
+        where: { userId, title, link, isRead: false },
         select: { id: true },
     })
     if (pending) return null
 
-    const text = question.replace(/\s+/g, ' ').trim()
-    const message = session.title ? `${session.title}: ${text}` : text
-    const notification = await prisma.notification.create({
+    return prisma.notification.create({
         data: {
-            userId: session.userId,
+            userId,
             title,
-            message: message.length > 280 ? `${message.slice(0, 279)}…` : message,
+            message: `December could not renew your ${name} sign-in. Connect it again.`,
             type: 'WARNING',
             category: 'GENERAL',
             link,
         },
-        select: {
-            id: true,
-            title: true,
-            message: true,
-            isRead: true,
-            type: true,
-            category: true,
-            link: true,
-            createdAt: true,
-        },
+        select: { id: true },
     })
-
-    // the server relays user_notifications:* to the user's open tabs (badge + toast)
-    if (redis) {
-        await redis
-            .publish(
-                `user_notifications:${session.userId}`,
-                JSON.stringify({ notification, toast: true })
-            )
-            .catch(() => {
-                // Intentionally swallowed: the inbox refetches its unread count every 30s
-            })
-    }
-
-    return notification
 }

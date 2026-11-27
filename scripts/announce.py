@@ -3,6 +3,10 @@
 Standard announcement and marketing email script for December.
 Reads text template from scripts/announcement.txt and stylized HTML from scripts/announcement.html.
 Sends to users in scripts/users.txt with exact December typography, colors, and layout.
+
+Make users.txt from the admin panel: Users tab, "Copy product-email list". Each line is
+"name, email, turn-off link", only for people with product emails on. The turn-off link
+goes at the end of each mail and in the List-Unsubscribe header (one-click in Gmail).
 """
 
 import argparse
@@ -80,10 +84,13 @@ def parse_users_file(file_path):
             if not line or line.startswith("#"):
                 continue
 
-            # Format 1: "name, email"
+            unsubscribe_url = ""
+            # Format 1: "name, email" or "name, email, turn-off link" (admin panel list)
             if "," in line:
                 parts = [p.strip() for p in line.split(",")]
                 name, email = parts[0], parts[1]
+                if len(parts) > 2 and parts[2].startswith("https://"):
+                    unsubscribe_url = parts[2]
             # Format 2: "Name <email>"
             elif "<" in line and ">" in line:
                 name_part, email_part = line.split("<", 1)
@@ -101,12 +108,27 @@ def parse_users_file(file_path):
             users.append({
                 "email": email.strip(),
                 "name": name.strip().lower(),
+                "unsubscribe_url": unsubscribe_url,
             })
 
     return users
 
 
-def send_single_email(api_key, to_email, subject, body, html=None):
+def add_unsubscribe(body, html, unsubscribe_url):
+    """the turn-off link at the end of the text and the html"""
+    if not unsubscribe_url:
+        return body, html
+    body = f"{body}\n\nstop these emails: {unsubscribe_url}"
+    if html:
+        footer = (
+            '<p style="margin: 24px 0 0; font-size: 12px; color: #8a8987;">'
+            f'<a href="{unsubscribe_url.replace("&", "&amp;")}" style="color: #8a8987;">stop these emails</a></p>'
+        )
+        html = html.replace("</body>", f"{footer}</body>") if "</body>" in html else html + footer
+    return body, html
+
+
+def send_single_email(api_key, to_email, subject, body, html=None, unsubscribe_url=""):
     payload = {
         "from": SENDER,
         "to": [to_email],
@@ -116,6 +138,12 @@ def send_single_email(api_key, to_email, subject, body, html=None):
     }
     if html:
         payload["html"] = html
+    if unsubscribe_url:
+        # RFC 8058 one-click: the mail app posts to the link, the server turns product emails off
+        payload["headers"] = {
+            "List-Unsubscribe": f"<{unsubscribe_url}>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        }
 
     req = urllib.request.Request(
         "https://api.resend.com/emails",
@@ -158,6 +186,7 @@ def main():
         recipients.append({
             "email": args.test.strip(),
             "name": "tester",
+            "unsubscribe_url": "",
         })
     else:
         users_path = args.users or (DEFAULT_USERS_PATH if os.path.exists(DEFAULT_USERS_PATH) else "users.txt")
@@ -186,8 +215,12 @@ def main():
             else None
         )
 
+        unsubscribe_url = r.get("unsubscribe_url", "")
+        body, html = add_unsubscribe(body, html, unsubscribe_url)
+
         if not args.send:
             print(f"[{i+1}/{len(recipients)}] [DRY-RUN] To: {name} <{email}>")
+            print(f"  Turn-off link: {'yes' if unsubscribe_url else 'NO (add it with the admin panel list)'}")
             print(f"  First line: {body.splitlines()[0]}")
             if html:
                 print(f"  HTML payload: {len(html)} bytes with exact December typography & styling")
@@ -195,7 +228,9 @@ def main():
         else:
             print(f"[{i+1}/{len(recipients)}] Sending to {name} <{email}>...", flush=True)
             try:
-                res = send_single_email(api_key, email, subject_template, body, html=html)
+                res = send_single_email(
+                    api_key, email, subject_template, body, html=html, unsubscribe_url=unsubscribe_url
+                )
                 email_id = res.get("id")
                 history[history_key] = {
                     "email": email,

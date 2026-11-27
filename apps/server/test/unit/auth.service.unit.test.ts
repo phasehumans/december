@@ -3,7 +3,6 @@ import { describe, it, expect } from 'bun:test'
 import { sessionCache } from '../../src/modules/auth/auth.cache'
 import { authRepository } from '../../src/modules/auth/auth.repository'
 import { authService } from '../../src/modules/auth/auth.service'
-import { emailService } from '../../src/modules/email/email.service'
 import { notificationService } from '../../src/modules/notification/notification.service'
 import { AppError } from '../../src/shared/appError'
 
@@ -193,7 +192,6 @@ describe('Auth Service - Unit Tests', () => {
                 createSession: authRepository.createSession,
                 cacheSet: sessionCache.set,
                 notify: notificationService.sendNotificationToUser,
-                welcome: emailService.sendWelcomeEmail,
             }
 
             authRepository.findUserByGithubId = (async () => users.byGithubId ?? null) as any
@@ -209,7 +207,6 @@ describe('Auth Service - Unit Tests', () => {
             authRepository.createSession = (async () => ({})) as any
             sessionCache.set = (async () => {}) as any
             notificationService.sendNotificationToUser = (async () => ({})) as any
-            emailService.sendWelcomeEmail = (async () => ({})) as any
 
             try {
                 await run(calls)
@@ -221,7 +218,6 @@ describe('Auth Service - Unit Tests', () => {
                 authRepository.createSession = original.createSession
                 sessionCache.set = original.cacheSet
                 notificationService.sendNotificationToUser = original.notify
-                emailService.sendWelcomeEmail = original.welcome
             }
         }
 

@@ -1,16 +1,21 @@
+import { useQuery } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import type { BackendSession } from '@/features/sessions/api/session'
+
+import { useAppStore } from '@/app/store'
 import { SoonTag } from '@/features/home/components/PromptMenus'
 import { requestWorkspaceTab } from '@/features/preview/lib/workspaceTabRequest'
 import {
     PULL_REQUEST_STATE_CLASS,
     PULL_REQUEST_STATE_LABELS,
-    sessionsToPullRequestRows,
+    toPullRequestRows,
 } from '@/features/pullrequests/lib/pullRequests'
+import { sessionAPI } from '@/features/sessions/api/session'
 import { RunStatus } from '@/features/sessions/components/ListParts'
-import { useSessions } from '@/features/sessions/hooks/useSessions'
+import { useSessionCounts, useSessions } from '@/features/sessions/hooks/useSessions'
 import { OfficeCanvas } from '@/features/supercrew/components/OfficeCanvas'
 import { useSuperCrewWaitlist } from '@/features/supercrew/hooks/useSuperCrewWaitlist'
 import { SUPER_CREW_LINE } from '@/features/supercrew/lib/copy'
@@ -22,7 +27,9 @@ import { useIsPhone } from '@/shared/lib/useIsPhone'
 import { cn } from '@/shared/lib/utils'
 
 // the tabs under the Home prompt box: Recent, Pull requests, Super Crew.
-// Recent and Pull requests show the 5 newest rows. "View all" opens the full page.
+// Recent: sessions that need an answer, then running and starting ones, then pinned ones,
+// then the newest, 5 rows. Pull requests: open and draft ones only, 5 rows. "View all"
+// opens the full page (right of the tabs, or a row under the list on phones).
 
 type HomeTab = 'recent' | 'pull-requests' | 'super-crew'
 
@@ -34,6 +41,32 @@ const TABS: { id: HomeTab; label: string }[] = [
 const ROW_LIMIT = 5
 const STORAGE_KEY = 'december:home-tab'
 
+// the same filters as the default sidebar Recent list and its running list, so on desktop
+// the two share one request each
+const RECENT_FILTERS = {
+    type: 'WEB',
+    isArchived: false,
+    sortBy: 'updatedAt',
+    sortOrder: 'desc',
+    pinnedFirst: true,
+    limit: 20,
+} as const
+const RUNNING_FILTERS = { type: 'WEB', isArchived: false, vmStatus: 'running', limit: 50 } as const
+const NEEDS_ANSWER_FILTERS = {
+    type: 'WEB',
+    isArchived: false,
+    needsAnswer: true,
+    sortBy: 'updatedAt',
+    sortOrder: 'desc',
+    limit: ROW_LIMIT,
+} as const
+const OPEN_PULL_REQUESTS = {
+    state: 'open,draft',
+    sortBy: 'prUpdatedAt',
+    sortOrder: 'desc',
+    limit: ROW_LIMIT,
+} as const
+
 const readSavedTab = (): HomeTab => {
     try {
         const saved = window.localStorage.getItem(STORAGE_KEY)
@@ -42,6 +75,34 @@ const readSavedTab = (): HomeTab => {
         // Intentionally swallowed: storage can be blocked, the first tab is used
         return 'recent'
     }
+}
+
+const isWorking = (session: BackendSession) =>
+    session.vmStatus === 'RUNNING' || session.vmStatus === 'PROVISIONING'
+
+/** 0 needs an answer, 1 runs or starts, 2 pinned, 3 the rest */
+const rankOf = (session: BackendSession) =>
+    session.needsAnswer ? 0 : isWorking(session) ? 1 : session.isPinned || session.pinnedAt ? 2 : 3
+
+/**
+ * the Recent rows: the lists in the order given, each session once, archived and search
+ * sessions left out, then a stable sort by rank so each group keeps its list order
+ */
+export const homeRecentRows = (lists: (BackendSession[] | undefined)[]): BackendSession[] => {
+    const seen = new Set<string>()
+    const rows: BackendSession[] = []
+    for (const list of lists) {
+        for (const session of list || []) {
+            if (seen.has(session.id) || session.isArchived || session.type === 'SEARCH') continue
+            seen.add(session.id)
+            rows.push(session)
+        }
+    }
+    return rows
+        .map((session, index) => ({ session, index }))
+        .sort((a, b) => rankOf(a.session) - rankOf(b.session) || a.index - b.index)
+        .map(({ session }) => session)
+        .slice(0, ROW_LIMIT)
 }
 
 const rowClass =
@@ -64,14 +125,27 @@ const LoadingRows: React.FC = () => (
     </div>
 )
 
+const LoadError: React.FC<{ what: string; onRetry: () => void }> = ({ what, onRetry }) => (
+    <div className="flex items-center gap-2.5 px-1.5 py-3 text-[12.5px] text-[#8F8E8D]">
+        <span>Could not load {what}.</span>
+        <button
+            type="button"
+            onClick={onRetry}
+            className="rounded-[7px] border border-[#383735] px-2 py-0.5 text-[12px] text-[#D6D5C9] hover:bg-[#1C1C1C] transition-colors outline-none cursor-pointer focus-visible:bg-[#1C1C1C]"
+        >
+            Try again
+        </button>
+    </div>
+)
+
 interface HomeTabsProps {
     onOpenProject?: (sessionId: string) => void
 }
 
 export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
     const navigate = useNavigate()
+    const isAuthenticated = useAppStore((state) => state.isAuthenticated)
     const [tab, setTab] = React.useState<HomeTab>(readSavedTab)
-    const { data: sessionsData, isLoading: isSessionsLoading } = useSessions()
     const { state: waitlist, isLoading: isWaitlistLoading, join } = useSuperCrewWaitlist(true)
     const isPhone = useIsPhone()
 
@@ -84,28 +158,76 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
         }
     }
 
-    const sessions = React.useMemo(
+    // Recent: three short lists, merged. each reads again every 5 s while a row works
+    const recentQuery = useSessions(RECENT_FILTERS, { refreshWhileWorking: true })
+    const runningQuery = useSessions(RUNNING_FILTERS, { refreshWhileWorking: true })
+    const needsAnswerQuery = useSessions(NEEDS_ANSWER_FILTERS, { refreshWhileWorking: true })
+    const recent = React.useMemo(
         () =>
-            (sessionsData?.sessions || [])
-                .filter((session) => !session.isArchived && session.type !== 'SEARCH')
-                .sort(
-                    (a, b) =>
-                        (new Date(b.updatedAt).getTime() || 0) -
-                        (new Date(a.updatedAt).getTime() || 0)
-                ),
-        [sessionsData?.sessions]
+            homeRecentRows([
+                needsAnswerQuery.data?.sessions,
+                runningQuery.data?.sessions,
+                recentQuery.data?.sessions,
+            ]),
+        [needsAnswerQuery.data?.sessions, runningQuery.data?.sessions, recentQuery.data?.sessions]
     )
-    const recent = sessions.slice(0, ROW_LIMIT)
-    const pullRequests = React.useMemo(
-        () => sessionsToPullRequestRows(sessions).slice(0, ROW_LIMIT),
-        [sessions]
-    )
+    const retryRecent = () => {
+        void recentQuery.refetch()
+        void runningQuery.refetch()
+        void needsAnswerQuery.refetch()
+    }
 
-    const isLoading = isSessionsLoading || isSkeletonPreviewActive()
+    // Pull requests: open and draft only, read when the tab is open. under ['sessions'],
+    // so every list write reads them again
+    const isPullRequestsTab = tab === 'pull-requests'
+    const openPullRequestsQuery = useQuery({
+        queryKey: ['sessions', 'pull-requests', 'home', OPEN_PULL_REQUESTS],
+        queryFn: () => sessionAPI.getPullRequests(OPEN_PULL_REQUESTS),
+        enabled: isAuthenticated && isPullRequestsTab,
+    })
+    const pullRequests = React.useMemo(
+        () => toPullRequestRows(openPullRequestsQuery.data?.pullRequests || []),
+        [openPullRequestsQuery.data?.pullRequests]
+    )
+    // nothing open: one row of any state tells "No open pull requests" from "none yet"
+    const hasNoOpen = Boolean(openPullRequestsQuery.data) && pullRequests.length === 0
+    const anyPullRequestQuery = useQuery({
+        queryKey: ['sessions', 'pull-requests', 'home', { limit: 1 }],
+        queryFn: () => sessionAPI.getPullRequests({ limit: 1 }),
+        enabled: isAuthenticated && isPullRequestsTab && hasNoOpen,
+    })
+    const hasAnyPullRequest = (anyPullRequestQuery.data?.pagination.total ?? 0) > 0
+    const retryPullRequests = () => {
+        void openPullRequestsQuery.refetch()
+        if (hasNoOpen) void anyPullRequestQuery.refetch()
+    }
+
+    // grey counts beside the tab names: over every session, not only the rows shown
+    const { data: counts } = useSessionCounts()
+    const countOf: Partial<Record<HomeTab, number>> = {
+        recent: counts?.needsYou ?? 0,
+        'pull-requests': counts?.openPullRequests ?? 0,
+    }
+
+    const preview = isSkeletonPreviewActive()
+    const isRecentLoading =
+        preview ||
+        (recent.length === 0 &&
+            (recentQuery.isLoading || runningQuery.isLoading || needsAnswerQuery.isLoading))
+    const isRecentError = !isRecentLoading && recentQuery.isError && recent.length === 0
+    const isPullRequestsLoading =
+        preview || openPullRequestsQuery.isLoading || (hasNoOpen && anyPullRequestQuery.isLoading)
+    const isPullRequestsError =
+        !isPullRequestsLoading &&
+        (openPullRequestsQuery.isError || (hasNoOpen && anyPullRequestQuery.isError))
+
     const viewAllPath =
-        tab === 'recent' && recent.length > 0
+        tab === 'recent' && !isRecentLoading && recent.length > 0
             ? '/sessions'
-            : tab === 'pull-requests' && pullRequests.length > 0
+            : isPullRequestsTab &&
+                !isPullRequestsLoading &&
+                !isPullRequestsError &&
+                (pullRequests.length > 0 || hasAnyPullRequest)
               ? '/pull-requests'
               : null
 
@@ -116,26 +238,37 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
                     role="tablist"
                     className="flex items-center gap-1 min-w-0 overflow-x-auto no-scrollbar [scrollbar-width:none]"
                 >
-                    {TABS.map((item) => (
-                        <button
-                            key={item.id}
-                            type="button"
-                            role="tab"
-                            aria-selected={tab === item.id}
-                            onClick={() => selectTab(item.id)}
-                            className={cn(
-                                'flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium rounded-lg transition-colors outline-none cursor-pointer whitespace-nowrap',
-                                tab === item.id
-                                    ? 'bg-[#262626] text-white'
-                                    : 'text-[#8F8E8D] hover:text-[#D6D5C9]'
-                            )}
-                        >
-                            <span>{item.label}</span>
-                            {item.id === 'super-crew' && <SoonTag />}
-                        </button>
-                    ))}
+                    {TABS.map((item) => {
+                        const count = countOf[item.id] ?? 0
+                        return (
+                            <button
+                                key={item.id}
+                                type="button"
+                                role="tab"
+                                aria-selected={tab === item.id}
+                                onClick={() => selectTab(item.id)}
+                                className={cn(
+                                    'flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium rounded-lg transition-colors outline-none cursor-pointer whitespace-nowrap',
+                                    tab === item.id
+                                        ? 'bg-[#262626] text-white'
+                                        : 'text-[#8F8E8D] hover:text-[#D6D5C9]'
+                                )}
+                            >
+                                <span>{item.label}</span>
+                                {count > 0 && (
+                                    <span
+                                        data-testid={`home-tab-count-${item.id}`}
+                                        className="font-normal tabular-nums text-[#8F8E8D]"
+                                    >
+                                        {count}
+                                    </span>
+                                )}
+                                {item.id === 'super-crew' && <SoonTag />}
+                            </button>
+                        )
+                    })}
                 </div>
-                {viewAllPath && !isLoading && (
+                {viewAllPath && (
                     <button
                         type="button"
                         onClick={() => navigate(viewAllPath)}
@@ -148,8 +281,10 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
 
             <div role="tabpanel">
                 {tab === 'recent' &&
-                    (isLoading ? (
+                    (isRecentLoading ? (
                         <LoadingRows />
+                    ) : isRecentError ? (
+                        <LoadError what="sessions" onRetry={retryRecent} />
                     ) : recent.length === 0 ? (
                         <div className={emptyClass}>No sessions yet.</div>
                     ) : (
@@ -163,12 +298,26 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
                                 <span className={titleClass}>
                                     {session.title || session.projectName || 'Untitled session'}
                                 </span>
-                                {session.vmStatus === 'RUNNING' ||
-                                session.vmStatus === 'PROVISIONING' ? (
-                                    // same words as the sidebar and the Sessions page
+                                {session.needsAnswer ? (
+                                    // same word and colour as the sidebar and the Sessions page
+                                    <span className={cn(metaClass, 'text-amber-400')}>
+                                        Needs answer
+                                    </span>
+                                ) : isWorking(session) ? (
                                     <RunStatus vmStatus={session.vmStatus} className={metaClass} />
                                 ) : (
-                                    <span className={metaClass}>
+                                    <span
+                                        className={cn(
+                                            metaClass,
+                                            'inline-flex items-center gap-1.5'
+                                        )}
+                                    >
+                                        {(session.isPinned || session.pinnedAt) && (
+                                            <Icons.Pin
+                                                aria-label="Pinned"
+                                                className="h-3 w-3 text-[#7B7A79]"
+                                            />
+                                        )}
                                         {session.prNumber ? `PR ${session.prNumber} · ` : ''}
                                         {formatRelativeTime(session.updatedAt)}
                                     </span>
@@ -177,11 +326,15 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
                         ))
                     ))}
 
-                {tab === 'pull-requests' &&
-                    (isLoading ? (
+                {isPullRequestsTab &&
+                    (isPullRequestsLoading ? (
                         <LoadingRows />
+                    ) : isPullRequestsError ? (
+                        <LoadError what="pull requests" onRetry={retryPullRequests} />
                     ) : pullRequests.length === 0 ? (
-                        <div className={emptyClass}>No pull requests yet.</div>
+                        <div className={emptyClass}>
+                            {hasAnyPullRequest ? 'No open pull requests.' : 'No pull requests yet.'}
+                        </div>
                     ) : (
                         pullRequests.map((row) => (
                             <button
@@ -204,6 +357,17 @@ export const HomeTabs: React.FC<HomeTabsProps> = ({ onOpenProject }) => {
                             </button>
                         ))
                     ))}
+
+                {viewAllPath && (
+                    // phones: View all is a row under the list, the tabs row has no room
+                    <button
+                        type="button"
+                        onClick={() => navigate(viewAllPath)}
+                        className="sm:hidden w-full px-1.5 py-1.5 text-left text-[12px] font-medium text-[#8F8E8D] hover:text-[#D6D5C9] transition-colors outline-none cursor-pointer"
+                    >
+                        View all
+                    </button>
+                )}
 
                 {tab === 'super-crew' && (
                     // the horizontal strip: office on the left, name, one line and the button.

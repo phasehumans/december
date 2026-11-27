@@ -488,10 +488,14 @@ const finishWork = async (data: {
                 where: { id: sessionId },
                 data: {
                     prNumber: pr.number,
+                    // the webhook finds this pull request by the repository id
+                    ...(pr.base?.repo?.id != null ? { githubRepoId: String(pr.base.repo.id) } : {}),
                     prUrl: pr.html_url ?? null,
                     prState: pr.draft ? 'draft' : 'open',
                     prTitle: pr.title ?? githubRun.title,
                     prBranch: branch,
+                    prOpenedAt: pr.created_at ? new Date(pr.created_at) : new Date(),
+                    prUpdatedAt: pr.updated_at ? new Date(pr.updated_at) : new Date(),
                 },
             })
             .catch((err: unknown) => {

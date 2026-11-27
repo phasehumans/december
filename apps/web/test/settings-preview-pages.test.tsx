@@ -46,8 +46,9 @@ describe('settings pages that are ui only', () => {
         expect(screen.getByRole('radio', { name: 'Important' }).getAttribute('aria-checked')).toBe(
             'true'
         )
-        expect(screen.getByRole('switch', { name: 'Email' })).toBeDefined()
-        expect(screen.getByRole('switch', { name: 'Daily summary' })).toBeDefined()
+        // no email and no daily summary rows: the inbox and push only (inbox review S1, S2)
+        expect(screen.queryByRole('switch', { name: 'Email' })).toBeNull()
+        expect(screen.queryByRole('switch', { name: 'Daily summary' })).toBeNull()
         const security = screen.getByRole('switch', { name: 'Security alerts' })
         expect(security.hasAttribute('disabled')).toBe(true)
 

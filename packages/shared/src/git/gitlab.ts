@@ -1,4 +1,4 @@
-import { GitProviderError, decodeRepoFile } from './types'
+import { GitProviderError, PULL_REQUEST_READ_TIMEOUT_MS, decodeRepoFile } from './types'
 
 import type {
     CiStatus,
@@ -70,6 +70,9 @@ const toPullRequest = (mr: any): PullRequest => {
         updatedAt: mr.updated_at,
         mergedAt: mr.merged_at ?? null,
         closedAt: mr.closed_at ?? null,
+        ...((mr.target_project_id ?? mr.project_id) != null
+            ? { repoId: String(mr.target_project_id ?? mr.project_id) }
+            : {}),
     }
 }
 
@@ -190,6 +193,7 @@ const getPullRequest: GitProvider['getPullRequest'] = async (data) => {
     const { token, repoPath, number } = data
     const res = await fetch(`${projectUrl(repoPath)}/merge_requests/${number}`, {
         headers: headers(token),
+        signal: AbortSignal.timeout(PULL_REQUEST_READ_TIMEOUT_MS),
     }).catch(() => null)
     if (!res?.ok) return null
     return toPullRequest(await res.json())

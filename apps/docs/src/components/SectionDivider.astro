@@ -6,6 +6,9 @@
 // edge: when set, the divider overlays the top or bottom edge of its container
 // and takes no space. When not set, it sits in the normal flow (1px tall).
 // hideOnMobile: hide the divider below the lg breakpoint (phones and tablets).
+// A small script moves each line by up to 2px so it starts on a whole screen pixel.
+// Without it, at 125% or 150% zoom some lines spread over two pixel rows and look
+// heavier than others (the footer line looked heavier than the navbar line).
 
 interface Props {
   edge?: 'top' | 'bottom';
@@ -26,7 +29,7 @@ const visibilityClass = hideOnMobile ? 'hidden lg:block' : '';
 const markClass = 'hidden min-[1320px]:block absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full bg-white p-px text-[#87b2f4]';
 ---
 
-<div class={`${rootClass} ${visibilityClass} h-px pointer-events-none`} aria-hidden="true">
+<div data-divider data-edge={edge} class={`${rootClass} ${visibilityClass} h-px pointer-events-none`} aria-hidden="true">
   <div class="absolute inset-y-0 left-1/2 w-screen -translate-x-1/2 bg-[#cbd5e1]"></div>
   {[`${markClass} -left-[0.5px] -translate-x-1/2`, `${markClass} -right-[0.5px] translate-x-1/2`].map((cls) => (
     <svg class={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round">
@@ -36,3 +39,47 @@ const markClass = 'hidden min-[1320px]:block absolute top-1/2 size-3.5 -translat
     </svg>
   ))}
 </div>
+
+<script>
+  // Snap every divider to the screen pixel grid (see the note at the top of this file)
+  const snapDividers = () => {
+    const dividers = [...document.querySelectorAll<HTMLElement>('[data-divider]')];
+    const dpr = window.devicePixelRatio || 1;
+    // Clear old shifts first, then read all positions, then write, so the page lays out once
+    dividers.forEach((divider) => {
+      divider.style.translate = '';
+    });
+    // The browser rounds a line to a whole CSS pixel and then scales it by the zoom, so at
+    // 125% a line at y=47 falls on one screen row but a line at y=4938 falls across two.
+    // Move each divider by the fewest whole CSS pixels (at most 2) that puts it on one row.
+    const shifts = dividers.map((divider) => {
+      const rect = divider.getBoundingClientRect();
+      if (rect.height === 0) return 0; // hidden (phones and tablets)
+      const y = Math.round(rect.top + window.scrollY);
+      const miss = (shift: number) => {
+        const deviceY = (y + shift) * dpr;
+        return Math.abs(deviceY - Math.round(deviceY));
+      };
+      return [0, 1, -1, 2, -2].reduce((best, shift) => (miss(shift) < miss(best) - 0.01 ? shift : best), 0);
+    });
+    dividers.forEach((divider, i) => {
+      const shift = shifts[i];
+      if (shift !== 0) divider.style.translate = `0 ${shift}px`;
+      // An edge divider shares the shift with its container, so things that sit on the line
+      // (the footer horse) can move with it
+      if (divider.dataset.edge) divider.parentElement?.style.setProperty('--divider-shift', `${shift}px`);
+    });
+  };
+
+  let frame = 0;
+  const scheduleSnap = () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(snapDividers);
+  };
+
+  // Positions change when fonts load, the window resizes or zooms, or content opens (FAQ)
+  new ResizeObserver(scheduleSnap).observe(document.documentElement);
+  window.addEventListener('resize', scheduleSnap);
+  document.fonts?.ready.then(scheduleSnap);
+  document.addEventListener('astro:page-load', scheduleSnap);
+</script>

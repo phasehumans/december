@@ -25,6 +25,7 @@ async function findUserByIdForExistCheck(id: string) {
         where: { id },
         select: {
             id: true,
+            email: true,
         },
     })
 }
@@ -47,10 +48,7 @@ async function updateNotifications(id: string, data: Prisma.UserUpdateInput) {
             notifyProductUpdates: true,
             notifySecurityAlerts: true,
             notifyLevel: true,
-            notifyEmail: true,
             notifyPush: true,
-            digestEnabled: true,
-            digestTime: true,
             timezone: true,
         },
     })
@@ -195,7 +193,6 @@ async function archiveInactiveSessions(now: Date): Promise<string[]> {
             AND u."archiveAfterDays" IS NOT NULL
             AND s."isArchived" = false
             AND s."pinnedAt" IS NULL
-            AND s."deletedAt" IS NULL
             AND (s."sandboxStatus" IS NULL OR s."sandboxStatus" NOT IN ('RUNNING', 'STARTING'))
             AND s."updatedAt" < ${now}::timestamp - (u."archiveAfterDays" * INTERVAL '1 day')
         RETURNING s."userId"`
@@ -296,7 +293,7 @@ async function findDataExport(id: string) {
     return prisma.dataExport.findUnique({
         where: { id },
         include: {
-            user: { select: { id: true, email: true, isDeleted: true, notifyEmail: true } },
+            user: { select: { id: true, isDeleted: true } },
         },
     })
 }

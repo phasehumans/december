@@ -17,10 +17,7 @@ export type NotificationSettings = {
     notifyProductUpdates?: boolean
     notifySecurityAlerts?: true
     notifyLevel?: 'ALL' | 'IMPORTANT' | 'NONE'
-    notifyEmail?: boolean
     notifyPush?: false
-    digestEnabled?: boolean
-    digestTime?: string
     timezone?: string
 }
 
@@ -141,8 +138,6 @@ export type ProcessDataExport = {
 
 export type TellDataExportFailed = {
     userId: string
-    email: string
-    notifyEmail: boolean
 }
 
 export type PurgeDataExports = {

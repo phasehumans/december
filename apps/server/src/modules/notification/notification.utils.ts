@@ -1,13 +1,6 @@
-import { zoneClock } from '@december/shared'
-
 import { env } from '../../env'
 
-import type {
-    DigestSummary,
-    NotifyEventKind,
-    NotifyEventMessage,
-    NotifyLevel,
-} from './notification.types'
+import type { NotifyEventKind, NotifyEventMessage, NotifyLevel } from './notification.types'
 import type { VapidKeys } from '../../shared/web-push'
 
 /** "important": the user has to act (#636) */
@@ -30,7 +23,7 @@ export const money = (cents: number) => `$${(Math.max(cents, 0) / 100).toFixed(2
 
 const quoted = (title: string | null | undefined) => `"${(title || 'Untitled session').trim()}"`
 
-/** the words of one event, for the inbox, the email and the push */
+/** the words of one event, for the inbox and the push */
 export const eventMessage = (data: {
     kind: NotifyEventKind
     sessionId?: string
@@ -38,19 +31,22 @@ export const eventMessage = (data: {
     detail?: string
 }): NotifyEventMessage => {
     const { kind, sessionId, sessionTitle, detail } = data
-    const sessionPath = sessionId ? `/session/${sessionId}` : '/'
+    const sessionPath = sessionId ? `/sessions/${sessionId}` : '/'
     const name = quoted(sessionTitle)
 
     switch (kind) {
-        case 'SESSION_NEEDS_INPUT':
+        case 'SESSION_NEEDS_INPUT': {
+            // the agent's question when there is one: "Fix login: Keep the old cookie name?"
+            const question = detail?.replace(/\s+/g, ' ').trim().slice(0, 240)
             return {
                 title: 'December needs your input',
-                message: `${name} is waiting for your answer.`,
+                message: question
+                    ? `${(sessionTitle || 'Untitled session').trim()}: ${question}`
+                    : `${name} is waiting for your answer.`,
                 type: 'WARNING',
                 path: sessionPath,
-                emailSubject: `December needs your input: ${name}`,
-                emailBody: `${name} is waiting for your answer.`,
             }
+        }
         case 'SESSION_FAILED': {
             const reason = detail ? ` ${detail.slice(0, 300)}` : ''
             return {
@@ -58,8 +54,6 @@ export const eventMessage = (data: {
                 message: `${name} stopped with an error.${reason}`,
                 type: 'ERROR',
                 path: sessionPath,
-                emailSubject: `A session failed: ${name}`,
-                emailBody: `${name} stopped with an error.${reason}`,
             }
         }
         case 'LOW_CREDITS': {
@@ -69,8 +63,6 @@ export const eventMessage = (data: {
                 message: `Add credits so your sessions keep running.${balance}`,
                 type: 'WARNING',
                 path: '/settings/billing',
-                emailSubject: 'Your December credits are low',
-                emailBody: `Add credits so your sessions keep running.${balance}`,
             }
         }
         case 'SPEND_LIMIT': {
@@ -80,8 +72,6 @@ export const eventMessage = (data: {
                 message: `${name} is paused. Open it to continue or stop.`,
                 type: 'WARNING',
                 path: sessionPath,
-                emailSubject: `${question} ${name}`,
-                emailBody: `${name} is paused at your spend limit. ${question}`,
             }
         }
         case 'SESSION_FINISHED':
@@ -91,8 +81,6 @@ export const eventMessage = (data: {
                 message: `${name} is done.`,
                 type: 'SUCCESS',
                 path: sessionPath,
-                emailSubject: `A session finished: ${name}`,
-                emailBody: `${name} is done.`,
             }
     }
 }
@@ -143,49 +131,10 @@ export const isValidTimezone = (timezone: string): boolean => {
 }
 
 /**
- * The summary day of a moment (YYYY-MM-DD). A summary day starts at digestTime, not at
- * midnight, so 00:10 belongs to the day before for a 23:50 summary.
+ * The inbox links of one session: the web path, and the older /session/ form that items
+ * written before the server used /sessions/ still have.
  */
-const digestDay = (at: Date, timezone: string, digestMinutes: number): string => {
-    const clock = zoneClock(at, timezone)
-    if (clock.minutes >= digestMinutes) return clock.date
-    const dayBefore = new Date(`${clock.date}T00:00:00Z`)
-    dayBefore.setUTCDate(dayBefore.getUTCDate() - 1)
-    return dayBefore.toISOString().slice(0, 10)
-}
-
-/**
- * The summary is due once a summary day, at the first tick at or after digestTime. The
- * ticks run on quarter hours, so a 23:50 summary goes out at the tick after midnight.
- * lastDigestAt is the start of the window: the last summary, or when the user turned it on.
- */
-export const isDigestDue = (data: {
-    now: Date
-    timezone: string
-    digestTime: string
-    lastDigestAt: Date
-}): boolean => {
-    const { now, timezone, digestTime, lastDigestAt } = data
-    const [hours = 9, minutes = 0] = digestTime.split(':').map(Number)
-    const digestMinutes = hours * 60 + minutes
-    return (
-        digestDay(lastDigestAt, timezone, digestMinutes) < digestDay(now, timezone, digestMinutes)
-    )
-}
-
-/** the text of the daily summary, or null when nothing happened */
-export const digestBody = (summary: DigestSummary): string | null => {
-    const lines: string[] = []
-    if (summary.sessionsFinished > 0) {
-        const noun = summary.sessionsFinished === 1 ? 'session' : 'sessions'
-        lines.push(`${summary.sessionsFinished} ${noun} finished.`)
-    }
-    if (summary.pullRequestsOpened > 0) {
-        const verb = summary.pullRequestsOpened === 1 ? 'pull request was' : 'pull requests were'
-        lines.push(`${summary.pullRequestsOpened} ${verb} opened.`)
-    }
-    if (summary.creditsUsedCents > 0) {
-        lines.push(`You used ${money(summary.creditsUsedCents)} of credits.`)
-    }
-    return lines.length > 0 ? lines.join('\n\n') : null
-}
+export const sessionLinks = (sessionId: string): string[] => [
+    `/sessions/${sessionId}`,
+    `/session/${sessionId}`,
+]

@@ -92,6 +92,8 @@ describe('sidebar Recent list', () => {
         useAppStore.setState({ isAuthenticated: true, isAuthRestored: true, activeProjectId: null })
         spyOn(sessionAPI, 'getSessionCounts').mockImplementation(async () => ({
             running: 0,
+            needsAnswer: 0,
+            needsYou: 0,
             openPullRequests: 0,
             merged: 0,
         }))

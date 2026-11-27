@@ -27,7 +27,7 @@ const SESSION_SELECT = {
 /** a session of this user that is not deleted, or null */
 export async function findSession(sessionId: string, userId: string) {
     return prisma.session.findFirst({
-        where: { id: sessionId, userId, deletedAt: null },
+        where: { id: sessionId, userId },
         select: SESSION_SELECT,
     })
 }

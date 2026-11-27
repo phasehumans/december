@@ -36,10 +36,7 @@ describe('Profile Settings Notifications Tab Placement', () => {
             notifyProductUpdates: false,
             notifySecurityAlerts: true,
             notifyLevel: 'IMPORTANT',
-            notifyEmail: true,
             notifyPush: false,
-            digestEnabled: false,
-            digestTime: '09:00',
             timezone: 'UTC',
         })
 
@@ -128,16 +125,12 @@ describe('Profile Settings Notifications Tab Placement', () => {
         expect(securityAlerts.getAttribute('aria-checked')).toBe('true')
         expect(securityAlerts.hasAttribute('disabled')).toBe(true)
 
-        // the level, email and the daily summary save what changed (#636)
+        // the level saves what changed (#636)
         fireEvent.click(screen.getByRole('radio', { name: 'Everything' }))
         expect(handleNotificationChange).toHaveBeenCalledWith({ notifyLevel: 'ALL' })
 
-        fireEvent.click(screen.getByRole('switch', { name: 'Email' }))
-        expect(handleNotificationChange).toHaveBeenCalledWith({ notifyEmail: false })
-
-        fireEvent.click(screen.getByRole('switch', { name: 'Daily summary' }))
-        const lastCall = handleNotificationChange.mock.calls.at(-1)?.[0]
-        expect(lastCall?.digestEnabled).toBe(true)
-        expect(typeof lastCall?.timezone).toBe('string')
+        // no email and no daily summary: the inbox and push only (inbox review S1, S2)
+        expect(screen.queryByRole('switch', { name: 'Email' })).toBeNull()
+        expect(screen.queryByRole('switch', { name: 'Daily summary' })).toBeNull()
     })
 })

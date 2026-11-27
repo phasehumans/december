@@ -337,7 +337,7 @@ describe('SearchModal component', () => {
         expect(screen.queryByText('Expand sidebar')).toBeNull()
     })
 
-    test('shows Archive this session when activeProjectId is set and archives on click', async () => {
+    test('shows Archive this session when activeProjectId is set and archives after the confirm', async () => {
         useAppStore.setState({ activeProjectId: 'sess-active', activeSessionId: 'sess-active' })
         const archiveSpy = spyOn(sessionAPI, 'archiveSession').mockResolvedValue({} as never)
         const onClose = mock(() => {})
@@ -353,8 +353,38 @@ describe('SearchModal component', () => {
             fireEvent.click(archiveOption!)
         })
 
-        expect(archiveSpy).toHaveBeenCalledWith('sess-active')
+        // it asks first, like the session menus
+        expect(await screen.findByText('Archive session')).toBeTruthy()
+        expect(archiveSpy).not.toHaveBeenCalled()
         expect(onClose).toHaveBeenCalledTimes(1)
+
+        await act(async () => {
+            fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
+        })
+        expect(archiveSpy).toHaveBeenCalledWith('sess-active')
+    })
+
+    test('Unarchive this session runs with no question', async () => {
+        useAppStore.setState({ activeProjectId: 'sess-archived', activeSessionId: 'sess-archived' })
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        queryClient.setQueryData(['session', 'sess-archived'], {
+            id: 'sess-archived',
+            isArchived: true,
+        })
+        const unarchiveSpy = spyOn(sessionAPI, 'unarchiveSession').mockResolvedValue({} as never)
+
+        renderModal({ onClose: mock(() => {}) }, queryClient)
+
+        const option = screen
+            .getAllByRole('option')
+            .find((el) => el.textContent?.includes('Unarchive this session'))
+        expect(option).toBeDefined()
+        await act(async () => {
+            fireEvent.click(option!)
+        })
+
+        expect(unarchiveSpy).toHaveBeenCalledWith('sess-archived')
+        expect(screen.queryByText('Archive session')).toBeNull()
     })
 
     test('selecting a repository starts a new thread and prefills the repo on Home', async () => {

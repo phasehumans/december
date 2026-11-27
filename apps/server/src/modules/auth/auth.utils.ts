@@ -33,10 +33,6 @@ export const sendOTP = async (email: string, otp: string, type: OtpType = 'signu
     await emailService.sendOtpEmail({ to: email, otp, type })
 }
 
-export const sendWelcomeEmail = async (email: string, name: string) => {
-    await emailService.sendWelcomeEmail({ to: email, name })
-}
-
 export const generateAccessToken = (
     payload: TokenPayload,
     options?: { expiresIn?: SignOptions['expiresIn']; issuedAt?: Date }

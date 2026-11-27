@@ -179,11 +179,9 @@ describe('spend limits: pause and ask', () => {
             expect(pending.body.data.questions).toEqual([
                 { question: 'Reached $5. Continue?', options: ['Continue', 'Stop here'] },
             ])
-            // the inbox and the mail ask too, once
+            // the inbox asks too, once (no mail: inbox review, round 2)
             expect(await inboxTitles(user)).toEqual(['Reached $5. Continue?'])
-            expect(
-                emails.filter((sent) => sent.to === user.email).map((sent) => sent.subject)
-            ).toEqual(['Reached $5. Continue? "reached"'])
+            expect(emails.filter((sent) => sent.to === user.email)).toEqual([])
             // the list marks the session as "needs answer"
             const list = await as(user.token).get('/session?needsAnswer=true')
             expect(list.body.data.sessions.map((item: { id: string }) => item.id)).toEqual([

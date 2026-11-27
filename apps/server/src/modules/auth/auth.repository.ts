@@ -211,6 +211,17 @@ async function findActiveDeviceSession(userId: string) {
     })
 }
 
+// every sign-in row the user still has (signed out ones too, until the daily purge), for
+// the new sign-in notice
+async function findSessionUserAgents(userId: string) {
+    return prisma.authSession.findMany({
+        where: { userId },
+        select: { userAgent: true },
+        take: 200,
+        orderBy: { createdAt: 'desc' },
+    })
+}
+
 // the devices list: sessions that still work, most recently used first
 async function findActiveSessionsByUser(userId: string) {
     return prisma.authSession.findMany({
@@ -232,6 +243,7 @@ async function findActiveSessionsByUser(userId: string) {
 
 export const authRepository = {
     findActiveSessionsByUser,
+    findSessionUserAgents,
     claimOtpAttempt,
     clearExhaustedOtp,
     consumeOtp,

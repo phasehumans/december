@@ -243,18 +243,13 @@ describe('Sessions list filters and facets (#641)', () => {
             })
         })
 
-        it('reads archived sessions and sessions past the first page, not deleted ones', async () => {
+        it('reads archived sessions and sessions past the first page', async () => {
             // the oldest session: 60 newer ones push it off the first page of the list
             await makeSession(ownerId, { ...repo('acme', 'old'), tags: ['first'] })
             await makeSession(ownerId, {
                 ...repo('acme', 'shelved'),
                 tags: ['done'],
                 isArchived: true,
-            })
-            await makeSession(ownerId, {
-                ...repo('acme', 'gone'),
-                tags: ['removed'],
-                deletedAt: new Date(),
             })
             await prisma.session.createMany({
                 data: Array.from({ length: 60 }, (_, index) => ({

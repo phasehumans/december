@@ -78,6 +78,7 @@ describe('toPullRequestStateEvent', () => {
             openedAt: '2026-01-03T10:00:00Z',
             mergedAt: '2026-01-04T10:00:00Z',
             closedAt: '2026-01-04T10:00:00Z',
+            updatedAt: null,
         })
     })
 

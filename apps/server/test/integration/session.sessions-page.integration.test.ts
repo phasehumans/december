@@ -195,7 +195,13 @@ describe('Sessions page routes', () => {
             expect(await listIds('repoName=stranger/private-repo')).toEqual([])
 
             const counts = await as(owner.token).get('/session/counts')
-            expect(counts.body.data).toEqual({ running: 0, openPullRequests: 0, merged: 0 })
+            expect(counts.body.data).toEqual({
+                running: 0,
+                needsAnswer: 0,
+                needsYou: 0,
+                openPullRequests: 0,
+                merged: 0,
+            })
 
             const facets = await as(owner.token).get('/session/facets')
             expect(facets.body.data).toEqual({ repos: [], tags: [] })
@@ -851,7 +857,29 @@ describe('Sessions page routes', () => {
             const res = await as(owner.token).get('/session/counts')
 
             expect(res.status).toBe(200)
-            expect(res.body.data).toEqual({ running: 3, openPullRequests: 3, merged: 1 })
+            expect(res.body.data).toEqual({
+                running: 3,
+                needsAnswer: 0,
+                needsYou: 3,
+                openPullRequests: 3,
+                merged: 1,
+            })
+        })
+
+        it('counts sessions that wait for an answer, and needs you counts each session once', async () => {
+            await seed({ vmStatus: 'RUNNING' })
+            // waits and runs: one session in needsYou
+            await seed({ vmStatus: 'RUNNING', pendingQuestionAt: new Date() })
+            // a spend limit stops the run and waits for an answer
+            await seed({ vmStatus: 'STOPPED', pendingQuestionAt: new Date() })
+            await seed({ vmStatus: 'STOPPED' })
+            // archived rows count for nothing
+            await seed({ isArchived: true, pendingQuestionAt: new Date() })
+
+            const res = await as(owner.token).get('/session/counts')
+
+            expect(res.status).toBe(200)
+            expect(res.body.data).toMatchObject({ running: 2, needsAnswer: 2, needsYou: 3 })
         })
 
         it('archive merged leaves the merged count at zero', async () => {

@@ -360,9 +360,8 @@ describe('Session configuration and the pull requests list (#632)', () => {
             const archived = await makePrSession(ownerId, { prState: 'open', isArchived: true })
             // a merge archives the session: the merged pull request stays in the list
             const merged = await makePrSession(ownerId, { prState: 'merged', isArchived: true })
-            // a search and a deleted session are in no list and in no count
+            // a search session is in no list and in no count
             await makePrSession(ownerId, { prState: 'open', type: 'SEARCH' })
-            await makePrSession(ownerId, { prState: 'open', deletedAt: new Date() })
 
             const list = await as(ownerToken).get('/session/pull-requests?state=open,draft')
             const ids = list.body.data.pullRequests.map((row: any) => row.sessionId)
@@ -381,6 +380,22 @@ describe('Session configuration and the pull requests list (#632)', () => {
             expect(
                 onlyArchived.body.data.pullRequests.map((row: any) => row.sessionId).sort()
             ).toEqual([archived.id, merged.id].sort())
+        })
+
+        it('sends the run state and the archived flag of each row, for the row menu', async () => {
+            const running = await makePrSession(ownerId, { prState: 'open', vmStatus: 'RUNNING' })
+            const idle = await makePrSession(ownerId, { prState: 'draft' })
+            // archived on merge: still listed, so the menu must offer Unarchive
+            const merged = await makePrSession(ownerId, { prState: 'merged', isArchived: true })
+
+            const res = await as(ownerToken).get('/session/pull-requests')
+            expect(res.status).toBe(200)
+            const byId = new Map<string, any>(
+                res.body.data.pullRequests.map((row: any) => [row.sessionId, row])
+            )
+            expect(byId.get(running.id)).toMatchObject({ vmStatus: 'RUNNING', isArchived: false })
+            expect(byId.get(idle.id)).toMatchObject({ vmStatus: 'STOPPED', isArchived: false })
+            expect(byId.get(merged.id)).toMatchObject({ isArchived: true })
         })
 
         it('sorts by the opened date, rows without one last', async () => {
@@ -604,6 +619,187 @@ describe('Session configuration and the pull requests list (#632)', () => {
             expect((await prisma.session.findUnique({ where: { id: session.id } }))?.prState).toBe(
                 'open'
             )
+        })
+    })
+
+    describe('pull requests page bug hunt', () => {
+        it('a search for a number too long for a pull request number matches text, not a 500', async () => {
+            const session = await makePrSession(ownerId, { prTitle: 'bump to 99999999999' })
+            for (const search of ['99999999999', '#3000000000']) {
+                const res = await as(ownerToken).get('/session/pull-requests').query({ search })
+                expect(res.status).toBe(200)
+            }
+            const res = await as(ownerToken)
+                .get('/session/pull-requests')
+                .query({ search: '99999999999' })
+            expect(
+                res.body.data.pullRequests.map((row: { sessionId: string }) => row.sessionId)
+            ).toEqual([session.id])
+        })
+
+        it('the filter menu lists only repositories and tags that can show a row', async () => {
+            await makePrSession(ownerId, { githubRepoName: 'listed', tags: ['shown'] })
+            // a search session and an archived session with an open pull request are not rows
+            await makePrSession(ownerId, {
+                githubRepoName: 'search-only',
+                type: 'SEARCH',
+                tags: ['search-tag'],
+            })
+            await makePrSession(ownerId, {
+                githubRepoName: 'archived-open',
+                isArchived: true,
+                tags: ['archived-tag'],
+            })
+            // an archived session with a merged pull request is a row
+            await makePrSession(ownerId, {
+                githubRepoName: 'archived-merged',
+                isArchived: true,
+                prState: 'merged',
+                tags: ['merged-tag'],
+            })
+
+            const res = await as(ownerToken).get('/session/facets?hasPr=true')
+            expect(res.status).toBe(200)
+            expect([...res.body.data.repos].sort()).toEqual(
+                [`${repoOwner}/archived-merged`, `${repoOwner}/listed`].sort()
+            )
+            expect([...res.body.data.tags].sort()).toEqual(['merged-tag', 'shown'])
+
+            // the Sessions page facets still list every session
+            const all = await as(ownerToken).get('/session/facets')
+            expect(all.body.data.repos).toContain(`${repoOwner}/search-only`)
+        })
+
+        it('Last updated sorts by the last change of the pull request, not the session', async () => {
+            // the session of the first moved last, but its pull request changed long ago
+            const old = await makePrSession(ownerId, {
+                updatedAt: new Date(Date.UTC(2026, 5, 1)),
+                prUpdatedAt: new Date(Date.UTC(2026, 0, 2)),
+            })
+            const recent = await makePrSession(ownerId, {
+                updatedAt: new Date(Date.UTC(2026, 0, 3)),
+                prUpdatedAt: new Date(Date.UTC(2026, 4, 1)),
+            })
+            const res = await as(ownerToken)
+                .get('/session/pull-requests')
+                .query({ sortBy: 'prUpdatedAt', sortOrder: 'desc' })
+            expect(res.status).toBe(200)
+            expect(
+                res.body.data.pullRequests.map((row: { sessionId: string }) => row.sessionId)
+            ).toEqual([recent.id, old.id])
+            expect(res.body.data.pullRequests[0].prUpdatedAt).toBe('2026-05-01T00:00:00.000Z')
+        })
+
+        it('the webhook saves when the pull request last changed, and keeps the session date', async () => {
+            const session = await makePrSession(ownerId)
+            const body = JSON.stringify({
+                action: 'synchronize',
+                repository: { name: 'web', owner: { login: repoOwner } },
+                pull_request: {
+                    number: session.prNumber,
+                    title: 'feat: login page',
+                    state: 'open',
+                    draft: false,
+                    merged_at: null,
+                    closed_at: null,
+                    created_at: '2026-01-03T10:00:00Z',
+                    updated_at: '2026-01-06T12:00:00Z',
+                },
+            })
+            const secret = env.GITHUB_APP_WEBHOOK_SECRET || 'secret'
+            const signature = `sha256=${crypto.createHmac('sha256', secret).update(body).digest('hex')}`
+            await request(app)
+                .post('/api/v1/githubapp/webhook')
+                .set('Content-Type', 'application/json')
+                .set('x-hub-signature-256', signature)
+                .set('x-github-event', 'pull_request')
+                .send(body)
+
+            const row = await prisma.session.findUnique({ where: { id: session.id } })
+            expect(row?.prUpdatedAt?.toISOString()).toBe('2026-01-06T12:00:00.000Z')
+            expect(row?.updatedAt.toISOString()).toBe(session.updatedAt.toISOString())
+        })
+
+        it('sends only web links', async () => {
+            const bad = await makePrSession(ownerId, { prUrl: 'javascript:alert(1)' })
+            const good = await makePrSession(ownerId, {
+                prUrl: `https://github.com/${repoOwner}/web/pull/2`,
+            })
+            const res = await as(ownerToken).get('/session/pull-requests')
+            const urlOf = (id: string) =>
+                res.body.data.pullRequests.find(
+                    (row: { sessionId: string }) => row.sessionId === id
+                ).prUrl
+            expect(urlOf(bad.id)).toBeNull()
+            expect(urlOf(good.id)).toBe(`https://github.com/${repoOwner}/web/pull/2`)
+        })
+
+        describe('asking the host for stale pull requests', () => {
+            const realFetch = globalThis.fetch
+            let githubCalls = 0
+            let answer: () => Promise<Response>
+
+            beforeEach(async () => {
+                githubCalls = 0
+                answer = async () => new Response('{}', { status: 404 })
+                globalThis.fetch = (async (input: any, init?: RequestInit) => {
+                    if (!String(input).startsWith('https://api.github.com')) {
+                        return realFetch(input, init)
+                    }
+                    githubCalls += 1
+                    return answer()
+                }) as typeof fetch
+                await prisma.user.update({
+                    where: { id: ownerId },
+                    data: { githubToken: 'gh-test-token' },
+                })
+            })
+
+            afterAll(async () => {
+                globalThis.fetch = realFetch
+                await prisma.user.update({ where: { id: ownerId }, data: { githubToken: null } })
+            })
+
+            const hourAgo = () => new Date(Date.now() - 2 * 60 * 60 * 1000)
+
+            it('the next pages do not ask the host', async () => {
+                await makePrSession(ownerId, { prCheckedAt: hourAgo() })
+                const res = await as(ownerToken).get('/session/pull-requests').query({ page: 2 })
+                expect(res.status).toBe(200)
+                expect(githubCalls).toBe(0)
+
+                await as(ownerToken).get('/session/pull-requests').query({ page: 1 })
+                expect(githubCalls).toBe(1)
+            })
+
+            it('two reads at the same time ask the host once', async () => {
+                await makePrSession(ownerId, { prCheckedAt: hourAgo() })
+                const [first, second] = await Promise.all([
+                    as(ownerToken).get('/session/pull-requests'),
+                    as(ownerToken).get('/session/pull-requests'),
+                ])
+                expect(first.status).toBe(200)
+                expect(second.status).toBe(200)
+                expect(githubCalls).toBe(1)
+            })
+
+            it('a slow host does not hold the list for long', async () => {
+                await makePrSession(ownerId, { prCheckedAt: hourAgo() })
+                let release: () => void = () => {}
+                answer = () =>
+                    new Promise<Response>((resolve) => {
+                        release = () => resolve(new Response('{}', { status: 404 }))
+                    })
+
+                const started = Date.now()
+                const res = await as(ownerToken).get('/session/pull-requests')
+                expect(res.status).toBe(200)
+                expect(Date.now() - started).toBeLessThan(4000)
+                expect(res.body.data.pullRequests).toHaveLength(1)
+                // the refresh ends in the background
+                release()
+                await new Promise((resolve) => setTimeout(resolve, 100))
+            })
         })
     })
 })

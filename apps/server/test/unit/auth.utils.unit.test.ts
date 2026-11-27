@@ -12,7 +12,6 @@ import {
     TOKEN_GRACE_PERIOD_MS,
     extractToken,
     sendOTP,
-    sendWelcomeEmail,
 } from '../../src/modules/auth/auth.utils'
 
 describe('Auth Utils - Unit Tests', () => {
@@ -161,7 +160,7 @@ describe('Auth Utils - Unit Tests', () => {
         })
     })
 
-    describe('sendOTP & sendWelcomeEmail', () => {
+    describe('sendOTP', () => {
         it('should execute sendOTP without throwing', async () => {
             const { emailService } = await import('../../src/modules/email/email.service')
             const originalSendOtp = emailService.sendOtpEmail
@@ -177,20 +176,6 @@ describe('Auth Utils - Unit Tests', () => {
                 ).resolves.toBeUndefined()
             } finally {
                 emailService.sendOtpEmail = originalSendOtp
-            }
-        })
-
-        it('should execute sendWelcomeEmail without throwing', async () => {
-            const { emailService } = await import('../../src/modules/email/email.service')
-            const originalSendWelcome = emailService.sendWelcomeEmail
-            emailService.sendWelcomeEmail = async () => ({}) as any
-
-            try {
-                await expect(
-                    sendWelcomeEmail('test@example.com', 'Test User')
-                ).resolves.toBeUndefined()
-            } finally {
-                emailService.sendWelcomeEmail = originalSendWelcome
             }
         })
     })

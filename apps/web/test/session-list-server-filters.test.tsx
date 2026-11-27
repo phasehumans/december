@@ -92,6 +92,8 @@ describe('Sessions page: server filters, lists and counts (#641)', () => {
         }))
         spyOn(sessionAPI, 'getSessionCounts').mockImplementation(async () => ({
             running: 12,
+            needsAnswer: 0,
+            needsYou: 12,
             openPullRequests: 0,
             merged: 0,
         }))

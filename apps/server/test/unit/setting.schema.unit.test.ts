@@ -29,10 +29,7 @@ describe('Setting Schema - Unit Tests', () => {
                     notifyProductUpdates: false,
                     notifySecurityAlerts: true,
                     notifyLevel: 'ALL',
-                    notifyEmail: false,
                     notifyPush: false,
-                    digestEnabled: true,
-                    digestTime: '18:30',
                     timezone: 'Asia/Kolkata',
                 }).success
             ).toBe(true)
@@ -42,7 +39,11 @@ describe('Setting Schema - Unit Tests', () => {
 
         it('should fail on an empty body, a wrong type or an old field', () => {
             expect(updateNotificationSchema.safeParse({}).success).toBe(false)
-            expect(updateNotificationSchema.safeParse({ notifyEmail: 'true' }).success).toBe(false)
+            expect(updateNotificationSchema.safeParse({ notifyLevel: 'SOME' }).success).toBe(false)
+            // email and the daily summary were removed (inbox review S1, S2)
+            expect(updateNotificationSchema.safeParse({ notifyEmail: false }).success).toBe(false)
+            expect(updateNotificationSchema.safeParse({ digestEnabled: true }).success).toBe(false)
+            expect(updateNotificationSchema.safeParse({ digestTime: '09:00' }).success).toBe(false)
             expect(
                 updateNotificationSchema.safeParse({ notifyProjectActivity: true }).success
             ).toBe(false)
@@ -55,9 +56,7 @@ describe('Setting Schema - Unit Tests', () => {
             expect(updateNotificationSchema.safeParse({ notifyPush: true }).success).toBe(false)
         })
 
-        it('should check the summary time and the time zone', () => {
-            expect(updateNotificationSchema.safeParse({ digestTime: '24:00' }).success).toBe(false)
-            expect(updateNotificationSchema.safeParse({ digestTime: '9:00' }).success).toBe(false)
+        it('should check the time zone', () => {
             expect(updateNotificationSchema.safeParse({ timezone: 'Mars/Base' }).success).toBe(
                 false
             )

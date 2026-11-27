@@ -150,7 +150,6 @@ const findSessionByPullRequest = async (data: {
             // escaped: else the pull request of "my_repo" is found on "myXrepo"
             githubRepoOwner: { equals: escapeLike(repoOwner), mode: 'insensitive' },
             githubRepoName: { equals: escapeLike(repoName), mode: 'insensitive' },
-            deletedAt: null,
         },
         select: { userId: true },
         orderBy: { updatedAt: 'desc' },
@@ -215,7 +214,6 @@ const findGithubRuns = async (data: {
     return prisma.session.findMany({
         where: {
             userId,
-            deletedAt: null,
             createdAt: { gte: since },
             AND: [
                 { githubRun: { path: ['repoFullName'], equals: repoFullName } },

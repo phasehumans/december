@@ -4,16 +4,14 @@ import { AppError } from '../../shared/appError'
 import { appCache } from '../../shared/cache'
 import { sendWebPush } from '../../shared/web-push'
 import { getAdminEmails } from '../admin/admin.utils'
-import { emailService } from '../email/email.service'
 
 import { notificationRepository } from './notification.repository'
 import {
     appUrl,
-    digestBody,
     eventMessage,
     isAllowedPushEndpoint,
-    isDigestDue,
     levelAllows,
+    sessionLinks,
     vapidKeys,
 } from './notification.utils'
 
@@ -46,9 +44,9 @@ import type {
     SubscribePush,
     UnsubscribePush,
     RemovePushOnSignOut,
-    StartDigestWindow,
-    SendDailyDigests,
     SendNotificationToAdmins,
+    SendNotificationOnce,
+    MarkSessionRead,
 } from './notification.types'
 
 const getNotifications = async (data: GetNotifications) => {
@@ -160,14 +158,30 @@ const markAllAsRead = async (data: MarkAllAsRead) => {
     return { updated: result.count }
 }
 
+/**
+ * One unread item at a time: nothing is written while an unread item with the same title and
+ * link is in the inbox, so a run of the same event (a token that keeps failing) is one item.
+ */
+const sendNotificationOnce = async (data: SendNotificationOnce) => {
+    const { userId, title, link } = data
+    if (await notificationRepository.hasUnreadNotification({ userId, title, link })) return null
+    return sendNotificationToUser(data)
+}
+
+/** the user opened a session: its unread items (input, failed, finished, PR) turn read (N6) */
+const markSessionRead = async (data: MarkSessionRead) => {
+    const { userId, sessionId } = data
+    const result = await notificationRepository.markReadByLinks(userId, sessionLinks(sessionId))
+    return { updated: result.count }
+}
+
 const deleteAllReadNotification = async (data: DeleteAllReadNotification) => {
     const { userId } = data
     return notificationRepository.deleteManyReadNotifications(userId)
 }
 
-// notification settings, email, push and the daily summary (#636)
-
-const settingsLink = () => [{ label: 'Notification settings', url: `${appUrl()}/settings/account` }]
+// notification settings and push (#636). December sends no email for these (round 2 of the
+// inbox review): the inbox and browser push only
 
 // the profile response carries notifyPush; it is cached by the setting module
 const invalidateProfileCache = async (data: InvalidateProfileCache) => {
@@ -208,15 +222,16 @@ const sendPushToUser = async (data: SendPushToUser) => {
 }
 
 /**
- * One event for one user: the inbox, then email and push, as far as the user's level
- * allows. While the user has the session open, only the inbox gets it.
+ * One event for one user: the inbox, then push, as far as the user's level allows. While the
+ * user has the session open, only the inbox gets it. No email: email is only for the
+ * sign-in code and for credits an admin adds or approves.
  */
 const notifyEvent = async (data: NotifyEvent) => {
     const { userId, kind, sessionId, sessionTitle, detail, isWatching = false } = data
 
     const prefs = await notificationRepository.findUserNotifyPrefs(userId)
     if (!prefs || prefs.isDeleted || !levelAllows(prefs.notifyLevel, kind)) {
-        return { inbox: false, email: false, push: 0 }
+        return { inbox: false, push: 0 }
     }
 
     const words = eventMessage({ kind, sessionId, sessionTitle, detail })
@@ -229,20 +244,9 @@ const notifyEvent = async (data: NotifyEvent) => {
         toast: kind === 'SESSION_NEEDS_INPUT' || kind === 'SPEND_LIMIT',
     })
 
-    if (isWatching) return { inbox: true, email: false, push: 0 }
+    if (isWatching) return { inbox: true, push: 0 }
 
     const url = `${appUrl()}${words.path}`
-    let email = false
-    if (prefs.notifyEmail) {
-        const sent = await emailService.sendMessageEmail({
-            to: prefs.email,
-            subject: words.emailSubject,
-            body: `${words.emailBody}\n\nOpen it: ${url}`,
-            footerLinks: settingsLink(),
-        })
-        email = sent !== null
-    }
-
     const push = prefs.notifyPush
         ? await sendPushToUser({
               userId,
@@ -256,7 +260,7 @@ const notifyEvent = async (data: NotifyEvent) => {
           })
         : 0
 
-    return { inbox: true, email, push }
+    return { inbox: true, push }
 }
 
 /**
@@ -270,7 +274,7 @@ const notifyLowCredits = async (data: NotifyLowCredits) => {
     const { userId, balanceInCents } = data
 
     if (!(await notificationRepository.claimLowBalanceAlert(userId))) {
-        return { inbox: false, email: false, push: 0 }
+        return { inbox: false, push: 0 }
     }
     return notifyEvent({
         userId,
@@ -351,63 +355,6 @@ const removePushOnSignOut = async (data: RemovePushOnSignOut) => {
 }
 
 /**
- * The user turns the summary on: the window of the first summary starts now, not at the
- * last summary from before it was off. Saving "on" again changes nothing.
- */
-const startDigestWindow = async (data: StartDigestWindow) => {
-    const { userId, now = new Date() } = data
-    const result = await notificationRepository.startDigestWindow(userId, now)
-    return { started: result.count > 0 }
-}
-
-/**
- * The background tick: one mail for each user whose summary time has come in their time
- * zone, with what happened since the last one. No mail when nothing happened.
- */
-const sendDailyDigests = async (data: SendDailyDigests) => {
-    const { now = new Date() } = data
-
-    const users = await notificationRepository.findDigestUsers()
-    let sent = 0
-    for (const user of users) {
-        try {
-            const since = user.lastDigestAt
-            if (!since) {
-                // no saved start (turned on before startDigestWindow): the window starts here
-                await notificationRepository.markDigestSent(user.id, now)
-                continue
-            }
-            if (
-                !isDigestDue({
-                    now,
-                    timezone: user.timezone,
-                    digestTime: user.digestTime,
-                    lastDigestAt: since,
-                })
-            ) {
-                continue
-            }
-
-            const body = digestBody(await notificationRepository.summarizeSince(user.id, since))
-            if (body) {
-                await emailService.sendMessageEmail({
-                    to: user.email,
-                    subject: 'Your December day',
-                    body: `${body}\n\nOpen December: ${appUrl()}`,
-                    footerLinks: settingsLink(),
-                })
-                sent += 1
-            }
-            // a quiet day counts too, so the next summary starts from here
-            await notificationRepository.markDigestSent(user.id, now)
-        } catch (error) {
-            console.error(`[Notification] daily summary failed for ${user.id}:`, error)
-        }
-    }
-    return { checked: users.length, sent }
-}
-
-/**
  * Admin events (a credit request, a credit change, a session opened, the authenticator) go
  * to every admin's December inbox. Admins get no email for these.
  */
@@ -432,14 +379,14 @@ export const notificationService = {
     subscribePush,
     unsubscribePush,
     removePushOnSignOut,
-    startDigestWindow,
-    sendDailyDigests,
     getNotifications,
     getUnreadCount,
     getNotificationById,
     markAsRead,
     deleteNotification,
     sendNotificationToUser,
+    sendNotificationOnce,
+    markSessionRead,
     sendNotificationToAdmins,
     deleteAllReadNotification,
     markAllAsRead,

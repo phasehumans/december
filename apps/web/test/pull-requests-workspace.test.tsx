@@ -1,16 +1,19 @@
 import { GlobalRegistrator } from '@happy-dom/global-registrator'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { expect, test, describe, afterEach, beforeEach, mock } from 'bun:test'
 import React from 'react'
+import { MemoryRouter } from 'react-router-dom'
 
 import { useAppStore } from '../src/app/store'
 import { PullRequestsWorkspace } from '../src/features/preview/components/PullRequestsWorkspace'
 import { sessionAPI } from '../src/features/sessions/api/session'
+import { useSessionController } from '../src/features/sessions/hooks/useSessionController'
 
 if (!globalThis.document) {
     GlobalRegistrator.register()
 }
 
-const { render, screen, cleanup } = await import('@testing-library/react')
+const { render, renderHook, screen, cleanup, waitFor, act } = await import('@testing-library/react')
 
 describe('Functional Pull Requests Workspace (Ticket #587)', () => {
     beforeEach(() => {
@@ -157,5 +160,109 @@ describe('Functional Pull Requests Workspace (Ticket #587)', () => {
         expect(screen.queryByText(/december\/sess-7/)).toBeNull()
         // the commit author is a setting (December, or the user with December as co-author)
         expect(screen.queryByText(/December Agent/)).toBeNull()
+    })
+
+    test('a draft pull request reads Draft, not Closed', () => {
+        useAppStore.setState({
+            pullRequest: { prNumber: 5, title: 'Wip', state: 'draft', headRef: 'feat/wip' },
+        })
+        render(<PullRequestsWorkspace sessionId="sess-draft" />)
+
+        expect(screen.getByText('Draft')).not.toBeNull()
+        expect(screen.queryByText('Closed')).toBeNull()
+    })
+
+    test('a link that is not a web link is not shown', () => {
+        useAppStore.setState({
+            pullRequest: {
+                prNumber: 6,
+                title: 'Bad link',
+                url: 'javascript:alert(1)',
+                state: 'open',
+                headRef: 'feat/x',
+            },
+        })
+        const { container } = render(<PullRequestsWorkspace sessionId="sess-link" />)
+
+        expect(screen.queryByRole('link')).toBeNull()
+        expect(container.querySelector('a[href^="javascript"]')).toBeNull()
+    })
+
+    test('a GitLab merge request names GitLab and shows no made-up line counts', () => {
+        useAppStore.setState({
+            pullRequest: {
+                prNumber: 9,
+                gitProvider: 'GITLAB',
+                title: 'Fix login',
+                url: 'https://gitlab.com/acme/web/-/merge_requests/9',
+                state: 'open',
+                headRef: 'feat/login',
+            },
+        })
+        render(<PullRequestsWorkspace sessionId="sess-gitlab" />)
+
+        expect(screen.getByRole('link', { name: /view on gitlab/i })).not.toBeNull()
+        expect(screen.queryByText('+0')).toBeNull()
+        expect(screen.queryByText('-0')).toBeNull()
+        // nothing is known about the diff: no empty Diff Summary box
+        expect(screen.queryByText('Diff Summary')).toBeNull()
+    })
+
+    test('the answer of a session left before it came does not show on the next one', async () => {
+        let answerFirst: (value: { pullRequest: any }) => void = () => {}
+        sessionAPI.getSessionPullRequests = mock((sessionId: string) =>
+            sessionId === 'sess-first'
+                ? new Promise<{ pullRequest: any }>((resolve) => {
+                      answerFirst = resolve
+                  })
+                : Promise.resolve({
+                      pullRequest: { prNumber: 2, title: 'Second', state: 'open', headRef: 'b' },
+                  })
+        )
+
+        const view = render(<PullRequestsWorkspace sessionId="sess-first" />)
+        view.rerender(<PullRequestsWorkspace sessionId="sess-second" />)
+        expect(await screen.findByText('Second')).not.toBeNull()
+
+        await act(async () => {
+            answerFirst({
+                pullRequest: { prNumber: 1, title: 'First', state: 'open', headRef: 'a' },
+            })
+        })
+        expect(screen.queryByText('First')).toBeNull()
+        expect(useAppStore.getState().pullRequest?.prNumber).toBe(2)
+    })
+
+    test('opening another session drops the pull request of the one before', async () => {
+        useAppStore.setState({
+            pullRequest: { prNumber: 1, title: 'First', state: 'open', headRef: 'a' },
+        })
+        sessionAPI.getSessionDetail = mock(async () => ({
+            session: { id: 'sess-second', title: 'Second' },
+            chatMessages: [],
+        })) as any
+
+        const client = new QueryClient()
+        const { result } = renderHook(
+            () =>
+                useSessionController(
+                    'sessions',
+                    () => {},
+                    () => {},
+                    { current: 'sessions' }
+                ),
+            {
+                wrapper: ({ children }) => (
+                    <QueryClientProvider client={client}>
+                        <MemoryRouter>{children}</MemoryRouter>
+                    </QueryClientProvider>
+                ),
+            }
+        )
+
+        await act(async () => {
+            await result.current.openProject({ projectId: 'sess-second' })
+        })
+        await waitFor(() => expect(useAppStore.getState().pullRequest).toBeNull())
     })
 })

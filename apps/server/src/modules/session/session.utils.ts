@@ -16,7 +16,11 @@ import type {
     MergeHeldRun,
     MessageWhileWorking,
     PromptRoute,
+    PullRequestCursor,
+    PullRequestSortBy,
     RepoFilter,
+    SavedPullRequestRow,
+    SessionPullRequest,
     SessionFacetRepoRow,
     SessionFacetRows,
     SessionFacets,
@@ -171,6 +175,84 @@ export type PullRequestState = (typeof PULL_REQUEST_STATES)[number]
 export const toPullRequestState = (value: unknown): PullRequestState =>
     PULL_REQUEST_STATES.includes(value as PullRequestState) ? (value as PullRequestState) : 'open'
 
+/**
+ * how long the pull requests list waits for the host, and how long one refresh of a user
+ * holds the place of the next one. an object, so tests can make them short
+ */
+export const PULL_REQUEST_REFRESH_TIMING = {
+    /** the list answers after this, the refresh ends in the background */
+    waitMs: 2000,
+    /** a refresh that hangs this long no longer stops a new one */
+    lockMs: 30_000,
+}
+
+/** the column that orders rows with the same, or no, value of the sort column */
+export const PULL_REQUEST_SORT_FALLBACK: Record<PullRequestSortBy, PullRequestSortBy | null> = {
+    prOpenedAt: 'createdAt',
+    prUpdatedAt: 'updatedAt',
+    updatedAt: null,
+    createdAt: null,
+}
+
+/** the cursor as text for the url */
+export const encodePullRequestCursor = (cursor: PullRequestCursor): string =>
+    Buffer.from(JSON.stringify(cursor)).toString('base64url')
+
+const isIsoDate = (value: unknown): value is string =>
+    typeof value === 'string' && value.length <= 40 && !Number.isNaN(Date.parse(value))
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** the cursor from the url, or null when it is not one this server made */
+export const decodePullRequestCursor = (text: string): PullRequestCursor | null => {
+    let parsed: any
+    try {
+        parsed = JSON.parse(Buffer.from(text, 'base64url').toString('utf8'))
+    } catch {
+        // Intentionally swallowed: not a cursor, the caller answers 400
+        return null
+    }
+    if (!parsed || typeof parsed !== 'object') return null
+    const { sortBy, sortOrder, value, fallback, id } = parsed
+    // own keys only: "__proto__" or "toString" are not sorts
+    if (typeof sortBy !== 'string' || !Object.hasOwn(PULL_REQUEST_SORT_FALLBACK, sortBy)) {
+        return null
+    }
+    if (sortOrder !== 'asc' && sortOrder !== 'desc') return null
+    if (typeof id !== 'string' || !UUID_PATTERN.test(id)) return null
+    const hasFallback = PULL_REQUEST_SORT_FALLBACK[sortBy as PullRequestSortBy] !== null
+    // a sort with no fallback is on a column that is never empty
+    if (hasFallback ? value !== null && !isIsoDate(value) : !isIsoDate(value)) return null
+    if (hasFallback ? !isIsoDate(fallback) : fallback !== null) return null
+    return { sortBy: sortBy as PullRequestSortBy, sortOrder, value, fallback, id }
+}
+
+/** the largest value of an Int column (prNumber): a longer number cannot match a row */
+export const MAX_DB_INT = 2_147_483_647
+
+/** a pull request number typed in the search ("42" or "#42"), or null */
+export const searchedPullRequestNumber = (needle: string): number | null => {
+    if (!/^\d+$/.test(needle)) return null
+    const value = Number(needle)
+    return value >= 1 && value <= MAX_DB_INT ? value : null
+}
+
+/**
+ * the link when it is a web link, else null. only http and https reach an href, so a
+ * saved `javascript:` or `data:` link never runs in the page
+ */
+export const webLinkOrNull = (url: string | null | undefined): string | null => {
+    if (!url) return null
+    const trimmed = url.trim()
+    try {
+        const parsed = new URL(trimmed)
+        return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? trimmed : null
+    } catch {
+        // Intentionally swallowed: not a valid link, so no link is shown
+        return null
+    }
+}
+
 /** the agent of the session starts or works: "Running" in the list and the counts */
 export const isWorkingVmStatus = (vmStatus: unknown): boolean =>
     vmStatus === 'PROVISIONING' || vmStatus === 'RUNNING'
@@ -272,5 +354,83 @@ export const toLimitQuestionPrompt = (data: ToLimitQuestionPrompt): LimitQuestio
                 options: [SPEND_LIMIT_CONTINUE, SPEND_LIMIT_STOP],
             },
         ],
+    }
+}
+
+/** the pull request the worker saved on the session row, or null when it opened none */
+export const toSavedPullRequest = (session: SavedPullRequestRow): SessionPullRequest | null => {
+    if (!session.prNumber) return null
+    const url = webLinkOrNull(session.prUrl)
+    // GitLab does not count lines: a saved count there is not real
+    const hasLineCounts =
+        session.gitProvider === 'GITHUB' &&
+        session.prAdditions !== null &&
+        session.prDeletions !== null
+    return {
+        prNumber: session.prNumber,
+        gitProvider: session.gitProvider,
+        ...(url ? { url } : {}),
+        title: session.prTitle || session.title || `Pull request #${session.prNumber}`,
+        state: toPullRequestState(session.prState),
+        // only the branch of the pull request: session.branch is the base branch
+        headRef: session.prBranch || '',
+        ...(hasLineCounts
+            ? {
+                  diffSummary: {
+                      additions: session.prAdditions as number,
+                      deletions: session.prDeletions as number,
+                  },
+              }
+            : {}),
+        ...(session.prOpenedAt ? { createdAt: session.prOpenedAt.toISOString() } : {}),
+        ...(session.prUpdatedAt ? { updatedAt: session.prUpdatedAt.toISOString() } : {}),
+    }
+}
+
+/**
+ * the cached pull request with a web link only, and no line counts from GitLab (the
+ * worker cached 0 there, which is not a real count)
+ */
+export const cleanCachedPullRequest = (
+    pullRequest: SessionPullRequest,
+    gitProvider: 'GITHUB' | 'GITLAB'
+): SessionPullRequest => {
+    const { url, diffSummary, ...rest } = pullRequest
+    const link = webLinkOrNull(url)
+    const changedFiles = diffSummary?.changedFiles
+    const lineCounts =
+        gitProvider === 'GITHUB' &&
+        typeof diffSummary?.additions === 'number' &&
+        typeof diffSummary?.deletions === 'number'
+            ? { additions: diffSummary.additions, deletions: diffSummary.deletions }
+            : {}
+    const summary = { ...lineCounts, ...(changedFiles !== undefined ? { changedFiles } : {}) }
+    return {
+        ...rest,
+        gitProvider,
+        ...(link ? { url: link } : {}),
+        ...(Object.keys(summary).length > 0 ? { diffSummary: summary } : {}),
+    }
+}
+
+/** the cached pull request, with what the session row keeps current put over it */
+export const withSavedPullRequest = (
+    cached: SessionPullRequest,
+    saved: SessionPullRequest,
+    savedPrTitle: string | null
+): SessionPullRequest => {
+    const clean = cleanCachedPullRequest(cached, saved.gitProvider ?? 'GITHUB')
+    const changedFiles = clean.diffSummary?.changedFiles
+    const diffSummary = saved.diffSummary
+        ? { ...saved.diffSummary, ...(changedFiles !== undefined ? { changedFiles } : {}) }
+        : clean.diffSummary
+    return {
+        ...clean,
+        state: saved.state,
+        // an edit on the host changes the saved title; a row with none keeps the cached one
+        ...(savedPrTitle ? { title: savedPrTitle } : {}),
+        ...(saved.url ? { url: saved.url } : {}),
+        ...(diffSummary ? { diffSummary } : {}),
+        ...(saved.updatedAt ? { updatedAt: saved.updatedAt } : {}),
     }
 }

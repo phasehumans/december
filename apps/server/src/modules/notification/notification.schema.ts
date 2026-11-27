@@ -18,6 +18,10 @@ export const NotificationParamsSchema = z.object({
     id: z.string().uuid('notification ID must be a valid UUID'),
 })
 
+export const SessionReadParamsSchema = z.object({
+    sessionId: z.string().trim().min(1, 'session ID is required').max(100),
+})
+
 export const GetNotificationsQuerySchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),

@@ -4,6 +4,7 @@ import { useSearchModel } from '../search/useSearchModel'
 
 import type { SearchItem, SearchRow } from '../search/searchItems'
 
+import { useArchiveConfirm } from '@/features/sessions/components/SessionArchiveModal'
 import { Icons } from '@/shared/components/ui/Icons'
 import { useBackToClose } from '@/shared/lib/useBackToClose'
 import { cn } from '@/shared/lib/utils'
@@ -113,6 +114,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     const viewport = useVisualViewport(isOpen && isMobile)
     // back button and back swipe close the search instead of leaving the page
     const { closeThen } = useBackToClose({ isOpen, onClose })
+    // the palette closes before a command runs, so this dialog shows while it is closed
+    const { confirmArchive, archiveModal } = useArchiveConfirm()
 
     const { sections, askDecember, isAiSearching } = useSearchModel({
         isOpen,
@@ -123,6 +126,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         onOpenSession,
         onToggleSidebar: isMobile ? undefined : onToggleSidebar,
         isSidebarCollapsed,
+        confirmArchive,
     })
 
     const rows = useMemo<SearchRow[]>(() => sections.flatMap((s) => s.rows), [sections])
@@ -231,7 +235,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [isOpen, rows.length, selectedIndex, activate, onClose])
 
-    if (!isOpen) return null
+    if (!isOpen) return archiveModal
 
     let rowIndex = 0
     const list = (
@@ -375,27 +379,30 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     }
 
     return (
-        <div className="fixed inset-0 z-[200]">
-            <div
-                className="fixed inset-0 bg-black/50 animate-in fade-in duration-200"
-                onClick={onClose}
-            />
-            {/* centered in the area right of the desktop sidebar */}
-            <div
-                className={cn(
-                    'fixed inset-0 flex items-start justify-center p-4 pt-[12vh] pointer-events-none transition-[left] duration-300',
-                    isSidebarCollapsed ? 'md:left-[56px]' : 'md:left-[200px]'
-                )}
-            >
+        <>
+            {archiveModal}
+            <div className="fixed inset-0 z-[200]">
                 <div
-                    className="w-full max-w-[560px] bg-[#1E1E1E] border border-[#282828] rounded-[18px] shadow-[0_0_80px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 font-sans pointer-events-auto"
-                    onClick={(e) => e.stopPropagation()}
+                    className="fixed inset-0 bg-black/50 animate-in fade-in duration-200"
+                    onClick={onClose}
+                />
+                {/* centered in the area right of the desktop sidebar */}
+                <div
+                    className={cn(
+                        'fixed inset-0 flex items-start justify-center p-4 pt-[12vh] pointer-events-none transition-[left] duration-300',
+                        isSidebarCollapsed ? 'md:left-[56px]' : 'md:left-[200px]'
+                    )}
                 >
-                    {input}
-                    {list}
+                    <div
+                        className="w-full max-w-[560px] bg-[#1E1E1E] border border-[#282828] rounded-[18px] shadow-[0_0_80px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 font-sans pointer-events-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {input}
+                        {list}
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     )
 }
 

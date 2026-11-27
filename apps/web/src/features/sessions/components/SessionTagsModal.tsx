@@ -50,7 +50,7 @@ export const SessionTagsModal: React.FC<SessionTagsModalProps> = ({
             isOpen={isOpen}
             onClose={onClose}
             title="Tag"
-            description="One tag per session. Filter by it on the Sessions page."
+            description="One tag per session. Filter by it on Sessions and Pull requests."
             variant="premium"
             showLogo={false}
             sheetOnPhone

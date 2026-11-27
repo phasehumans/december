@@ -50,6 +50,7 @@ describe('low credits alert from charges on the server', () => {
                 title: string
             }>
         ).map((row) => row.title)
+    // low credits is an inbox item only: no mail (inbox review, round 2)
     const alertMails = (email: string) =>
         emails.filter(
             (sent) => sent.to === email && sent.subject === 'Your December credits are low'
@@ -105,13 +106,14 @@ describe('low credits alert from charges on the server', () => {
         expect(await balanceOf(user.userId)).toBeLessThan(100)
 
         expect(await inboxTitles(user.token)).toEqual(['Your credits are low'])
-        expect(alertMails(user.email)).toHaveLength(1)
-        expect(alertMails(user.email)[0]?.body).toContain('Your balance is $0.99.')
+        expect(alertMails(user.email)).toHaveLength(0)
+        const alert = await prisma.notification.findFirst({ where: { userId: user.userId } })
+        expect(alert?.message).toContain('Your balance is $0.99.')
 
         // the next charge is under $1 too: it is the same drop
         await search(user.token, `stripe two ${stamp}`)
         expect(await inboxTitles(user.token)).toEqual(['Your credits are low'])
-        expect(alertMails(user.email)).toHaveLength(1)
+        expect(alertMails(user.email)).toHaveLength(0)
     })
 
     it('a charge that leaves the balance over $1 does not alert', async () => {
@@ -145,7 +147,7 @@ describe('low credits alert from charges on the server', () => {
             titles = await inboxTitles(user.token)
         }
         expect(titles).toEqual(['Your credits are low'])
-        expect(alertMails(user.email)).toHaveLength(1)
+        expect(alertMails(user.email)).toHaveLength(0)
     })
 
     it('the worker and the server do not both alert for one drop', async () => {
@@ -163,6 +165,6 @@ describe('low credits alert from charges on the server', () => {
         })
 
         expect(await inboxTitles(user.token)).toEqual(['Your credits are low'])
-        expect(alertMails(user.email)).toHaveLength(1)
+        expect(alertMails(user.email)).toHaveLength(0)
     })
 })

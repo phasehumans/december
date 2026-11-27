@@ -7,6 +7,8 @@ export type PullRequestState = 'open' | 'draft' | 'merged' | 'closed'
 
 export interface PullRequestRow {
     sessionId: string
+    /** the host of the repository: the link names it */
+    gitProvider: 'GITHUB' | 'GITLAB'
     title: string
     /** owner/name, when the session has a repository */
     repo: string | null
@@ -14,16 +16,20 @@ export interface PullRequestRow {
     state: PullRequestState
     /** the branch the pull request was opened from, when known */
     branch: string | null
-    /** link to the pull request on GitHub, when the repository url is known */
+    /** link to the pull request on the host, when it is a web link */
     url: string | null
     /** added and deleted lines, when the host counts them (GitLab does not) */
     additions: number | null
     deletions: number | null
+    /** the last change of the pull request on the host; the session date when not known */
     updatedAt: string
     /** when the pull request was opened; the session date for rows saved before that */
     createdAt: string
     /** tags of the session */
     tags: string[]
+    /** the run state of the session (RUNNING, PROVISIONING, ...), when known */
+    vmStatus: string | null
+    isArchived: boolean
 }
 
 export const PULL_REQUEST_STATE_LABELS: Record<PullRequestState, string> = {
@@ -49,7 +55,7 @@ export const repoNameOf = (session: BackendSession): string | null => {
 }
 
 // only web links reach an href or window.open: never javascript: or file:
-const webLinkOrNull = (url: string | null | undefined): string | null =>
+export const webLinkOrNull = (url: string | null | undefined): string | null =>
     url && /^https?:\/\//i.test(url.trim()) ? url.trim() : null
 
 /** the saved pull request link, else one built from the repository url */
@@ -62,47 +68,63 @@ export const pullRequestUrlOf = (session: BackendSession): string | null => {
 }
 
 /** rows of the pull requests list, in the order the server sorted them */
+const firstOfEachSession = (pullRequests: BackendPullRequest[]): BackendPullRequest[] => {
+    const seen = new Set<string>()
+    return pullRequests.filter((pr) => {
+        if (seen.has(pr.sessionId)) return false
+        seen.add(pr.sessionId)
+        return true
+    })
+}
+
 export const toPullRequestRows = (pullRequests: BackendPullRequest[]): PullRequestRow[] =>
-    pullRequests.map((pr) => ({
+    // each session once: a row that moved between two pages is not shown twice
+    firstOfEachSession(pullRequests).map((pr) => ({
         sessionId: pr.sessionId,
+        gitProvider: pr.gitProvider === 'GITLAB' ? 'GITLAB' : 'GITHUB',
         title: pr.prTitle || pr.title || 'Untitled session',
         repo: pr.repo,
         number: pr.prNumber,
         state: pr.prState ?? 'open',
         branch: pr.prBranch,
-        url: pr.prUrl,
+        url: webLinkOrNull(pr.prUrl),
         additions: pr.additions,
         deletions: pr.deletions,
-        updatedAt: pr.updatedAt,
+        updatedAt: pr.prUpdatedAt ?? pr.updatedAt,
         createdAt: pr.prOpenedAt ?? pr.createdAt,
         tags: pr.tags || [],
+        vmStatus: pr.vmStatus ?? null,
+        isArchived: Boolean(pr.isArchived),
     }))
 
 /**
- * rows from the loaded sessions list, for the few rows under the Home prompt box. the
- * Pull requests page reads GET /session/pull-requests instead
+ * the row in the shape the session menu helpers read (useSessionLinks): the pull request
+ * link, and the repository and branch for "New in this repo"
  */
-export const sessionsToPullRequestRows = (sessions: BackendSession[]): PullRequestRow[] =>
-    sessions
-        .filter((session) => session.prNumber != null && session.type !== 'SEARCH')
-        .map((session) => ({
-            sessionId: session.id,
-            title: session.prTitle || session.title || session.projectName || 'Untitled session',
-            repo: repoNameOf(session),
-            number: session.prNumber as number,
-            state: session.prState ?? 'open',
-            branch: session.prBranch ?? session.branch ?? null,
-            url: pullRequestUrlOf(session),
-            additions: null,
-            deletions: null,
-            updatedAt: session.updatedAt,
-            createdAt: session.createdAt,
-            tags: session.tags || [],
-        }))
-        .sort(
-            (a, b) =>
-                (new Date(b.updatedAt).getTime() || 0) - (new Date(a.updatedAt).getTime() || 0)
-        )
+export const pullRequestRowAsSession = (row: PullRequestRow): BackendSession => ({
+    id: row.sessionId,
+    title: row.title,
+    type: 'WEB',
+    lastMessage: null,
+    gitProvider: row.gitProvider,
+    githubRepoName: row.repo,
+    branch: row.branch,
+    prNumber: row.number,
+    prState: row.state,
+    prUrl: row.url,
+    prBranch: row.branch,
+    tags: row.tags,
+    vmStatus: row.vmStatus,
+    isArchived: row.isArchived,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+})
+
+/** the name of the host, for link labels */
+export const GIT_HOST_LABELS: Record<PullRequestRow['gitProvider'], string> = {
+    GITHUB: 'GitHub',
+    GITLAB: 'GitLab',
+}
 
 export const PULL_REQUEST_STATE_CLASS: Record<PullRequestState, string> = {
     open: 'text-emerald-400',

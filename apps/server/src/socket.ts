@@ -102,9 +102,18 @@ export function initSocket(httpServer: any) {
                 io.to(`session:${sessionId}`).emit('agent_event', event)
                 // the sessions list marks a session that waits for an answer
                 if (event?.type === 'AskQuestionPrompt') {
-                    sessionService.markQuestionAsked({ sessionId }).catch((error: unknown) => {
-                        console.error('[SERVER CORE] could not mark the pending question', error)
-                    })
+                    const question = event.questions?.[0]?.question
+                    sessionService
+                        .markQuestionAsked({
+                            sessionId,
+                            question: typeof question === 'string' ? question : undefined,
+                        })
+                        .catch((error: unknown) => {
+                            console.error(
+                                '[SERVER CORE] could not mark the pending question',
+                                error
+                            )
+                        })
                 } else if (event?.type === 'QuestionSettled') {
                     sessionService.markQuestionSettled({ sessionId }).catch((error: unknown) => {
                         console.error('[SERVER CORE] could not clear the pending question', error)

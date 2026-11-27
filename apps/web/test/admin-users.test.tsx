@@ -79,9 +79,7 @@ beforeEach(() => {
             onboardingDoneAt: null,
             timezone: 'Asia/Kolkata',
             notifyLevel: 'IMPORTANT',
-            notifyEmail: true,
             notifyPush: false,
-            digest: '09:00',
             productEmails: true,
             securityAlerts: true,
             lastExport: null,
@@ -296,7 +294,6 @@ describe('admin users tab', () => {
             '9 calls · $3.00',
             'Approved the $5 request',
             '+120',
-            '09:00',
         ]) {
             expect(view.getByText(text)).toBeTruthy()
         }

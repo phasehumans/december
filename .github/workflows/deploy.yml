@@ -102,18 +102,27 @@ jobs:
                       git reset --hard origin/main
 
                       echo "==> Pulling pre-built images from GHCR..."
-                      sudo docker compose pull
+                      sudo docker compose pull db-migrate server worker
 
-                      echo "==> Restarting Docker containers..."
-                      sudo docker compose up -d --remove-orphans
+                      # migrations run while the old server still serves traffic,
+                      # so the down window is only stop old + start new.
+                      # migrations must work with the old code (add first, drop in a later deploy)
+                      echo "==> Running database migrations..."
+                      sudo docker compose run --rm db-migrate
+
+                      echo "==> Restarting app containers (redis is left running)..."
+                      sudo docker compose up -d --no-deps --remove-orphans server worker
 
                       echo "==> Cleaning up unused Docker images and build cache..."
                       sudo docker image prune -f
                       sudo docker builder prune -f --keep-storage=1GB
 
                       echo "==> Verifying local health check..."
-                      sleep 5
-                      curl -f http://127.0.0.1:4000/health || exit 1
+                      for i in $(seq 1 30); do
+                        curl -fs http://127.0.0.1:4000/health > /dev/null && break
+                        if [ "$i" = 30 ]; then echo "server not healthy after 60s"; exit 1; fi
+                        sleep 2
+                      done
                       echo "==> Backend containers deployed successfully!"
 
             - name: Verify Public HTTPS Healthcheck

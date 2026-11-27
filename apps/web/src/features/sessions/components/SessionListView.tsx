@@ -61,7 +61,7 @@ interface SessionListViewProps {
 }
 
 /** where an archived row was, for a few seconds (A1). the same words as the sidebar */
-const ArchivedUndoLine: React.FC<{ onUndo: () => void }> = ({ onUndo }) => (
+export const ArchivedUndoLine: React.FC<{ onUndo: () => void }> = ({ onUndo }) => (
     <div
         role="status"
         className="flex items-center justify-between rounded-lg px-2.5 py-3 text-[13px] text-[#8F8E8D]"

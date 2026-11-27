@@ -309,14 +309,22 @@ describe('Billing Integration Tests', () => {
             .update(`${createdOrderId}|${paymentId}`)
             .digest('hex')
 
-        const res = await request(app)
-            .post('/api/v1/billing/wallet/verify/razorpay')
-            .set('Authorization', `Bearer ${accessToken}`)
-            .send({
-                razorpay_order_id: createdOrderId,
-                razorpay_payment_id: paymentId,
-                razorpay_signature: signature,
-            })
+        // this user is the admin here, so the admin's top-up item (A1) lands in the same inbox
+        const savedAdmins = process.env.ADMIN_EMAILS
+        process.env.ADMIN_EMAILS = testEmail
+        let res: request.Response
+        try {
+            res = await request(app)
+                .post('/api/v1/billing/wallet/verify/razorpay')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    razorpay_order_id: createdOrderId,
+                    razorpay_payment_id: paymentId,
+                    razorpay_signature: signature,
+                })
+        } finally {
+            process.env.ADMIN_EMAILS = savedAdmins
+        }
 
         expect(res.status).toBe(200)
         expect(res.body.data.success).toBe(true)
@@ -328,10 +336,16 @@ describe('Billing Integration Tests', () => {
         expect(dbTx?.status).toBe('SUCCESS')
 
         const notif = await prisma.notification.findFirst({
-            where: { userId: testUserId, title: 'Credits Added' },
+            where: { userId: testUserId, title: 'Credits added' },
         })
         expect(notif).not.toBeNull()
-        expect(notif?.message).toContain('$20.00')
+        expect(notif?.message).toBe('$20.00 is in your wallet.')
+
+        // A1: the admins see the payment in their inbox
+        const adminItem = await prisma.notification.findFirst({
+            where: { userId: testUserId, title: 'Top-up: $20.00' },
+        })
+        expect(adminItem?.message).toBe(`${testEmail} paid $20.00 with Razorpay.`)
     })
 
     it('POST /api/v1/billing/wallet/verify/razorpay - is idempotent on already verified order without double-crediting balance', async () => {

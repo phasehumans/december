@@ -13,7 +13,6 @@ import { sessionCache } from './auth.cache'
 import { authRepository } from './auth.repository'
 import {
     sendOTP,
-    sendWelcomeEmail,
     generateUserCode,
     generateAccessToken,
     verifyTokenIgnoringExpiry,
@@ -57,6 +56,57 @@ const expiredOtp = { otpHash: null, otpExpiresAt: null }
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
+// a new account gets a welcome item in the inbox (no welcome email: inbox review E1-A)
+const sendWelcomeNotice = async (userId: string) => {
+    try {
+        await notificationService.sendNotificationToUser({
+            userId,
+            title: 'Welcome to December',
+            message: 'Start a session from the home page.',
+            type: 'SUCCESS',
+        })
+    } catch (error) {
+        console.error('failed to send welcome notification:', error)
+    }
+}
+
+// an account older than this with no sign-in left (all signed out) still gets the notice
+const NEW_ACCOUNT_MS = 10 * 60 * 1000
+
+/**
+ * N3, the "Security alerts" setting: a sign-in from a browser or a CLI that none of the
+ * user's other sign-ins use puts "New sign-in: Chrome on Windows" in the inbox (no email).
+ * The first sign-in of a new account is not news. Never blocks the sign-in.
+ */
+const noticeNewDevice = async (data: { userId: string; userAgent?: string }) => {
+    const { userId, userAgent } = data
+    try {
+        const { label } = describeUserAgent(userAgent)
+        const [others, user] = await Promise.all([
+            authRepository.findSessionUserAgents(userId),
+            authRepository.findUserById(userId),
+        ])
+        if (!user) return false
+        const isNewAccount =
+            others.length === 0 && Date.now() - user.createdAt.getTime() < NEW_ACCOUNT_MS
+        if (isNewAccount) return false
+        if (others.some((other) => describeUserAgent(other.userAgent).label === label)) {
+            return false
+        }
+        await notificationService.sendNotificationToUser({
+            userId,
+            title: `New sign-in: ${label}`,
+            message: 'If this was not you, sign out of that device in Settings.',
+            type: 'WARNING',
+            link: '/settings/account',
+        })
+        return true
+    } catch (error) {
+        console.error('[Auth] could not write the new sign-in notice:', error)
+        return false
+    }
+}
+
 // the token is only in the httpOnly cookie for the web: the controller decides what goes in the body
 const issueSession = async (data: IssueSession) => {
     const { userId, method, userAgent, ipAddress } = data
@@ -64,6 +114,9 @@ const issueSession = async (data: IssueSession) => {
     const sessionId = crypto.randomUUID()
     const accessToken = generateAccessToken({ userId, sessionId })
     const expiresAt = new Date(Date.now() + SESSION_TTL_MS)
+
+    // before the new row, so the new sign-in is not compared with itself
+    await noticeNewDevice({ userId, userAgent })
 
     await authRepository.createSession({
         id: sessionId,
@@ -205,23 +258,7 @@ const verifyEmailAuth = async (data: VerifyEmailAuth) => {
             code: referralCode,
         })
 
-        try {
-            await notificationService.sendNotificationToUser({
-                userId: user.id,
-                title: 'Welcome to December',
-                message:
-                    'Your account has been created successfully. You can now start building apps and turn your ideas into reality with December.',
-                type: 'SUCCESS',
-            })
-        } catch (error) {
-            console.error('failed to send welcome notification:', error)
-        }
-
-        try {
-            await sendWelcomeEmail(user.email, user.name || '')
-        } catch (error) {
-            console.error('failed to send welcome email:', error)
-        }
+        await sendWelcomeNotice(user.id)
     }
 
     return { accessToken, isNewUser }
@@ -246,23 +283,7 @@ const google = async (data: Google) => {
             code: referralCode,
         })
 
-        try {
-            await notificationService.sendNotificationToUser({
-                userId: user.id,
-                title: 'Welcome to December',
-                message:
-                    'Your account has been created successfully. You can now start building apps and turn your ideas into reality with December.',
-                type: 'SUCCESS',
-            })
-        } catch (error) {
-            console.error('failed to send welcome notification:', error)
-        }
-
-        try {
-            await sendWelcomeEmail(user.email, user.name || '')
-        } catch (error) {
-            console.error('failed to send welcome email:', error)
-        }
+        await sendWelcomeNotice(user.id)
     } else if (user.deletedAt || user.isDeleted) {
         throw new AppError('account has been deleted', 403)
     } else if (!user.googleId) {
@@ -323,23 +344,7 @@ const github = async (data: Github) => {
             code: referralCode,
         })
 
-        try {
-            await notificationService.sendNotificationToUser({
-                userId: user.id,
-                title: 'Welcome to December',
-                message:
-                    'Your account has been created successfully. You can now start building apps and turn your ideas into reality with December.',
-                type: 'SUCCESS',
-            })
-        } catch (error) {
-            console.error('failed to send welcome notification:', error)
-        }
-
-        try {
-            await sendWelcomeEmail(user.email, user.name || '')
-        } catch (error) {
-            console.error('failed to send welcome email:', error)
-        }
+        await sendWelcomeNotice(user.id)
     } else if (user.deletedAt || user.isDeleted) {
         throw new AppError('account has been deleted', 403)
     } else if (!user.githubId) {

@@ -1,8 +1,14 @@
 import { describe, it, expect, afterEach } from 'bun:test'
 
 import resend from '../../src/config/email'
+import { redisClient } from '../../src/config/redis'
 import { env } from '../../src/env'
-import { processEmailJob, createEmailWorker } from '../../src/modules/email/email.worker'
+import {
+    alertAdminsOfFailedMail,
+    processEmailJob,
+    createEmailWorker,
+} from '../../src/modules/email/email.worker'
+import { notificationService } from '../../src/modules/notification/notification.service'
 
 describe('Email Worker - Unit Tests', () => {
     const originalSend = resend.emails.send
@@ -42,30 +48,45 @@ describe('Email Worker - Unit Tests', () => {
         expect(sentPayload.html).toContain('889900')
     })
 
-    it('should process Welcome email job successfully and call resend.emails.send', async () => {
-        let sentPayload: any = null
-        resend.emails.send = (async (payload: any) => {
-            sentPayload = payload
-            return { data: { id: 'email-welcome-456' }, error: null }
+    it('drops a welcome job queued before the welcome mail was removed, without sending', async () => {
+        let sent = false
+        resend.emails.send = (async () => {
+            sent = true
+            return { data: { id: 'never' }, error: null }
         }) as any
 
-        const mockJob: any = {
+        const result = await processEmailJob({
             id: 'job-welcome-1',
-            data: {
-                type: 'welcome',
-                to: 'newuser@example.com',
-                name: 'Alex',
-            },
-        }
-
-        const result = await processEmailJob(mockJob)
+            data: { type: 'welcome', to: 'newuser@example.com', name: 'Alex' },
+        } as any)
 
         expect(result.success).toBe(true)
-        expect(result.messageId).toBe('email-welcome-456')
-        expect(sentPayload).not.toBeNull()
-        expect(sentPayload.to).toBe('newuser@example.com')
-        expect(sentPayload.subject).toBe('Welcome to December')
-        expect(sentPayload.html).toContain('Hi Alex')
+        expect(sent).toBe(false)
+    })
+
+    it('tells the admins about a mail that failed every try, once an hour (A3)', async () => {
+        const original = notificationService.sendNotificationToAdmins
+        const sentToAdmins: any[] = []
+        notificationService.sendNotificationToAdmins = (async (data: any) => {
+            sentToAdmins.push(data)
+        }) as any
+        // the hour lock may be held by an earlier run that shares this redis
+        await redisClient?.del('email:failed-alert').catch(() => {
+            // Intentionally swallowed: no redis means the lock lives in this process only
+        })
+        try {
+            const first = await alertAdminsOfFailedMail({ type: 'otp', error: 'quota reached' })
+            const second = await alertAdminsOfFailedMail({ type: 'message', error: 'again' })
+            expect(first).toBe(true)
+            expect(second).toBe(false)
+            expect(sentToAdmins).toHaveLength(1)
+            expect(sentToAdmins[0].title).toBe('Mail not sent')
+            expect(sentToAdmins[0].message).toContain('A sign-in code failed after every try')
+            // the address of the mail is never in the admin item
+            expect(JSON.stringify(sentToAdmins[0])).not.toContain('@')
+        } finally {
+            notificationService.sendNotificationToAdmins = original
+        }
     })
 
     it('should throw error on failure in production so BullMQ can trigger retries', async () => {

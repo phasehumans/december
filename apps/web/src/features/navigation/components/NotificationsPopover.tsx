@@ -1,10 +1,17 @@
-import { Trash2, ArrowLeft, MoreHorizontal, Settings, Bell, CheckCheck } from 'lucide-react'
+import { Trash2, ArrowLeft, ArrowUpRight, MoreHorizontal, Settings, CheckCheck } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 
 import type { InboxFilter, Notification } from '@/features/notification/api/notification'
 
 import { useInbox } from '@/features/notification/hooks/useInbox'
+import {
+    isAppLink,
+    openLabelForLink,
+    shortTime,
+} from '@/features/notification/lib/notificationLinks'
+import { ListArt } from '@/features/sessions/components/ListParts'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
 
@@ -22,6 +29,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
     onSettings,
 }) => {
     const popoverRef = useRef<HTMLDivElement | null>(null)
+    const navigate = useNavigate()
     const [position, setPosition] = useState<{
         bottom: number
         left: number
@@ -137,6 +145,16 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
         return null
     }
 
+    // I1: an app path opens in this tab and closes the inbox; another site opens a new tab
+    const openLink = (link: string) => {
+        if (isAppLink(link)) {
+            onClose()
+            navigate(link)
+        } else {
+            window.open(link, '_blank', 'noopener,noreferrer')
+        }
+    }
+
     const handleNotificationClick = (notification: Notification) => {
         if (!notification.isRead) {
             inbox.markAsRead.mutate(notification.id)
@@ -195,14 +213,16 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                         {selectedNotification.message}
                     </p>
                     {selectedNotification.link && (
-                        <a
-                            href={selectedNotification.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2 py-0.5 border border-[#2E2D2C] bg-[#252525]/50 hover:bg-[#252525] rounded-lg text-[10.5px] font-medium text-[#CBCACA] hover:text-white transition-colors w-fit shadow-sm mt-1"
+                        <button
+                            type="button"
+                            onClick={() => openLink(selectedNotification.link as string)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 border border-[#2E2D2C] bg-[#252525]/50 hover:bg-[#252525] rounded-lg text-[10.5px] font-medium text-[#CBCACA] hover:text-white transition-colors w-fit shadow-sm mt-1 cursor-pointer outline-none"
                         >
-                            View Details →
-                        </a>
+                            {openLabelForLink(selectedNotification.link)}
+                            {!isAppLink(selectedNotification.link) && (
+                                <ArrowUpRight className="w-3 h-3" />
+                            )}
+                        </button>
                     )}
                 </div>
             </div>,
@@ -373,16 +393,14 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                         ))}
                     </div>
                 ) : notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-[210px] px-4 text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="w-8 h-8 rounded-xl bg-[#252525]/60 flex items-center justify-center mb-2.5 border border-[#2E2D2C]/60 shadow-sm">
-                            <Bell className="w-4 h-4 text-[#D6D5D4]" strokeWidth={1.5} />
+                    // D1 + DM-A: the inbox tray drawing, small (72 px), one title, no helper text
+                    <div className="flex flex-col items-center justify-center h-[230px] px-4 text-center animate-in fade-in duration-300">
+                        <div className="mb-2 h-[63px] w-[72px] text-[#8A8987]">
+                            <ListArt kind="inbox" strokePx={1.6} widthPx={72} />
                         </div>
-                        <h3 className="text-[12px] font-medium text-white mb-1 tracking-tight">
-                            {filter === 'mentions' ? 'No Mentions' : 'No Notifications'}
+                        <h3 className="text-[12px] font-medium text-[#D6D5C9]">
+                            {filter === 'mentions' ? 'No mentions' : 'No notifications'}
                         </h3>
-                        <p className="text-[11px] text-[#8F8E8D] leading-[1.35] max-w-[170px]">
-                            You're all caught up. New notifications will appear here.
-                        </p>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-0.5 px-0.5 pb-0.5">
@@ -396,8 +414,8 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                         : 'bg-transparent hover:bg-[#252525] text-white'
                                 }`}
                             >
-                                <div className="flex items-center justify-between gap-1.5 pr-5">
-                                    <div className="flex items-center gap-1.5 min-w-0">
+                                <div className="flex items-center justify-between gap-1.5">
+                                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                         {!notification.isRead && (
                                             <span className="w-1.5 h-1.5 rounded-full bg-[#87B2F4] shrink-0" />
                                         )}
@@ -411,18 +429,16 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                                             {notification.title}
                                         </span>
                                     </div>
+                                    <span
+                                        className="shrink-0 text-[10px] text-[#6F6E6D] group-hover/notif:opacity-0 transition-opacity"
+                                        title={new Date(notification.createdAt).toLocaleString()}
+                                    >
+                                        {shortTime(notification.createdAt)}
+                                    </span>
                                 </div>
                                 <p className="text-[10.5px] text-[#8F8E8D] group-hover/notif:text-[#CBCACA] line-clamp-2 mt-[1px] leading-snug pr-3">
                                     {notification.message}
                                 </p>
-                                <span className="text-[9px] text-[#6F6E6D] group-hover/notif:text-[#8F8E8D] mt-[1px] leading-tight">
-                                    {new Date(notification.createdAt).toLocaleString(undefined, {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                    })}
-                                </span>
 
                                 {/* hover delete button */}
                                 <button

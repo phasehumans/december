@@ -35,6 +35,8 @@ interface SearchModelOptions {
     /** desktop only; leave out to hide the sidebar action */
     onToggleSidebar?: () => void
     isSidebarCollapsed?: boolean
+    /** asks before "Archive this session" runs; left out, it archives at once */
+    confirmArchive?: (run: () => void) => void
 }
 
 const SESSION_SEARCH_DEBOUNCE_MS = 150
@@ -68,6 +70,7 @@ export const useSearchModel = (options: SearchModelOptions) => {
         onOpenSession,
         onToggleSidebar,
         isSidebarCollapsed,
+        confirmArchive,
     } = options
     const navigate = useNavigate()
     const queryClient = useQueryClient()
@@ -158,17 +161,22 @@ export const useSearchModel = (options: SearchModelOptions) => {
                 label: isArchived ? 'Unarchive this session' : 'Archive this session',
                 keywords: ['archive', 'hide', 'session'],
                 run: () => {
-                    const request = isArchived
-                        ? sessionAPI.unarchiveSession(activeSessionId)
-                        : sessionAPI.archiveSession(activeSessionId)
-                    request
-                        .catch((err) => console.error('Failed to toggle archive:', err))
-                        .finally(() => {
-                            queryClient.invalidateQueries({ queryKey: ['sessions'] })
-                            queryClient.invalidateQueries({
-                                queryKey: ['session', activeSessionId],
+                    const toggle = () => {
+                        const request = isArchived
+                            ? sessionAPI.unarchiveSession(activeSessionId)
+                            : sessionAPI.archiveSession(activeSessionId)
+                        request
+                            .catch((err) => console.error('Failed to toggle archive:', err))
+                            .finally(() => {
+                                queryClient.invalidateQueries({ queryKey: ['sessions'] })
+                                queryClient.invalidateQueries({
+                                    queryKey: ['session', activeSessionId],
+                                })
                             })
-                        })
+                    }
+                    // an archive asks first, like the session menus; an unarchive does not
+                    if (!isArchived && confirmArchive) confirmArchive(toggle)
+                    else toggle()
                 },
             })
         }
@@ -198,6 +206,7 @@ export const useSearchModel = (options: SearchModelOptions) => {
         startNewSession,
         isAuthenticated,
         activeSessionId,
+        confirmArchive,
         recentData?.sessions,
         queryClient,
         onToggleSidebar,

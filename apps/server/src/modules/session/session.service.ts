@@ -55,6 +55,11 @@ import {
     toCreditTier,
     toPullRequestState,
     toSessionFacets,
+    webLinkOrNull,
+    PULL_REQUEST_REFRESH_TIMING,
+    cleanCachedPullRequest,
+    toSavedPullRequest,
+    withSavedPullRequest,
     toTagsCacheKey,
     toLimitQuestionPrompt,
     toListTitle,
@@ -91,7 +96,6 @@ import type {
     GetSessionFileTree,
     GetSessionFileContent,
     GetSessionPullRequests,
-    SavedPullRequestRow,
     SessionPullRequest,
     GetSessionPlan,
     GetSessionTests,
@@ -135,6 +139,7 @@ import type {
     PromptAtLimit,
     InvalidateRecentSessions,
 } from './session.types'
+import type { Prisma } from '@december/database'
 import type { SessionRunConfig, SpendLimitKind } from '@december/shared'
 
 let sessionRedis: Redis | null = null
@@ -746,6 +751,10 @@ const unarchiveSessions = async (data: UnarchiveSessions) => {
 // missed webhook is repaired when the list is read. at most this many per read
 const PR_REFRESH_AFTER_MS = 60 * 60 * 1000
 const PR_REFRESH_LIMIT = 10
+// how long the list waits for the host, and how long one refresh holds its place:
+// PULL_REQUEST_REFRESH_TIMING. one refresh per user at a time: requests that come while it runs wait for that one
+// instead of asking the host for the same pull requests again
+const runningPullRequestRefreshes = new Map<string, Promise<void>>()
 
 const toDateOrNull = (value: string | null | undefined): Date | null =>
     value ? new Date(value) : null
@@ -799,6 +808,7 @@ const refreshStalePullRequests = async (data: RefreshStalePullRequests) => {
                                   ? { prAdditions: pr.additions, prDeletions: pr.deletions }
                                   : {}),
                               ...(pr.createdAt ? { prOpenedAt: new Date(pr.createdAt) } : {}),
+                              ...(pr.updatedAt ? { prUpdatedAt: new Date(pr.updatedAt) } : {}),
                               prMergedAt: toDateOrNull(pr.mergedAt),
                               prClosedAt: toDateOrNull(pr.closedAt),
                           }
@@ -815,15 +825,58 @@ const refreshStalePullRequests = async (data: RefreshStalePullRequests) => {
     if (changed) await invalidateUserRecentSessions(userId)
 }
 
+/** resolves when the promise ends or after ms, whichever comes first; never throws */
+const settleWithin = async (promise: Promise<unknown>, ms: number): Promise<void> => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    await Promise.race([
+        promise.then(
+            () => undefined,
+            () => undefined
+        ),
+        new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, ms)
+        }),
+    ])
+    clearTimeout(timer)
+}
+
+/**
+ * starts the refresh of stale pull requests, or joins the one of this user that runs, and
+ * waits for it at most PULL_REQUEST_REFRESH_TIMING.waitMs. a refresh that hangs holds its
+ * place at most lockMs, so the user's next read starts a new one. never throws
+ */
+const refreshPullRequestsForRead = async (data: RefreshStalePullRequests) => {
+    const { userId } = data
+    let running = runningPullRequestRefreshes.get(userId)
+    if (!running) {
+        const refresh = refreshStalePullRequests({ userId }).catch((error: unknown) => {
+            console.error('[Session] could not refresh pull request states', error)
+        })
+        const held = settleWithin(refresh, PULL_REQUEST_REFRESH_TIMING.lockMs).finally(() => {
+            // only this refresh's place: a newer one is not taken out
+            if (runningPullRequestRefreshes.get(userId) === held) {
+                runningPullRequestRefreshes.delete(userId)
+            }
+        })
+        running = held
+        runningPullRequestRefreshes.set(userId, held)
+    }
+    await settleWithin(running, PULL_REQUEST_REFRESH_TIMING.waitMs)
+}
+
 /** the pull requests list: one row per session that opened a pull request (#632) */
 const getPullRequests = async (data: GetPullRequests) => {
     const { userId, filters } = data
 
-    await refreshStalePullRequests({ userId }).catch((error: unknown) => {
-        console.error('[Session] could not refresh pull request states', error)
-    })
+    // only the first page asks the host: the next pages of the same list do not wait again
+    const isFirstPage = !filters.cursor && (filters.page ?? 1) === 1
+    if (isFirstPage) await refreshPullRequestsForRead({ userId })
 
-    const result = await sessionRepository.findPullRequests(userId, filters)
+    const [result, openCount] = await Promise.all([
+        sessionRepository.findPullRequests(userId, filters),
+        // the Open count read with the rows, so the switch never disagrees with them
+        isFirstPage ? sessionRepository.countOpenPullRequests(userId) : null,
+    ])
     return {
         pullRequests: result.rows.map((row) => ({
             sessionId: row.id,
@@ -837,17 +890,22 @@ const getPullRequests = async (data: GetPullRequests) => {
             prNumber: row.prNumber as number,
             prState: toPullRequestState(row.prState),
             prTitle: row.prTitle ?? null,
-            prUrl: row.prUrl ?? null,
-            prBranch: row.prBranch ?? row.branch ?? null,
+            prUrl: webLinkOrNull(row.prUrl),
+            // only the branch of the pull request: session.branch is the base branch
+            prBranch: row.prBranch ?? null,
             additions: row.prAdditions ?? null,
             deletions: row.prDeletions ?? null,
             prOpenedAt: row.prOpenedAt ?? null,
             prMergedAt: row.prMergedAt ?? null,
             prClosedAt: row.prClosedAt ?? null,
+            prUpdatedAt: row.prUpdatedAt ?? null,
+            vmStatus: row.vmStatus,
+            isArchived: row.isArchived,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
         })),
         pagination: result.pagination,
+        ...(openCount !== null ? { openCount } : {}),
     }
 }
 
@@ -858,6 +916,7 @@ const getPullRequests = async (data: GetPullRequests) => {
 const applyPullRequestEvent = async (data: ApplyPullRequestEvent) => {
     const {
         gitProvider,
+        repoId,
         repoOwner,
         repoName,
         number,
@@ -868,24 +927,35 @@ const applyPullRequestEvent = async (data: ApplyPullRequestEvent) => {
         openedAt,
         mergedAt,
         closedAt,
+        updatedAt,
     } = data
 
+    // escaped: else "my_repo" also matches the pull request of "myXrepo"
+    const byName: Prisma.SessionWhereInput = {
+        githubRepoOwner: { equals: escapeLike(repoOwner), mode: 'insensitive' },
+        githubRepoName: { equals: escapeLike(repoName), mode: 'insensitive' },
+    }
     const sessions = await sessionRepository.updatePullRequestFields(
         {
             gitProvider,
-            // escaped: else "my_repo" also matches the pull request of "myXrepo"
-            githubRepoOwner: { equals: escapeLike(repoOwner), mode: 'insensitive' },
-            githubRepoName: { equals: escapeLike(repoName), mode: 'insensitive' },
             prNumber: number,
-            deletedAt: null,
+            // a row that saved the repository id matches only by it: a new repository with
+            // the old name of a renamed one cannot change it. a row saved before the id was
+            // kept matches by owner and name
+            ...(repoId
+                ? { OR: [{ githubRepoId: repoId }, { githubRepoId: null, ...byName }] }
+                : { githubRepoId: null, ...byName }),
         },
         {
+            // a renamed repository: the row follows the new owner and name
+            ...(repoId ? { githubRepoOwner: repoOwner, githubRepoName: repoName } : {}),
             prState: state,
             prCheckedAt: new Date(),
             ...(title ? { prTitle: title } : {}),
             ...(additions !== undefined ? { prAdditions: additions } : {}),
             ...(deletions !== undefined ? { prDeletions: deletions } : {}),
             ...(openedAt ? { prOpenedAt: new Date(openedAt) } : {}),
+            prUpdatedAt: updatedAt ? new Date(updatedAt) : new Date(),
             ...(mergedAt !== undefined ? { prMergedAt: toDateOrNull(mergedAt) } : {}),
             ...(closedAt !== undefined ? { prClosedAt: toDateOrNull(closedAt) } : {}),
         }
@@ -904,6 +974,29 @@ const applyPullRequestEvent = async (data: ApplyPullRequestEvent) => {
 
     const userIds = [...new Set(sessions.map((session) => session.userId))]
     await Promise.all(userIds.map((userId) => invalidateUserRecentSessions(userId)))
+
+    // N2: a pull request a December session opened was merged or closed. One inbox item per
+    // user, only when this event changed the state (a repeat of the same event is quiet)
+    if (state === 'merged' || state === 'closed') {
+        const told = new Set<string>()
+        for (const session of sessions) {
+            if (!session.userId || session.previousState === state || told.has(session.userId)) {
+                continue
+            }
+            told.add(session.userId)
+            try {
+                await notificationService.sendNotificationToUser({
+                    userId: session.userId,
+                    title: `#${number} ${state}`,
+                    message: `${repoOwner}/${repoName}${title ? `: ${title}` : ''}`,
+                    type: state === 'merged' ? 'SUCCESS' : 'INFO',
+                    link: `/sessions/${session.id}`,
+                })
+            } catch (error) {
+                console.error('[Session] pull request notice failed:', error)
+            }
+        }
+    }
     return { updated: sessions.length }
 }
 
@@ -1465,12 +1558,16 @@ const getSessionPullRequests = async (
             if (cached) {
                 const parsed = JSON.parse(cached)
                 const pullRequest: SessionPullRequest | null = parsed.pullRequest ?? parsed
-                // the webhook and the list refresh keep the row's state current; the cache
-                // keeps the state of the run's end
+                // the webhook and the list refresh keep the row current; the cache keeps the
+                // pull request of the run's end, with the base branch and the checks
                 if (pullRequest && saved && pullRequest.prNumber === saved.prNumber) {
-                    return { pullRequest: { ...pullRequest, state: saved.state } }
+                    return {
+                        pullRequest: withSavedPullRequest(pullRequest, saved, session.prTitle),
+                    }
                 }
-                if (pullRequest) return { pullRequest }
+                if (pullRequest) {
+                    return { pullRequest: cleanCachedPullRequest(pullRequest, session.gitProvider) }
+                }
             }
         }
     } catch (error) {
@@ -1480,23 +1577,6 @@ const getSessionPullRequests = async (
 
     // the cache is gone (it is not kept for ever): the pull request saved on the session
     return { pullRequest: saved }
-}
-
-/** the pull request the worker saved on the session row, or null when it opened none */
-const toSavedPullRequest = (session: SavedPullRequestRow): SessionPullRequest | null => {
-    if (!session.prNumber) return null
-    return {
-        prNumber: session.prNumber,
-        ...(session.prUrl ? { url: session.prUrl } : {}),
-        title: session.prTitle || session.title || `Pull request #${session.prNumber}`,
-        state: toPullRequestState(session.prState),
-        headRef: session.prBranch || session.branch || '',
-        ...(session.prAdditions !== null && session.prDeletions !== null
-            ? { diffSummary: { additions: session.prAdditions, deletions: session.prDeletions } }
-            : {}),
-        ...(session.prOpenedAt ? { createdAt: session.prOpenedAt.toISOString() } : {}),
-        ...(session.prCheckedAt ? { updatedAt: session.prCheckedAt.toISOString() } : {}),
-    }
 }
 
 const getSessionPlan = async (data: GetSessionPlan) => {
@@ -1633,12 +1713,12 @@ const submitQuestionAnswer = async (data: SubmitQuestionAnswer) => {
 
 /** the worker asked a question (AskQuestionPrompt event): mark the session in the list */
 const markQuestionAsked = async (data: MarkQuestionAsked) => {
-    const { sessionId } = data
+    const { sessionId, question } = data
     // only the first ask changes the row, so every server node tries and one notifies
     const owner = await sessionRepository.setPendingQuestion(sessionId)
     if (!owner) return
     await invalidateUserRecentSessions(owner.userId)
-    await notifySessionOwner({ owner, kind: 'SESSION_NEEDS_INPUT' })
+    await notifySessionOwner({ owner, kind: 'SESSION_NEEDS_INPUT', detail: question })
 }
 
 /** true while the user has this session open in a tab (any server node) */

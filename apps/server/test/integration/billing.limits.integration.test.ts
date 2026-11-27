@@ -43,6 +43,7 @@ describe('billing limits', () => {
         (
             await prisma.notification.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } })
         ).map((row) => row.title)
+    // low credits is an inbox item only: no mail (inbox review, round 2)
     const alertMails = (email: string) =>
         emails.filter(
             (sent) => sent.to === email && sent.subject === 'Your December credits are low'
@@ -183,7 +184,7 @@ describe('billing limits', () => {
             // the charge takes the balance under $5
             await search(user.token, `limits one ${stamp}`)
             expect(await inboxTitles(user.userId)).toEqual(['Your credits are low'])
-            expect(alertMails(user.email)).toHaveLength(1)
+            expect(alertMails(user.email)).toHaveLength(0)
 
             // more charges under the amount, and the worker's event for the same drop
             await search(user.token, `limits two ${stamp}`)
@@ -195,7 +196,7 @@ describe('billing limits', () => {
                 event: { type: 'CreditsLow', balanceInCents: 499 },
             })
             expect(await inboxTitles(user.userId)).toEqual(['Your credits are low'])
-            expect(alertMails(user.email)).toHaveLength(1)
+            expect(alertMails(user.email)).toHaveLength(0)
         })
 
         it('alerts again only after a top-up took the balance over the amount', async () => {
@@ -221,7 +222,7 @@ describe('billing limits', () => {
                 'Your credits are low',
                 'Your credits are low',
             ])
-            expect(alertMails(user.email)).toHaveLength(2)
+            expect(alertMails(user.email)).toHaveLength(0)
         })
 
         it('is off when the user turned it off', async () => {

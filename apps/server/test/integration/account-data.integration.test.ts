@@ -55,7 +55,7 @@ const authed = (token: string) => ({
     },
 })
 
-/** the path and query of the download link in an export email */
+/** the path and query of the download link in the export's inbox item */
 const linkFrom = (body: string) => {
     const match = body.match(/https?:\/\/\S+\/api\/v1(\/setting\/export\/\S+)/)
     if (!match?.[1]) throw new Error(`no download link in: ${body}`)
@@ -160,7 +160,7 @@ describe('account data api', () => {
             expect(await prisma.dataExport.count({ where: { userId: user.userId } })).toBe(1)
         })
 
-        it('the job builds the zip, stores it and emails a link', async () => {
+        it('the job builds the zip, stores it and puts the link in the inbox (no mail)', async () => {
             const result = await settingService.processDataExport({ exportId })
             expect(result).toMatchObject({ status: 'READY', sessions: 2 })
 
@@ -169,16 +169,20 @@ describe('account data api', () => {
             expect(row?.fileKey).toBe(`exports/${user.userId}/${exportId}.zip`)
             expect(row?.expiresAt?.getTime()).toBeGreaterThan(Date.now() + 6 * 24 * 3600 * 1000)
 
-            const email = sentEmails.find((sent) => sent.to === `export-${stamp}@example.com`)
-            expect(email?.subject).toBe('Your December data export')
-            downloadPath = linkFrom(email!.body)
+            expect(sentEmails.filter((sent) => sent.to === `export-${stamp}@example.com`)).toEqual(
+                []
+            )
+            const notice = await prisma.notification.findFirst({
+                where: { userId: user.userId, title: 'Your data export is ready' },
+            })
+            downloadPath = linkFrom(notice!.link!)
 
             // a second run of the same job does nothing
             const again = await settingService.processDataExport({ exportId })
             expect(again).toEqual({ status: 'READY' })
         })
 
-        it('the emailed link downloads the zip without signing in', async () => {
+        it('the link downloads the zip without signing in', async () => {
             const res = await request(app)
                 .get(`/api/v1${downloadPath}`)
                 .set('x-forwarded-for', getRandomIP())
@@ -322,7 +326,7 @@ describe('account data api', () => {
             storageDown = false
         })
 
-        it('the retry after a failed attempt builds the file and mails the link', async () => {
+        it('the retry after a failed attempt builds the file and puts the link in the inbox', async () => {
             const user = await queuedExport()
 
             storageDown = true
@@ -341,37 +345,15 @@ describe('account data api', () => {
             })
             expect(retry).toMatchObject({ status: 'READY', sessions: 0 })
             expect(await statusOf(user.token)).toBe('READY')
-            expect(subjectsTo(user.email)).toEqual(['Your December data export'])
-            // the inbox always has the link too (review C5)
+            // no mail: the inbox has the link (inbox review, round 2)
+            expect(subjectsTo(user.email)).toEqual([])
             const inbox = await inboxOf(user.token)
             expect(inbox).toHaveLength(1)
             expect(inbox[0]).toMatchObject({ title: 'Your data export is ready', type: 'SUCCESS' })
             expect(inbox[0].link).toContain(`/api/v1/setting/export/${user.exportId}/download?t=`)
         })
 
-        // review C5: sendMessageEmail gives null when the mail could not be sent
-        it('a ready export whose mail could not be sent is still in the inbox with the link', async () => {
-            const user = await queuedExport()
-            const working = emailService.sendMessageEmail
-            emailService.sendMessageEmail = (async () => null) as any
-            try {
-                const result = await settingService.processDataExport({
-                    exportId: user.exportId,
-                    isLastAttempt: true,
-                })
-                expect(result).toMatchObject({ status: 'READY' })
-            } finally {
-                emailService.sendMessageEmail = working
-            }
-
-            expect(await statusOf(user.token)).toBe('READY')
-            const inbox = await inboxOf(user.token)
-            expect(inbox.map((row: any) => row.title)).toEqual(['Your data export is ready'])
-            expect(inbox[0].link).toContain(`/api/v1/setting/export/${user.exportId}/download?t=`)
-            expect(inbox[0].message).toContain('The link works until')
-        })
-
-        it('tells the user in the inbox and by mail when the last attempt fails', async () => {
+        it('tells the user in the inbox (no mail) when the last attempt fails', async () => {
             const user = await queuedExport()
 
             storageDown = true
@@ -391,33 +373,12 @@ describe('account data api', () => {
                 type: 'ERROR',
                 link: '/settings/account',
             })
-            expect(subjectsTo(user.email)).toEqual(['Your December data export failed'])
-            const mail = sentEmails.find((sent) => sent.to === user.email)
-            expect(mail?.body).toContain('We could not build your data export.')
-            expect(mail?.body).toContain('/settings/account')
+            expect(subjectsTo(user.email)).toEqual([])
 
             // a failed export does not count for the day
             storageDown = false
             const again = await authed(user.token).post('/setting/export')
             expect(again.status).toBe(202)
-        })
-
-        it('with email off, the failed export is in the inbox only', async () => {
-            const user = await queuedExport()
-            await prisma.user.update({
-                where: { id: user.userId },
-                data: { notifyEmail: false },
-            })
-
-            storageDown = true
-            await expect(
-                settingService.processDataExport({ exportId: user.exportId, isLastAttempt: true })
-            ).rejects.toThrow('storage is down')
-
-            expect((await inboxOf(user.token)).map((row) => row.title)).toEqual([
-                'Your data export failed',
-            ])
-            expect(subjectsTo(user.email)).toEqual([])
         })
 
         it('knows the last attempt of the queue job', () => {

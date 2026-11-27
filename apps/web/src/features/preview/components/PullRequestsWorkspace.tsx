@@ -12,6 +12,7 @@ import {
 import React, { useEffect } from 'react'
 
 import { useAppStore } from '@/app/store'
+import { GIT_HOST_LABELS, webLinkOrNull } from '@/features/pullrequests/lib/pullRequests'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { cn } from '@/shared/lib/utils'
 
@@ -31,16 +32,22 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
     useEffect(() => {
         if (!sessionId || pullRequest) return
 
+        // the answer of a session the user already left is dropped, so it never shows on
+        // the next session
+        let isCurrent = true
         sessionAPI
             .getSessionPullRequests(sessionId)
             .then((res) => {
-                if (res?.pullRequest) {
+                if (isCurrent && res?.pullRequest) {
                     setPullRequest(res.pullRequest)
                 }
             })
             .catch(() => {
                 // Intentionally swallowed: Session PR fetch fallback
             })
+        return () => {
+            isCurrent = false
+        }
     }, [sessionId, pullRequest, setPullRequest])
 
     if (!pullRequest) {
@@ -76,7 +83,8 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
     const {
         prNumber,
         title,
-        url,
+        url: savedUrl,
+        gitProvider,
         state = 'open',
         headRef: pullRequestBranch,
         // a pull request saved on the session has no base branch or checks: show none
@@ -87,13 +95,22 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
 
     // the branch of the pull request, or the saved branch of the session
     const headRef = pullRequestBranch || branch || null
-    const additions = diffSummary?.additions ?? 0
-    const deletions = diffSummary?.deletions ?? 0
+    // only a web link reaches the href
+    const url = webLinkOrNull(savedUrl)
+    const hostLabel = GIT_HOST_LABELS[gitProvider === 'GITLAB' ? 'GITLAB' : 'GITHUB']
+    // GitLab does not count lines: no counts then, instead of +0 -0
+    const hasLineCounts =
+        typeof diffSummary?.additions === 'number' && typeof diffSummary?.deletions === 'number'
+    const additions: number = diffSummary?.additions ?? 0
+    const deletions: number = diffSummary?.deletions ?? 0
     const changedFiles: number | undefined = diffSummary?.changedFiles
 
     const isMerged = state.toLowerCase() === 'merged'
     const isClosed = state.toLowerCase() === 'closed'
-    const isOpen = state.toLowerCase() === 'open'
+    const isDraft = state.toLowerCase() === 'draft'
+    // a state that is not known reads as open, like the Pull requests page
+    const isOpen = !isMerged && !isClosed && !isDraft
+    const stateLabel = isMerged ? 'Merged' : isClosed ? 'Closed' : isDraft ? 'Draft' : 'Open'
 
     return (
         <div className="flex-1 flex flex-col bg-[#141414] text-[#EDEDEF] overflow-y-auto font-sans w-full h-full p-6">
@@ -111,11 +128,13 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
                                         isMerged &&
                                             'bg-purple-500/10 text-purple-400 border border-purple-500/20',
                                         isClosed &&
-                                            'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                            'bg-rose-500/10 text-rose-400 border border-rose-500/20',
+                                        isDraft &&
+                                            'bg-[#262626] text-[#8F8E8D] border border-[#3A3A3D]'
                                     )}
                                 >
                                     <GitPullRequest className="w-3.5 h-3.5" />
-                                    {isOpen ? 'Open' : isMerged ? 'Merged' : 'Closed'}
+                                    {stateLabel}
                                 </span>
                                 {prNumber && (
                                     <span className="text-sm font-semibold text-[#8E8D8C]">
@@ -135,7 +154,7 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#252528] hover:bg-[#2F2F33] text-xs font-medium text-white transition-colors border border-[#3A3A3D]"
                             >
-                                <span>View on GitHub</span>
+                                <span>View on {hostLabel}</span>
                                 <ExternalLink className="w-3.5 h-3.5 text-[#8E8D8C]" />
                             </a>
                         )}
@@ -163,27 +182,33 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
 
                 {/* Diff Summary & CI Status Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Diff Summary Card */}
-                    <div className="p-4 rounded-xl bg-[#1A1A1C] border border-[#2A2A2D] flex flex-col gap-3">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-[#8E8D8C] uppercase tracking-wider">
-                            <FileText className="w-3.5 h-3.5" />
-                            <span>Diff Summary</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm font-medium">
-                            <div className="flex items-center gap-1 text-emerald-400">
-                                <span>+{additions}</span>
+                    {/* Diff Summary Card: only when something about the diff is known */}
+                    {(hasLineCounts || changedFiles !== undefined) && (
+                        <div className="p-4 rounded-xl bg-[#1A1A1C] border border-[#2A2A2D] flex flex-col gap-3">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-[#8E8D8C] uppercase tracking-wider">
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>Diff Summary</span>
                             </div>
-                            <div className="flex items-center gap-1 text-rose-400">
-                                <span>-{deletions}</span>
+                            <div className="flex items-center gap-4 text-sm font-medium">
+                                {hasLineCounts && (
+                                    <>
+                                        <div className="flex items-center gap-1 text-emerald-400">
+                                            <span>+{additions}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-rose-400">
+                                            <span>-{deletions}</span>
+                                        </div>
+                                    </>
+                                )}
+                                {changedFiles !== undefined && (
+                                    <span className="text-xs text-[#8E8D8C]">
+                                        {changedFiles}{' '}
+                                        {changedFiles === 1 ? 'file changed' : 'files changed'}
+                                    </span>
+                                )}
                             </div>
-                            {changedFiles !== undefined && (
-                                <span className="text-xs text-[#8E8D8C]">
-                                    {changedFiles}{' '}
-                                    {changedFiles === 1 ? 'file changed' : 'files changed'}
-                                </span>
-                            )}
                         </div>
-                    </div>
+                    )}
 
                     {/* CI Status Card: only when the checks are known */}
                     {ciStatus && (

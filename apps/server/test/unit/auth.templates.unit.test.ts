@@ -2,7 +2,6 @@ import { describe, it, expect } from 'bun:test'
 
 import { renderBaseEmail } from '../../src/modules/auth/templates/base.template'
 import { renderOtpEmail } from '../../src/modules/auth/templates/otp.template'
-import { renderWelcomeEmail } from '../../src/modules/auth/templates/welcome.template'
 
 describe('Auth Email Templates - Unit Tests', () => {
     describe('renderBaseEmail', () => {
@@ -57,50 +56,6 @@ describe('Auth Email Templates - Unit Tests', () => {
             expect(html).not.toContain('Verify your email')
             expect(text).toContain('Your sign-in code: 102938')
             expect(text).toContain('Nobody can sign in without this code')
-        })
-    })
-
-    describe('renderWelcomeEmail', () => {
-        it('should render welcome email with user name, CLI README messaging, and footer links', () => {
-            const { subject, html, text } = renderWelcomeEmail({
-                name: 'Alex Developer',
-                supportEmail: 'support@december.com',
-                webUrl: 'https://trydecember.com',
-            })
-
-            expect(subject).toBe('Welcome to December')
-            expect(html).toContain('Hi Alex Developer')
-            expect(html).toContain('a coding agent that lives in your terminal')
-            expect(html).toContain('Writes code &amp; runs commands:')
-            expect(html).toContain('Cloud Sandboxes:')
-            expect(html).toContain('Bring your own AI:')
-            expect(html).toContain('https://www.npmjs.com/package/@trydecember/cli')
-            expect(html).toContain('npm install -g @trydecember/cli')
-            expect(html).toContain('Start building now')
-            expect(html).toContain('https://trydecember.com')
-            expect(html).toContain('https://github.com/phasehumans/december')
-            expect(html).toContain('Chaitanya Sonawane')
-
-            expect(text).toContain('Hi Alex Developer')
-            expect(text).toContain('a coding agent that lives in your terminal')
-            expect(text).toContain('Writes code & runs commands:')
-            expect(text).toContain('Cloud Sandboxes:')
-            expect(text).toContain('Bring your own AI:')
-            expect(text).toContain('https://www.npmjs.com/package/@trydecember/cli')
-            expect(text).toContain('npm install -g @trydecember/cli')
-            expect(text).toContain('Start building now: https://trydecember.com')
-            expect(text).toContain('GitHub: https://github.com/phasehumans/december')
-        })
-
-        it('should default to "there" when name is not provided or empty', () => {
-            const { html, text } = renderWelcomeEmail({
-                name: '',
-                supportEmail: 'support@december.com',
-                webUrl: 'https://trydecember.com',
-            })
-
-            expect(html).toContain('Hi there')
-            expect(text).toContain('Hi there')
         })
     })
 })

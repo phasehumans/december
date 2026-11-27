@@ -72,7 +72,7 @@ export const getPullRequestsSchema = z.object({
     repo: z.string().trim().min(1).max(200).optional(),
     tag: z.string().trim().min(1).max(30).optional(),
     search: z.string().trim().max(200).optional(),
-    sortBy: z.enum(['updatedAt', 'createdAt', 'prOpenedAt']).optional(),
+    sortBy: z.enum(['updatedAt', 'createdAt', 'prOpenedAt', 'prUpdatedAt']).optional(),
     sortOrder: z.enum(['asc', 'desc']).optional(),
     page: z.preprocess(
         (val) => (val !== undefined && val !== '' ? Number(val) : undefined),
@@ -82,6 +82,8 @@ export const getPullRequestsSchema = z.object({
         (val) => (val !== undefined && val !== '' ? Number(val) : undefined),
         z.number().int().min(1).max(100).optional()
     ),
+    // the nextCursor of the page before: the next page starts after its last row
+    cursor: z.string().min(1).max(600).optional(),
 })
 
 export const smartSearchSessionsSchema = z.object({

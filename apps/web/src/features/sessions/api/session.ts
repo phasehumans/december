@@ -110,6 +110,10 @@ export type RemovedPin = {
 /** counts for the list switches and menus, archived sessions left out */
 export type SessionCounts = {
     running: number
+    /** the agent asked a question and waits */
+    needsAnswer: number
+    /** running or waiting for an answer, each session once (Home Recent count) */
+    needsYou: number
     openPullRequests: number
     /** merged and not running: what "Archive merged" archives */
     merged: number
@@ -191,6 +195,12 @@ export interface BackendPullRequest {
     prOpenedAt: string | null
     prMergedAt: string | null
     prClosedAt: string | null
+    /** the last change of the pull request on the host */
+    prUpdatedAt: string | null
+    /** the run state of the session: Running and Stop on the row */
+    vmStatus?: string | null
+    /** archived on merge or by hand. merged and closed rows stay listed when archived */
+    isArchived?: boolean
     createdAt: string
     updatedAt: string
 }
@@ -200,6 +210,8 @@ export interface PullRequestsPagination {
     limit: number
     total: number
     totalPages: number
+    /** where the next page starts, or null on the last page */
+    nextCursor?: string | null
 }
 
 /** the filters, sort and page of GET /session/pull-requests */
@@ -210,15 +222,19 @@ export interface PullRequestsParams {
     repo?: string
     tag?: string
     search?: string
-    sortBy?: 'updatedAt' | 'createdAt' | 'prOpenedAt'
+    sortBy?: 'updatedAt' | 'createdAt' | 'prOpenedAt' | 'prUpdatedAt'
     sortOrder?: 'asc' | 'desc'
     page?: number
     limit?: number
+    /** the nextCursor of the page before */
+    cursor?: string
 }
 
 export interface PullRequestsResponse {
     pullRequests: BackendPullRequest[]
     pagination: PullRequestsPagination
+    /** the Open count, read with the rows; only on the first page */
+    openCount?: number
 }
 
 export const sessionAPI = {

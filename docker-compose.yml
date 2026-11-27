@@ -6,7 +6,8 @@ x-logging: &default-logging
 
 services:
     redis:
-        image: redis:7-alpine
+        # exact version: a deploy must never pull a new redis and restart it
+        image: redis:7.4.12-alpine
         container_name: december-redis
         restart: unless-stopped
         env_file:

@@ -200,12 +200,10 @@ const Card: React.FC<{ user: AdminUserDetails }> = ({ user }) => {
 
                 <Block title="Notifications">
                     <Field label="Level">{account.notifyLevel.toLowerCase()}</Field>
-                    <Field label="Email">{onOff(account.notifyEmail)}</Field>
                     <Field label="Push">
                         {onOff(account.notifyPush)}
                         {connected.pushBrowsers > 0 && ` · ${connected.pushBrowsers} browsers`}
                     </Field>
-                    <Field label="Daily summary">{account.digest ?? 'Off'}</Field>
                     <Field label="Product emails">{onOff(account.productEmails)}</Field>
                     <Field label="Security alerts">{onOff(account.securityAlerts)}</Field>
                 </Block>

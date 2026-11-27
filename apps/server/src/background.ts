@@ -6,7 +6,6 @@ import { env } from './env'
 import { attachmentService } from './modules/attachment/attachment.service'
 import { authService } from './modules/auth/auth.service'
 import { createEmailWorker } from './modules/email/email.worker'
-import { notificationService } from './modules/notification/notification.service'
 import { DATA_EXPORT_QUEUE, isLastDataExportAttempt } from './modules/setting/setting.queue'
 import { settingService } from './modules/setting/setting.service'
 import { fetchLiveModelRates } from './modules/usage/usage.rates'
@@ -48,10 +47,11 @@ const sweepQueue = new Queue('sweep_jobs', { connection: redisConnection as any 
 // add repeatable jobs
 sweepQueue.add('daily_sweep', {}, { repeat: { pattern: '0 0 * * *' } })
 sweepQueue.add('refresh_model_rates', {}, { repeat: { pattern: '0 */6 * * *' } })
-// daily summaries (#636): each user picks a time in their zone, so check every 15 minutes.
-// a time between two ticks goes out at the next tick, also when that tick is after
-// midnight (23:50 goes out at 00:00). see isDigestDue
-sweepQueue.add('daily_digest', {}, { repeat: { pattern: '*/15 * * * *' } })
+// the daily summary mail was removed (inbox review, round 2): take its repeat out of redis,
+// where it stays after the code that added it is gone
+sweepQueue.removeRepeatable('daily_digest', { pattern: '*/15 * * * *' }).catch((err) => {
+    console.warn('[Background] could not remove the old daily summary job:', err?.message || err)
+})
 
 const sweepWorker = new Worker(
     'sweep_jobs',
@@ -93,11 +93,6 @@ const sweepWorker = new Worker(
                     },
                 },
             })
-        } else if (job.name === 'daily_digest') {
-            const result = await notificationService.sendDailyDigests({})
-            if (result.sent > 0) {
-                console.log(`[Background] Sent ${result.sent} daily summaries`)
-            }
         } else if (job.name === 'refresh_model_rates') {
             console.log(`[Background] Refreshing live OpenRouter model rates catalog`)
             await fetchLiveModelRates(true).catch((err) => {

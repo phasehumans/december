@@ -10,6 +10,7 @@ export const SessionDeleteModal: React.FC<SessionDeleteModalProps> = ({
     isPending,
     onClose,
     onConfirm,
+    description = 'Its sandbox stops. You cannot undo this.',
 }) => {
     // sent at once: closing the modal can no longer delete a moment later
     const handleConfirm = (event: React.FormEvent) => {
@@ -23,7 +24,7 @@ export const SessionDeleteModal: React.FC<SessionDeleteModalProps> = ({
             isOpen={isOpen}
             onClose={onClose}
             title="Delete session"
-            description="Its sandbox stops. You cannot undo this."
+            description={description}
             variant="premium"
             showLogo={false}
             sheetOnPhone

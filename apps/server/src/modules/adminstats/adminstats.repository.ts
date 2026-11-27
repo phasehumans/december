@@ -68,7 +68,7 @@ const overviewCounts = async (data: { todayStart: Date; dayAgo: Date; monthAgo: 
                 (SELECT COUNT(*)::int FROM "User" WHERE "createdAt" >= ${todayStart}) AS "signupsToday",
                 (SELECT COUNT(DISTINCT "userId")::int FROM "UsageEvent" WHERE "createdAt" >= ${dayAgo}) AS "activeDay",
                 (SELECT COUNT(*)::int FROM "Session"
-                    WHERE "vmStatus" IN ('RUNNING', 'PROVISIONING') AND "deletedAt" IS NULL) AS "agentsWorking",
+                    WHERE "vmStatus" IN ('RUNNING', 'PROVISIONING')) AS "agentsWorking",
                 (SELECT COUNT(*)::int FROM "Session"
                     WHERE "sandboxStatus" IN ('STARTING', 'RUNNING')) AS "sandboxesRunning",
                 (SELECT COALESCE(SUM("costInCents"), 0)::float8 FROM "UsageEvent"

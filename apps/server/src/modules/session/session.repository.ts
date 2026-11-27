@@ -3,9 +3,15 @@ import { Prisma, prisma } from '@december/database'
 import { AppError } from '../../shared/appError'
 import { escapeLike } from '../../shared/escape-like'
 
-import { splitRepoFilter } from './session.utils'
+import {
+    PULL_REQUEST_SORT_FALLBACK,
+    encodePullRequestCursor,
+    searchedPullRequestNumber,
+    splitRepoFilter,
+} from './session.utils'
 
 import type {
+    PullRequestCursor,
     PullRequestFilters,
     RemovedPin,
     SessionFacetRepoRow,
@@ -442,7 +448,6 @@ const OPEN_PULL_REQUEST: Prisma.SessionWhereInput = {
  */
 const pullRequestRowsWhere = (userId: string, isArchived?: boolean): Prisma.SessionWhereInput => ({
     userId,
-    deletedAt: null,
     prNumber: { not: null },
     type: { not: 'SEARCH' },
     ...(isArchived === undefined
@@ -450,25 +455,47 @@ const pullRequestRowsWhere = (userId: string, isArchived?: boolean): Prisma.Sess
         : { isArchived }),
 })
 
+/**
+ * pullRequestRowsWhere (isArchived not given) in SQL, for the facets: the filter menu of
+ * the Pull requests page lists only repositories and tags that can show a row
+ */
+const PULL_REQUEST_ROWS_SQL = Prisma.sql`(
+    "prNumber" IS NOT NULL
+    AND "type" <> 'SEARCH'
+    AND ("isArchived" = false OR ("prState" IS NOT NULL AND "prState" NOT IN ('open', 'draft')))
+)`
+
 /** counts for the list switches and menus; archived sessions left out */
 export async function countSessions(userId: string) {
     const active = { userId, isArchived: false }
-    const [running, openPullRequests, merged] = await Promise.all([
+    const [running, needsAnswer, needsYou, openPullRequests, merged] = await Promise.all([
         prisma.session.count({
             where: { ...active, vmStatus: { in: [...ACTIVE_VM_STATUSES] } },
+        }),
+        prisma.session.count({ where: { ...active, pendingQuestionAt: { not: null } } }),
+        // the Home Recent count: running or waiting for an answer, each session once
+        prisma.session.count({
+            where: {
+                ...active,
+                OR: [
+                    { vmStatus: { in: [...ACTIVE_VM_STATUSES] } },
+                    { pendingQuestionAt: { not: null } },
+                ],
+            },
         }),
         prisma.session.count({
             where: { AND: [pullRequestRowsWhere(userId), OPEN_PULL_REQUEST] },
         }),
         prisma.session.count({ where: mergedIdleWhere(userId) }),
     ])
-    return { running, openPullRequests, merged }
+    return { running, needsAnswer, needsYou, openPullRequests, merged }
 }
 
 /**
  * every repository spelling and every tag on the user's sessions that are not deleted,
  * archived ones included (#641). the database makes the lists short, so a user with many
- * sessions does not load them all. hasPr keeps only the sessions that opened a pull request
+ * sessions does not load them all. hasPr keeps only the sessions that are rows of the Pull
+ * requests page, so each choice in its filter menu can show a row
  */
 export async function findSessionFacets(userId: string, hasPr: boolean): Promise<SessionFacetRows> {
     const [repos, tags] = await Promise.all([
@@ -477,15 +504,15 @@ export async function findSessionFacets(userId: string, hasPr: boolean): Promise
                 CASE WHEN "githubRepoName" IS NULL THEN "repoUrl" END AS "repoUrl",
                 COUNT(*)::int AS "sessions"
             FROM "Session"
-            WHERE "userId" = ${userId} AND "deletedAt" IS NULL
-                AND (${hasPr}::boolean = false OR "prNumber" IS NOT NULL)
+            WHERE "userId" = ${userId}
+                AND (${hasPr}::boolean = false OR ${PULL_REQUEST_ROWS_SQL})
                 AND ("githubRepoName" IS NOT NULL OR "repoUrl" IS NOT NULL)
             GROUP BY 1, 2, 3`,
         prisma.$queryRaw<{ tag: string }[]>`
             SELECT DISTINCT unnest("tags") AS "tag"
             FROM "Session"
-            WHERE "userId" = ${userId} AND "deletedAt" IS NULL
-                AND (${hasPr}::boolean = false OR "prNumber" IS NOT NULL)`,
+            WHERE "userId" = ${userId}
+                AND (${hasPr}::boolean = false OR ${PULL_REQUEST_ROWS_SQL})`,
     ])
     return { repos, tags: tags.map((row) => row.tag) }
 }
@@ -601,6 +628,10 @@ const PULL_REQUEST_SELECT = {
     prOpenedAt: true,
     prMergedAt: true,
     prClosedAt: true,
+    prUpdatedAt: true,
+    // the Pull requests page rows show Running and offer Stop, Archive or Unarchive
+    vmStatus: true,
+    isArchived: true,
     createdAt: true,
     updatedAt: true,
 } satisfies Prisma.SessionSelect
@@ -625,7 +656,8 @@ export async function findPullRequests(userId: string, filters: PullRequestFilte
     if (filters.tag) and.push({ tags: { has: filters.tag } })
     if (filters.search && filters.search.trim()) {
         const needle = filters.search.trim().replace(/^#/, '')
-        const asNumber = /^\d+$/.test(needle) ? Number(needle) : null
+        // a number past the Int column cannot be a pull request number: only the text matches
+        const asNumber = searchedPullRequestNumber(needle)
         const pattern = escapeLike(needle)
         and.push({
             OR: [
@@ -639,33 +671,101 @@ export async function findPullRequests(userId: string, filters: PullRequestFilte
     }
 
     const where: Prisma.SessionWhereInput = { AND: and }
+    const sortBy = filters.sortBy ?? 'updatedAt'
     const sortOrder = filters.sortOrder ?? 'desc'
-    // an old row has no opened date: it sorts by the session date after the dated rows.
-    // the id breaks ties, so pages do not repeat or skip rows with the same time
-    const orderBy: Prisma.SessionOrderByWithRelationInput[] =
-        filters.sortBy === 'prOpenedAt'
-            ? [
-                  { prOpenedAt: { sort: sortOrder, nulls: 'last' } },
-                  { createdAt: sortOrder },
-                  { id: 'desc' },
-              ]
-            : [{ [filters.sortBy ?? 'updatedAt']: sortOrder }, { id: 'desc' }]
+    // a row with no opened date (or no host date) sorts after the dated rows, by the
+    // session date. the id breaks ties, so pages do not repeat or skip rows with the same time
+    const fallback = PULL_REQUEST_SORT_FALLBACK[sortBy]
+    const orderBy: Prisma.SessionOrderByWithRelationInput[] = fallback
+        ? [
+              { [sortBy]: { sort: sortOrder, nulls: 'last' } },
+              { [fallback]: sortOrder },
+              { id: 'desc' },
+          ]
+        : [{ [sortBy]: sortOrder }, { id: 'desc' }]
 
-    const [rows, total] = await Promise.all([
+    // a cursor: the rows after the last row of the page before. else the page by number
+    const pageWhere: Prisma.SessionWhereInput = filters.cursor
+        ? { AND: [where, afterPullRequestCursor(filters.cursor)] }
+        : where
+    const [found, total] = await Promise.all([
         prisma.session.findMany({
-            where,
+            where: pageWhere,
             orderBy,
-            skip: (page - 1) * limit,
-            take: limit,
+            ...(filters.cursor ? {} : { skip: (page - 1) * limit }),
+            // one more row than the page: it says whether a next page exists
+            take: limit + 1,
             select: PULL_REQUEST_SELECT,
         }),
         prisma.session.count({ where }),
     ])
+    const rows = found.slice(0, limit)
+    const last = rows.at(-1)
+    const nextCursor =
+        found.length > limit && last
+            ? encodePullRequestCursor({
+                  sortBy,
+                  sortOrder,
+                  value: dateOrNull(last[sortBy]),
+                  fallback: fallback ? dateOrNull(last[fallback]) : null,
+                  id: last.id,
+              })
+            : null
 
     return {
         rows,
-        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+            nextCursor,
+        },
     }
+}
+
+const dateOrNull = (value: Date | null | undefined): string | null =>
+    value ? value.toISOString() : null
+
+/**
+ * the rows that come after the cursor in the sort of findPullRequests: [sort column (empty
+ * last), fallback column, id desc]
+ */
+const afterPullRequestCursor = (cursor: PullRequestCursor): Prisma.SessionWhereInput => {
+    const { sortBy, sortOrder, value, fallback, id } = cursor
+    const after = sortOrder === 'desc' ? 'lt' : 'gt'
+    const afterId: Prisma.SessionWhereInput = { id: { lt: id } }
+    const fallbackColumn = PULL_REQUEST_SORT_FALLBACK[sortBy]
+
+    // the order inside rows with the same sort value: the fallback column, then the id
+    const afterInTie = (): Prisma.SessionWhereInput =>
+        fallbackColumn && fallback
+            ? {
+                  OR: [
+                      { [fallbackColumn]: { [after]: new Date(fallback) } },
+                      { AND: [{ [fallbackColumn]: new Date(fallback) }, afterId] },
+                  ],
+              }
+            : afterId
+
+    // the cursor row has no value: only rows with no value come after it
+    if (value === null) return { AND: [{ [sortBy]: null }, afterInTie()] }
+    const at = new Date(value)
+    return {
+        OR: [
+            { [sortBy]: { [after]: at } },
+            { AND: [{ [sortBy]: at }, afterInTie()] },
+            // rows with no value sort last
+            ...(fallbackColumn ? [{ [sortBy]: null }] : []),
+        ],
+    }
+}
+
+/** the open and draft pull requests of the user, as the Open count of the list counts them */
+export async function countOpenPullRequests(userId: string) {
+    return prisma.session.count({
+        where: { AND: [pullRequestRowsWhere(userId), OPEN_PULL_REQUEST] },
+    })
 }
 
 /** open or draft pull requests of this user that were not read from the host lately */
@@ -673,7 +773,6 @@ export async function findStalePullRequests(userId: string, checkedBefore: Date,
     return prisma.session.findMany({
         where: {
             userId,
-            deletedAt: null,
             prNumber: { not: null },
             githubRepoOwner: { not: null },
             githubRepoName: { not: null },
@@ -698,23 +797,54 @@ export async function findStalePullRequests(userId: string, checkedBefore: Date,
  */
 export async function updatePullRequestFields(
     where: Prisma.SessionWhereInput,
-    data: Prisma.SessionUpdateInput
+    data: Prisma.SessionUpdateManyMutationInput
 ) {
     const sessions = await prisma.session.findMany({
         where,
         select: { id: true, userId: true, updatedAt: true, prState: true },
     })
-    await Promise.all(
-        sessions.map((session) =>
-            prisma.session.update({
+    const written = await Promise.all(
+        sessions.map(async (session) => {
+            let current: { updatedAt: Date; prState: string | null } = session
+            for (let attempt = 0; attempt < PR_WRITE_ATTEMPTS; attempt++) {
+                // written only while updatedAt is still the one read: a message that came
+                // in between keeps its newer updatedAt, and the write is tried again
+                const { count } = await prisma.session.updateMany({
+                    where: { id: session.id, updatedAt: current.updatedAt },
+                    data: { ...data, updatedAt: current.updatedAt },
+                })
+                if (count > 0) {
+                    return {
+                        id: session.id,
+                        userId: session.userId,
+                        previousState: current.prState,
+                    }
+                }
+                const fresh = await prisma.session.findUnique({
+                    where: { id: session.id },
+                    select: { updatedAt: true, prState: true },
+                })
+                // deleted in between: nothing to write
+                if (!fresh) return null
+                current = fresh
+            }
+            // the session changed on every try: the state is saved still, with the newest
+            // updatedAt read (the pull request state is not lost for a busy session)
+            const { count } = await prisma.session.updateMany({
                 where: { id: session.id },
-                data: { ...data, updatedAt: session.updatedAt },
+                data: { ...data, updatedAt: current.updatedAt },
             })
-        )
+            return count > 0
+                ? { id: session.id, userId: session.userId, previousState: current.prState }
+                : null
+        })
     )
     // previousState: the state before this write, so the caller sees a change to merged
-    return sessions.map(({ id, userId, prState }) => ({ id, userId, previousState: prState }))
+    return written.filter((row): row is NonNullable<typeof row> => row !== null)
 }
+
+/** tries of one pull request write when the session changes at the same moment */
+const PR_WRITE_ATTEMPTS = 3
 
 /**
  * "Archive the session when the pull request merges" (#637): archives the given sessions,
@@ -728,7 +858,6 @@ export async function archiveSessionsOnMerge(sessionIds: string[]) {
             where: {
                 id: { in: sessionIds },
                 isArchived: false,
-                deletedAt: null,
                 vmStatus: { notIn: [...ACTIVE_VM_STATUSES] },
                 user: {
                     OR: [
@@ -856,6 +985,7 @@ export const sessionRepository = {
     findSessionsForDeleteAll,
     deleteSessionsByIds,
     findPullRequests,
+    countOpenPullRequests,
     findStalePullRequests,
     updatePullRequestFields,
     archiveSessionsOnMerge,

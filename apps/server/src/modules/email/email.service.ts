@@ -1,13 +1,9 @@
 import { env } from '../../env'
 
-import { enqueueMessageJob, enqueueOtpJob, enqueueWelcomeJob } from './email.queue'
+import { enqueueMessageJob, enqueueOtpJob } from './email.queue'
 import { renderMessageEmail } from './message.template'
 
-import type {
-    SendMessageEmailParams,
-    SendOtpEmailParams,
-    SendWelcomeEmailParams,
-} from './email.types'
+import type { SendMessageEmailParams, SendOtpEmailParams } from './email.types'
 
 const sendOtpEmail = async (data: SendOtpEmailParams) => {
     const { to, otp, type = 'signup' } = data
@@ -22,20 +18,6 @@ const sendOtpEmail = async (data: SendOtpEmailParams) => {
         // Intentionally swallowed: fallback logging if Redis is offline during test or local development
         console.warn(
             `[Email Service] Failed to enqueue OTP email to ${to}:`,
-            error?.message || error
-        )
-        return null
-    }
-}
-
-const sendWelcomeEmail = async (data: SendWelcomeEmailParams) => {
-    const { to, name } = data
-    try {
-        return await enqueueWelcomeJob({ to, name })
-    } catch (error: any) {
-        // Intentionally swallowed: fallback logging if Redis is offline during test or local development
-        console.warn(
-            `[Email Service] Failed to enqueue Welcome email to ${to}:`,
             error?.message || error
         )
         return null
@@ -61,6 +43,5 @@ const sendMessageEmail = async (data: SendMessageEmailParams) => {
 
 export const emailService = {
     sendOtpEmail,
-    sendWelcomeEmail,
     sendMessageEmail,
 }

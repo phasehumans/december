@@ -827,12 +827,43 @@ describe('session detail routes', () => {
             // only what was saved: no made-up base branch or checks
             expect(res.body.data.pullRequest).toEqual({
                 prNumber: 21,
+                gitProvider: 'GITHUB',
                 url: 'https://github.com/acme/web/pull/21',
                 title: 'Add dark mode',
                 state: 'merged',
                 headRef: 'december/dark-mode',
                 diffSummary: { additions: 40, deletions: 3 },
                 createdAt: openedAt.toISOString(),
+            })
+        })
+
+        it('pull request drops a link that is not a web link and GitLab line counts', async () => {
+            const session = await prisma.session.create({
+                data: {
+                    userId: ownerId,
+                    title: 'GitLab merge request',
+                    gitProvider: 'GITLAB',
+                    prNumber: 9,
+                    prUrl: 'javascript:alert(1)',
+                    prState: 'draft',
+                    prTitle: 'Fix login',
+                    prBranch: 'feat/login',
+                    // the worker saved 0 before: GitLab does not count lines
+                    prAdditions: 0,
+                    prDeletions: 0,
+                },
+            })
+            storedSessionIds.push(session.id)
+
+            const res = await as(ownerToken).get(`/session/${session.id}/pull-requests`)
+
+            expect(res.status).toBe(200)
+            expect(res.body.data.pullRequest).toEqual({
+                prNumber: 9,
+                gitProvider: 'GITLAB',
+                title: 'Fix login',
+                state: 'draft',
+                headRef: 'feat/login',
             })
         })
 

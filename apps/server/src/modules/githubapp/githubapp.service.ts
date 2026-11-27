@@ -50,6 +50,7 @@ import type {
     NotifyGithubActivity,
     ProcessInstallation,
     ProcessUninstallation,
+    NotifyInstallationLost,
     ResolveRunModel,
     RunModelChoice,
     StartGithubRun,
@@ -123,8 +124,35 @@ const findInstallationOwner = async (data: FindInstallationOwner): Promise<strin
     return senderId ? githubAppRepository.findUserIdByGithubId(senderId) : null
 }
 
+/**
+ * N4: the app was removed from (or suspended on) a GitHub account. December's runs on its
+ * repositories fail until it is back, so the owner gets a warning in the inbox. Never
+ * blocks the webhook.
+ */
+const notifyInstallationLost = async (data: NotifyInstallationLost) => {
+    const { installationId, reason } = data
+    try {
+        const installation = await githubAppRepository.findByInstallationId(installationId)
+        if (!installation?.userId) return false
+        const account = installation.accountLogin ? ` from ${installation.accountLogin}` : ''
+        await notificationService.sendNotificationToUser({
+            userId: installation.userId,
+            title: reason === 'suspended' ? 'GitHub App suspended' : 'GitHub App removed',
+            message: `The December app was ${reason}${account}. Runs on those repositories will fail until you install it again.`,
+            type: 'WARNING',
+            link: '/settings/connections',
+        })
+        return true
+    } catch (error) {
+        console.error('[GitHubApp] installation notice failed:', error)
+        return false
+    }
+}
+
 const processUninstallation = async (data: ProcessUninstallation) => {
     const { installationId } = data
+    // before the row goes: it holds the owner
+    await notifyInstallationLost({ installationId, reason: 'removed' })
     return githubAppRepository.deleteInstallation(installationId)
 }
 
@@ -1039,6 +1067,7 @@ export const githubAppService = {
     findInstallationOwner,
     processInstallation,
     processUninstallation,
+    notifyInstallationLost,
     verifySignature,
     getInstallationAccessToken,
     getUserInstallationToken,

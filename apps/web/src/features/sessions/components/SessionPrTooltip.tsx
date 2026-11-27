@@ -31,7 +31,8 @@ export const SessionPrTooltip: React.FC<SessionPrTooltipProps> = ({ session }) =
     const url = pullRequestUrlOf(session)
     const repo = repoNameOf(session)
     const shortRepo = repo ? repo.split('/').pop() : null
-    const branch = session.prBranch ?? session.branch ?? null
+    // only the branch of the pull request: session.branch is the base branch
+    const branch = session.prBranch ?? null
     const title = session.prTitle || session.title || `Pull request #${session.prNumber}`
 
     const show = () => {

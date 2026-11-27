@@ -221,6 +221,10 @@ export const useSessionController = (
                 outputOriginViewRef.current = originView
             }
 
+            // the pull request in the store belongs to the session open before: dropped, so
+            // the pull request view reads the one of this session
+            useAppStore.getState().setPullRequest(null)
+
             const startTime = Date.now()
             setIsMobileSidebarOpen(false)
             setIsProjectOpening(true)

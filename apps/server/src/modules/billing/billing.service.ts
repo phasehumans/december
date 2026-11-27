@@ -205,12 +205,25 @@ const completePaidTopUp = async (data: CompletePaidTopUp) => {
     try {
         await notificationService.sendNotificationToUser({
             userId,
-            title: 'Credits Added',
-            message: `Successfully added ${amount} to your wallet!`,
+            title: 'Credits added',
+            message: `${amount} is in your wallet.`,
             type: 'SUCCESS',
+            link: '/settings/billing',
         })
     } catch (err) {
         console.error(`Failed to send ${source} notification:`, err)
+    }
+    // A1: a paid top-up in the admins' inbox (no email). Razorpay mails the user a receipt
+    try {
+        const contact = await billingRepository.findUserContact(userId)
+        await notificationService.sendNotificationToAdmins({
+            title: `Top-up: ${amount}`,
+            message: `${contact?.email ?? userId} paid ${amount} with Razorpay.`,
+            type: 'SUCCESS',
+            link: `${getAdminPath()}#users`,
+        })
+    } catch (err) {
+        console.error('[billing] admin top-up notice failed:', err)
     }
 
     return { alreadyProcessed: false, user: result.user }
@@ -377,7 +390,7 @@ const getReceipt = async (data: GetReceipt) => {
 }
 
 const addCredits = async (data: AddCredits) => {
-    const { userId, amountInCents, paymentMethod } = data
+    const { userId, amountInCents } = data
 
     const user = await billingRepository.findUserByIdForCredits(userId)
 
@@ -390,9 +403,10 @@ const addCredits = async (data: AddCredits) => {
     try {
         await notificationService.sendNotificationToUser({
             userId,
-            title: 'Credits Added Successfully',
-            message: `Successfully purchased $${(amountInCents / 100).toFixed(2)} in credits using ${paymentMethod.toUpperCase()}!`,
+            title: 'Credits added',
+            message: `$${(amountInCents / 100).toFixed(2)} is in your wallet.`,
             type: 'SUCCESS',
+            link: '/settings/billing',
         })
     } catch (err) {
         console.error('Failed to send purchase notification:', err)

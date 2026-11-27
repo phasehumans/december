@@ -35,18 +35,6 @@ describe('Email Service - Unit Tests', () => {
         expect(result.data.otp).toBe('445566')
     })
 
-    it('should enqueue Welcome email through email service', async () => {
-        const result: any = await emailService.sendWelcomeEmail({
-            to: 'welcome@example.com',
-            name: 'Jordan',
-        })
-
-        expect(mockQueue.add).toHaveBeenCalledTimes(1)
-        expect(result).toBeDefined()
-        expect(result.id).toBe('job-send_welcome-123')
-        expect(result.data.name).toBe('Jordan')
-    })
-
     it('should handle enqueue failure gracefully and return null', async () => {
         mockQueue.add = mock(async () => {
             throw new Error('Redis connection refused')

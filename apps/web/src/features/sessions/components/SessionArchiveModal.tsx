@@ -7,13 +7,17 @@ interface SessionArchiveModalProps {
     isOpen: boolean
     onClose: () => void
     onConfirm: () => void
+    description?: string
 }
+
+const ARCHIVE_DESCRIPTION = 'It moves to Archived and loses its pin. You can unarchive it there.'
 
 // the same look as the delete dialog: a title, one line, Cancel and Archive
 export const SessionArchiveModal: React.FC<SessionArchiveModalProps> = ({
     isOpen,
     onClose,
     onConfirm,
+    description = ARCHIVE_DESCRIPTION,
 }) => {
     const handleConfirm = (event: React.FormEvent) => {
         event.preventDefault()
@@ -25,7 +29,7 @@ export const SessionArchiveModal: React.FC<SessionArchiveModalProps> = ({
             isOpen={isOpen}
             onClose={onClose}
             title="Archive session"
-            description="It moves to Archived and loses its pin. You can unarchive it there."
+            description={description}
             variant="premium"
             showLogo={false}
             sheetOnPhone
@@ -39,9 +43,10 @@ export const SessionArchiveModal: React.FC<SessionArchiveModalProps> = ({
 
 /**
  * asks before an archive. `confirmArchive(run)` opens the dialog and `run` goes only on
- * Archive; render `archiveModal` once where the hook is used. unarchive needs no question
+ * Archive; render `archiveModal` once where the hook is used. unarchive needs no question.
+ * `description` replaces the grey line, for a page where the row does something else
  */
-export const useArchiveConfirm = () => {
+export const useArchiveConfirm = (description?: string) => {
     const [run, setRun] = React.useState<(() => void) | null>(null)
 
     // a function in state is stored through an updater, so React does not call it
@@ -52,6 +57,7 @@ export const useArchiveConfirm = () => {
         <SessionArchiveModal
             isOpen={run !== null}
             onClose={close}
+            description={description}
             onConfirm={() => {
                 setRun(null)
                 run?.()

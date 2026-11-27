@@ -35,7 +35,6 @@ import {
 } from './connections'
 import { resolveGitToken, resolveSessionGit, withGitToken } from './git-remote'
 import { getGithubRunToken, prepareGithubWorkspace } from './github-run'
-import { notifyAgentQuestion } from './inbox-notify'
 import { runModelConfig } from './llm-source'
 import { clearPendingQuestion } from './pending-question'
 import { gitIdentityCommand } from './pr-opening'
@@ -1030,12 +1029,8 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
     const adapter = new RemotePlatformAdapter(effectiveSandboxId, {
         sessionId,
         redisClient: getRedisPub(),
-        onQuestion: (questions) =>
-            notifyAgentQuestion({
-                sessionId,
-                question: questions?.[0]?.question || 'December has a question for you.',
-                redis: getRedisPub(),
-            }),
+        // the inbox item, the toast and the push come from the server's AskQuestionPrompt
+        // handler (markQuestionAsked), which checks the user's level and an open tab
         onQuestionSettled: () => clearPendingQuestion(sessionId, getRedisPub()),
         // a stop (#637) kills the sandbox command in flight and ends a wait for an answer
         signal: data.stop?.signal,

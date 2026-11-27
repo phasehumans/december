@@ -19,13 +19,8 @@ export const updateNotificationSchema = z
         notifyLevel: z.enum(['ALL', 'IMPORTANT', 'NONE'], {
             message: 'notifyLevel must be ALL, IMPORTANT or NONE',
         }),
-        notifyEmail: z.boolean({ message: 'notifyEmail must be a boolean' }),
         // turning push on goes through POST /notification/push/subscribe; off works here too
         notifyPush: z.literal(false, { message: 'turn push on from the browser' }),
-        digestEnabled: z.boolean({ message: 'digestEnabled must be a boolean' }),
-        digestTime: z
-            .string()
-            .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'digestTime must be HH:mm, from 00:00 to 23:59'),
         timezone: z
             .string()
             .min(1)

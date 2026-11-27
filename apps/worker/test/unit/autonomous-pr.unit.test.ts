@@ -155,6 +155,7 @@ describe('Autonomous Task Branching & PR Generation (Ticket #587)', () => {
                 prTitle: prCreatedBody.title,
                 prBranch: `december/${sessionId}`,
                 prOpenedAt: expect.any(Date),
+                prUpdatedAt: expect.any(Date),
                 prCheckedAt: expect.any(Date),
                 prAdditions: 35,
                 prDeletions: 4,
@@ -449,6 +450,10 @@ describe('Autonomous Task Branching & PR Generation (Ticket #587)', () => {
         expect(result?.url).toBe('https://gitlab.com/acme/tools/importer/-/merge_requests/8')
         expect(result?.ciStatus).toBe('pending')
         expect(sessionUpdates.at(-1)?.data).toMatchObject({ prNumber: 8, prState: 'open' })
+        // GitLab does not count lines: no 0 is saved or sent as if it were a count
+        expect(sessionUpdates.at(-1)?.data).toMatchObject({ prAdditions: null, prDeletions: null })
+        expect(result?.diffSummary.additions).toBeUndefined()
+        expect(result?.diffSummary.deletions).toBeUndefined()
     })
 
     describe('pull request opening settings (#637)', () => {

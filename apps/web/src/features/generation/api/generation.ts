@@ -115,6 +115,8 @@ export type GenerationStreamEvent =
           type: 'PullRequestUpdate'
           data: {
               pullRequest?: any
+              /** the session the worker opened it for, when the event names one */
+              sessionId?: string | null
           }
       }
     | {
@@ -453,9 +455,15 @@ export function normalizeAgentStreamEvent(raw: any): GenerationStreamEvent {
                 (typeof innerData === 'object' && innerData?.pullRequest) ||
                 payload.pullRequest ||
                 null
+            const eventSessionId =
+                (typeof payload.sessionId === 'string' && payload.sessionId) ||
+                (typeof innerData === 'object' &&
+                    typeof innerData?.sessionId === 'string' &&
+                    innerData.sessionId) ||
+                null
             return {
                 type: 'PullRequestUpdate',
-                data: { pullRequest },
+                data: { pullRequest, sessionId: eventSessionId },
             }
         }
         case 'PlanMilestoneUpdate': {
@@ -868,8 +876,15 @@ const runOverSocket = async (
             }
 
             if (streamEvent.type === 'PullRequestUpdate') {
-                if (streamEvent.data?.pullRequest !== undefined) {
-                    useAppStore.getState().setPullRequest(streamEvent.data.pullRequest)
+                // the socket stays in the room of every session opened before: a pull request
+                // of another session is not put on the one on screen
+                const forSession = streamEvent.data?.sessionId ?? sessionId
+                const store = useAppStore.getState()
+                if (
+                    streamEvent.data?.pullRequest !== undefined &&
+                    forSession === store.activeProjectId
+                ) {
+                    store.setPullRequest(streamEvent.data.pullRequest)
                 }
             }
 

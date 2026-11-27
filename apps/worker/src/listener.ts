@@ -123,8 +123,9 @@ export interface AutonomousPrResult {
     headRef: string
     baseRef: string
     diffSummary: {
-        additions: number
-        deletions: number
+        /** left out on GitLab, which does not count lines */
+        additions?: number
+        deletions?: number
         changedFiles: number
     }
     ciStatus: 'passing' | 'pending' | 'failed'
@@ -414,6 +415,7 @@ export async function handleAutonomousTaskBranchAndPr(options: {
             ? await provider.getCiStatus({ token: prToken, repoPath, sha: prData.headSha })
             : 'passing'
 
+        const hasLineCounts = gitProvider === 'GITHUB' && prData !== null
         const prResult: AutonomousPrResult = {
             prNumber: prData?.number,
             url: prData?.url,
@@ -422,8 +424,10 @@ export async function handleAutonomousTaskBranchAndPr(options: {
             headRef: taskBranch,
             baseRef: baseBranch,
             diffSummary: {
-                additions: prData?.additions ?? 0,
-                deletions: prData?.deletions ?? 0,
+                // left out on GitLab, which does not count lines
+                ...(hasLineCounts
+                    ? { additions: prData?.additions ?? 0, deletions: prData?.deletions ?? 0 }
+                    : {}),
                 changedFiles:
                     prData?.changedFiles ?? statusOutput.split('\n').filter(Boolean).length,
             },
@@ -441,14 +445,18 @@ export async function handleAutonomousTaskBranchAndPr(options: {
                     where: { id: sessionId },
                     data: {
                         prNumber: prResult.prNumber,
+                        // the webhook finds this pull request by the repository id
+                        ...(prData?.repoId ? { githubRepoId: prData.repoId } : {}),
                         prUrl: prResult.url ?? null,
                         prState,
                         prTitle: prResult.title,
                         prBranch: taskBranch,
                         prOpenedAt: prData?.createdAt ? new Date(prData.createdAt) : new Date(),
+                        prUpdatedAt: prData?.updatedAt ? new Date(prData.updatedAt) : new Date(),
                         prCheckedAt: new Date(),
-                        prAdditions: prData?.additions ?? null,
-                        prDeletions: prData?.deletions ?? null,
+                        // GitLab does not count lines: its 0 is not a real count
+                        prAdditions: hasLineCounts ? (prData?.additions ?? null) : null,
+                        prDeletions: hasLineCounts ? (prData?.deletions ?? null) : null,
                     },
                 })
                 .catch((error: unknown) => {

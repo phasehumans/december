@@ -99,9 +99,6 @@ describe('Setting Module Integration Tests', () => {
             .send({
                 notifyProductUpdates: false,
                 notifyLevel: 'ALL',
-                notifyEmail: false,
-                digestEnabled: true,
-                digestTime: '18:30',
                 timezone: 'Asia/Kolkata',
             })
 
@@ -110,10 +107,7 @@ describe('Setting Module Integration Tests', () => {
             notifyProductUpdates: false,
             notifySecurityAlerts: true,
             notifyLevel: 'ALL',
-            notifyEmail: false,
             notifyPush: false,
-            digestEnabled: true,
-            digestTime: '18:30',
             timezone: 'Asia/Kolkata',
         })
 
