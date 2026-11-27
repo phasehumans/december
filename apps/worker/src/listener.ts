@@ -128,7 +128,8 @@ export interface AutonomousPrResult {
         deletions?: number
         changedFiles: number
     }
-    ciStatus: 'passing' | 'pending' | 'failed'
+    /** the checks of the pull request when it was opened; left out when not read */
+    ciStatus?: 'passing' | 'pending' | 'failed'
     createdAt?: string
     updatedAt?: string
 }
@@ -279,7 +280,6 @@ export async function handleAutonomousTaskBranchAndPr(options: {
                     deletions: 0,
                     changedFiles: statusOutput.split('\n').filter(Boolean).length,
                 },
-                ciStatus: 'pending',
             }
 
             const localPayload = JSON.stringify({
@@ -350,7 +350,6 @@ export async function handleAutonomousTaskBranchAndPr(options: {
                     deletions: 0,
                     changedFiles: statusOutput.split('\n').filter(Boolean).length,
                 },
-                ciStatus: 'pending',
             }
             const branchPayload = JSON.stringify({
                 type: 'PullRequestUpdate',
@@ -379,9 +378,7 @@ export async function handleAutonomousTaskBranchAndPr(options: {
             '## Summary of Changes',
             session?.title || 'Automated task completed by December Agent.',
             '',
-            '### Verification Notes',
-            '- Changes verified inside isolated sandbox environment.',
-            `- Task branch \`${taskBranch}\` pushed to origin.`,
+            `Opened from the branch \`${taskBranch}\`.`,
         ].join('\n')
 
         // "december": the December GitHub App opens it when the app is on the repository.
@@ -398,29 +395,45 @@ export async function handleAutonomousTaskBranchAndPr(options: {
             appToken,
         })) {
             prToken = token
-            prData = await provider.createPullRequest({
-                token,
-                repoPath,
-                title: prTitle,
-                head: taskBranch,
-                base: baseBranch,
-                body: prBody,
-                draft: prSettings.prDraft,
-            })
+            prData = await provider
+                .createPullRequest({
+                    token,
+                    repoPath,
+                    title: prTitle,
+                    head: taskBranch,
+                    base: baseBranch,
+                    body: prBody,
+                    draft: prSettings.prDraft,
+                })
+                .catch((error: unknown) => {
+                    // the next token is tried; when none works the user is told below
+                    console.error('[WORKER LISTENER] could not open the pull request', error)
+                    return null
+                })
             if (prData) break
         }
+        if (!prData) {
+            // not silent: the branch is pushed and saved, but no pull request was opened
+            await publish(
+                sessionId,
+                gitStepFailure({ step: 'pull_request', branch: taskBranch, provider: gitProvider })
+            )
+            return null
+        }
 
-        // 8. Query CI status if commit SHA or PR is available
+        // 8. the checks of the pull request, read only when one was opened: with no pull
+        // request there are no checks to report as passing
         const ciStatus = prData?.headSha
             ? await provider.getCiStatus({ token: prToken, repoPath, sha: prData.headSha })
-            : 'passing'
+            : undefined
 
         const hasLineCounts = gitProvider === 'GITHUB' && prData !== null
         const prResult: AutonomousPrResult = {
             prNumber: prData?.number,
             url: prData?.url,
             title: prData?.title || prTitle,
-            state: prData?.state || 'open',
+            // the status says draft, merged or closed: the raw state only says open or closed
+            state: prData?.status || 'open',
             headRef: taskBranch,
             baseRef: baseBranch,
             diffSummary: {
@@ -431,7 +444,7 @@ export async function handleAutonomousTaskBranchAndPr(options: {
                 changedFiles:
                     prData?.changedFiles ?? statusOutput.split('\n').filter(Boolean).length,
             },
-            ciStatus,
+            ...(ciStatus ? { ciStatus } : {}),
             createdAt: prData?.createdAt,
             updatedAt: prData?.updatedAt,
         }

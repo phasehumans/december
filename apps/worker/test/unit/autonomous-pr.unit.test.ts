@@ -137,7 +137,9 @@ describe('Autonomous Task Branching & PR Generation (Ticket #587)', () => {
         expect(prCreatedBody).not.toBeNull()
         expect(prCreatedBody.head).toBe(`december/${sessionId}`)
         expect(prCreatedBody.base).toBe('main')
-        expect(prCreatedBody.body).toContain('Verification Notes')
+        // the body names the branch and claims no checks the run did not do
+        expect(prCreatedBody.body).toContain(`december/${sessionId}`)
+        expect(prCreatedBody.body).not.toContain('verified')
 
         // the pull request is saved on the session for the sessions list and Pull requests page
         // first the pushed branch, so the session keeps it (#637), then the pull request
@@ -674,6 +676,8 @@ describe('Autonomous Task Branching & PR Generation (Ticket #587)', () => {
             const result = await handleAutonomousTaskBranchAndPr({ sessionId, sandbox })
 
             expect(result?.state).toBe('branch')
+            // no pull request: no checks are reported
+            expect(result?.ciStatus).toBeUndefined()
             expect(executedCommands).toContain('git push origin december/sess-open-1')
             expect(openRequests(requests)).toHaveLength(0)
         })

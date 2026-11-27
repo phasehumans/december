@@ -751,6 +751,7 @@ const handleReviewComment = async (data: HandleReviewComment): Promise<HandleGit
         if (settings.reviewReplies !== 'all') return { handled: false, reason: 'not_mentioned' }
         const prOwner = await findPullRequestOwner({
             installationId,
+            repoId: repository.id,
             repoOwner: repository.owner.login,
             repoName: repository.name,
             prNumber: pullRequest.number,
@@ -855,6 +856,7 @@ const handleCheckSuite = async (data: HandleCheckSuite): Promise<HandleGithubEve
 
     const prOwner = await findPullRequestOwner({
         installationId,
+        repoId: repository.id,
         repoOwner: repository.owner.login,
         repoName: repository.name,
         prNumber,
@@ -924,8 +926,9 @@ const handleCheckSuite = async (data: HandleCheckSuite): Promise<HandleGithubEve
 // who owns December's pull request: the session that opened it, else (for PRs opened from an
 // @trydecember issue comment, which have no session) the owner of the installation
 const findPullRequestOwner = async (data: FindPullRequestOwner): Promise<string | null> => {
-    const { installationId, repoOwner, repoName, prNumber, prAuthorLogin } = data
+    const { installationId, repoId, repoOwner, repoName, prNumber, prAuthorLogin } = data
     const session = await githubAppRepository.findSessionByPullRequest({
+        repoId,
         repoOwner,
         repoName,
         prNumber,
@@ -942,6 +945,7 @@ const findPullRequestOwner = async (data: FindPullRequestOwner): Promise<string 
 const notifyGithubActivity = async (data: NotifyGithubActivity) => {
     const {
         installationId,
+        repoId,
         repoOwner,
         repoName,
         number,
@@ -1009,6 +1013,7 @@ const notifyGithubActivity = async (data: NotifyGithubActivity) => {
 
     const userId = await findPullRequestOwner({
         installationId,
+        repoId,
         repoOwner,
         repoName,
         prNumber: number,

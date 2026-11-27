@@ -30,6 +30,8 @@ export interface PullRequestRow {
     /** the run state of the session (RUNNING, PROVISIONING, ...), when known */
     vmStatus: string | null
     isArchived: boolean
+    /** when the session was pinned, so the undo of an archive puts the pin back */
+    pinnedAt: string | null
 }
 
 export const PULL_REQUEST_STATE_LABELS: Record<PullRequestState, string> = {
@@ -95,6 +97,7 @@ export const toPullRequestRows = (pullRequests: BackendPullRequest[]): PullReque
         tags: pr.tags || [],
         vmStatus: pr.vmStatus ?? null,
         isArchived: Boolean(pr.isArchived),
+        pinnedAt: pr.pinnedAt ?? null,
     }))
 
 /**
@@ -116,6 +119,8 @@ export const pullRequestRowAsSession = (row: PullRequestRow): BackendSession => 
     tags: row.tags,
     vmStatus: row.vmStatus,
     isArchived: row.isArchived,
+    isPinned: Boolean(row.pinnedAt),
+    pinnedAt: row.pinnedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
 })

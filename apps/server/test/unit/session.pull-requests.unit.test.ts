@@ -6,6 +6,7 @@ import {
     PULL_REQUEST_SORT_FALLBACK,
     cleanCachedPullRequest,
     decodePullRequestCursor,
+    pickSessionPullRequest,
     encodePullRequestCursor,
     searchedPullRequestNumber,
     toPullRequestState,
@@ -242,11 +243,18 @@ describe('the pull request cached after a run', () => {
         ...fields,
     })
 
-    it('keeps a GitHub pull request as it is, with its host', () => {
+    it('keeps a GitHub pull request as it is, with its host, but not its old checks', () => {
+        const { ciStatus: _checks, ...rest } = cached()
         expect(cleanCachedPullRequest(cached(), 'GITHUB')).toEqual({
-            ...cached(),
+            ...rest,
             gitProvider: 'GITHUB',
         })
+    })
+
+    it('drops the checks of the run end, so "Checks running" never stays for ever', () => {
+        expect(
+            cleanCachedPullRequest(cached({ ciStatus: 'pending' }), 'GITHUB')
+        ).not.toHaveProperty('ciStatus')
     })
 
     it('drops a link that is not a web link', () => {
@@ -300,9 +308,8 @@ describe('the pull request cached after a run', () => {
             title: 'feat: dark mode (final)',
             state: 'merged',
             headRef: 'december/dark-mode',
-            // the base branch and the checks are only in the cache
+            // the base branch is only in the cache; its checks are old, so they are left out
             baseRef: 'main',
-            ciStatus: 'passing',
             diffSummary: { additions: 51, deletions: 7, changedFiles: 3 },
             updatedAt: '2026-10-05T00:00:00.000Z',
         })
@@ -391,5 +398,103 @@ describe('toPullRequestStateEvent: repository id and last change', () => {
             toPullRequestStateEvent('pull_request', payload({ id: 1 }, { updated_at: 5 }))
                 ?.updatedAt
         ).toBeNull()
+    })
+})
+
+describe('the pull request of one session (cache or saved row)', () => {
+    const savedRow = (fields: Partial<SavedPullRequestRow> = {}): SavedPullRequestRow => ({
+        gitProvider: 'GITHUB',
+        title: 'Session',
+        branch: 'main',
+        prNumber: 21,
+        prUrl: 'https://github.com/acme/web/pull/21',
+        prState: 'merged',
+        prTitle: 'feat: dark mode',
+        prBranch: 'december/dark-mode',
+        prAdditions: 5,
+        prDeletions: 1,
+        prOpenedAt: null,
+        prUpdatedAt: null,
+        prCheckedAt: null,
+        ...fields,
+    })
+    // what the worker caches when "open pull request" is off: no number, made-up checks
+    const branchOnly: SessionPullRequest = {
+        title: 'Refactor the cart',
+        state: 'branch',
+        headRef: 'feat/cart',
+        baseRef: 'main',
+        diffSummary: { additions: 0, deletions: 0, changedFiles: 3 },
+        ciStatus: 'pending',
+    }
+
+    it('a branch-only run is no pull request', () => {
+        expect(
+            pickSessionPullRequest({
+                cached: branchOnly,
+                saved: null,
+                savedPrTitle: null,
+                gitProvider: 'GITHUB',
+            })
+        ).toBeNull()
+    })
+
+    it('a branch-only cache does not hide the pull request the row saved', () => {
+        const saved = toSavedPullRequest(savedRow())
+        expect(
+            pickSessionPullRequest({
+                cached: branchOnly,
+                saved,
+                savedPrTitle: 'feat: dark mode',
+                gitProvider: 'GITHUB',
+            })
+        ).toEqual(saved)
+    })
+
+    it('the same pull request: the row state over the cache, with the base branch', () => {
+        const picked = pickSessionPullRequest({
+            cached: {
+                prNumber: 21,
+                title: 'feat: dark mode',
+                state: 'open',
+                headRef: 'december/dark-mode',
+                baseRef: 'main',
+                ciStatus: 'pending',
+            },
+            saved: toSavedPullRequest(savedRow()),
+            savedPrTitle: 'feat: dark mode',
+            gitProvider: 'GITHUB',
+        })
+        expect(picked?.state).toBe('merged')
+        expect(picked?.baseRef).toBe('main')
+        expect(picked).not.toHaveProperty('ciStatus')
+    })
+
+    it('a cache of another pull request: the saved one answers', () => {
+        const saved = toSavedPullRequest(savedRow({ prNumber: 30 }))
+        expect(
+            pickSessionPullRequest({
+                cached: { prNumber: 21, title: 'old', state: 'open', headRef: 'x' },
+                saved,
+                savedPrTitle: null,
+                gitProvider: 'GITHUB',
+            })
+        ).toEqual(saved)
+    })
+
+    it('a cached pull request the row did not save still shows, cleaned', () => {
+        const picked = pickSessionPullRequest({
+            cached: { prNumber: 9, title: 'MR', state: 'open', headRef: 'x', ciStatus: 'failed' },
+            saved: null,
+            savedPrTitle: null,
+            gitProvider: 'GITLAB',
+        })
+        expect(picked).toEqual({
+            prNumber: 9,
+            title: 'MR',
+            state: 'open',
+            headRef: 'x',
+            gitProvider: 'GITLAB',
+        })
     })
 })

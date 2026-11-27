@@ -325,7 +325,9 @@ describe('E2BSandboxService (Unit & Integration)', () => {
         const uiRes = await adapter.ui.askQuestion([
             { question: 'Proceed?', options: ['Yes', 'No'] },
         ])
-        expect(uiRes).toBe('Non-interactive mode: auto-proceeding')
+        // no session or redis to ask the user through: the first option is the answer, the
+        // same as a question that times out or a run that stops (#590)
+        expect(uiRes).toBe('Yes')
     })
 
     it('should route ephemeral tasks security_audit and one_click_fix cleanly', async () => {

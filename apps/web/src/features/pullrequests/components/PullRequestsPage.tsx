@@ -212,7 +212,12 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
     }
     const undoArchive = () => {
         if (!archivedUndo) return
-        toggleArchiveMutation.mutate({ sessionId: archivedUndo.row.sessionId, isArchived: false })
+        // the archive took the pin off: the undo puts it back, like the Sessions page
+        toggleArchiveMutation.mutate({
+            sessionId: archivedUndo.row.sessionId,
+            isArchived: false,
+            restorePinnedAt: archivedUndo.row.pinnedAt,
+        })
         clearUndo()
     }
 

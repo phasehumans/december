@@ -335,6 +335,27 @@ describe('Pull requests page server', () => {
             expect(idsOf(await list({ search: '   dark mode  ' }))).toEqual([byPrTitle.id])
         })
 
+        it('matches the repository owner, and owner/name as the row shows it', async () => {
+            const mine = await makePr({
+                githubRepoOwner: `${repoOwner}-zeta`,
+                githubRepoName: 'shop',
+            })
+            await makePr({ githubRepoOwner: `${repoOwner}-omega`, githubRepoName: 'shop' })
+            await makePr({ githubRepoOwner: `${repoOwner}-zeta2`, githubRepoName: 'blog' })
+            expect(idsOf(await list({ search: `${repoOwner}-zeta/shop` }))).toEqual([mine.id])
+            // the end of the owner and the start of the name, as typed
+            expect(idsOf(await list({ search: 'zeta/sh' }))).toEqual([mine.id])
+            expect(idsOf(await list({ search: 'zeta/blog' }))).toEqual([])
+            const byOwner = await list({ search: `${repoOwner}-omega` })
+            expect(idsOf(byOwner)).toHaveLength(1)
+        })
+
+        it('a number does not match an owner with those digits', async () => {
+            const row = await makePr({ prNumber: 777, githubRepoOwner: `${repoOwner}-a` })
+            await makePr({ prNumber: 778, githubRepoOwner: `${repoOwner}-777` })
+            expect(idsOf(await list({ search: '#777' }))).toEqual([row.id])
+        })
+
         it('finds a pull request by its number, with or without #', async () => {
             const row = await makePr({ prNumber: 4242, title: 'numbered' })
             expect(idsOf(await list({ search: '4242' }))).toEqual([row.id])
@@ -535,6 +556,15 @@ describe('Pull requests page server', () => {
     })
 
     describe('what a row holds', () => {
+        it('the pin, so the undo of an archive can put it back', async () => {
+            const pinnedAt = at(3)
+            const row = await makePr({ pinnedAt })
+            const plain = await makePr()
+            const res = await list()
+            expect(rowOf(res, row.id).pinnedAt).toBe(pinnedAt.toISOString())
+            expect(rowOf(res, plain.id).pinnedAt).toBeNull()
+        })
+
         it('the saved details, and only a web link', async () => {
             const row = await makePr({
                 githubRepoName: 'web',
@@ -740,6 +770,72 @@ describe('Pull requests page server', () => {
             expect((await prisma.session.findUnique({ where: { id: kept.id } }))?.isArchived).toBe(
                 false
             )
+        })
+
+        it('a draft closed on the host reads closed, not draft', async () => {
+            const row = await stale({ prState: 'draft' })
+            answer = async () =>
+                hostPr(row.prNumber as number, {
+                    state: 'closed',
+                    draft: true,
+                    closed_at: '2026-04-01T10:00:00Z',
+                })
+            const res = await list()
+            expect(rowOf(res, row.id).prState).toBe('closed')
+            // it is not open any more: the Open count leaves it out
+            expect(res.body.data.openCount).toBe(0)
+        })
+
+        it('a merge or close found here sends the inbox notice once, like the webhook', async () => {
+            const notices = (sessionId: string) =>
+                prisma.notification.findMany({
+                    where: { userId: ownerId, link: `/sessions/${sessionId}` },
+                })
+            const merged = await stale()
+            const closed = await stale()
+            answer = async (url) =>
+                url.endsWith(`/pulls/${merged.prNumber}`)
+                    ? hostPr(merged.prNumber as number, {
+                          state: 'closed',
+                          merged_at: '2026-04-01T10:00:00Z',
+                          closed_at: '2026-04-01T10:00:00Z',
+                      })
+                    : hostPr(closed.prNumber as number, {
+                          state: 'closed',
+                          closed_at: '2026-04-01T10:00:00Z',
+                      })
+            await list()
+            const mergedNotices = await notices(merged.id)
+            expect(mergedNotices.map((n) => n.title)).toEqual([`#${merged.prNumber} merged`])
+            expect(mergedNotices[0].message).toBe(`${repoOwner}/web: feat: read from github`)
+            expect((await notices(closed.id)).map((n) => n.title)).toEqual([
+                `#${closed.prNumber} closed`,
+            ])
+
+            // the late webhook of the same merge is quiet: the state did not change
+            await sendWebhook(
+                prPayload(
+                    merged.prNumber as number,
+                    {},
+                    {
+                        state: 'closed',
+                        merged_at: '2026-04-01T10:00:00Z',
+                        closed_at: '2026-04-01T10:00:00Z',
+                    }
+                )
+            )
+            expect(await notices(merged.id)).toHaveLength(1)
+        })
+
+        it('a pull request still open sends no notice', async () => {
+            const row = await stale()
+            answer = async () => hostPr(row.prNumber as number)
+            await list()
+            expect(
+                await prisma.notification.count({
+                    where: { userId: ownerId, link: `/sessions/${row.id}` },
+                })
+            ).toBe(0)
         })
 
         it('a pull request the host refuses is marked checked and keeps its state', async () => {

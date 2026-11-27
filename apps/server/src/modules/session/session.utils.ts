@@ -389,13 +389,14 @@ export const toSavedPullRequest = (session: SavedPullRequestRow): SessionPullReq
 
 /**
  * the cached pull request with a web link only, and no line counts from GitLab (the
- * worker cached 0 there, which is not a real count)
+ * worker cached 0 there, which is not a real count). the checks are left out: the cache
+ * keeps the checks of the run's end, so "Checks running" would show for ever
  */
 export const cleanCachedPullRequest = (
     pullRequest: SessionPullRequest,
     gitProvider: 'GITHUB' | 'GITLAB'
 ): SessionPullRequest => {
-    const { url, diffSummary, ...rest } = pullRequest
+    const { url, diffSummary, ciStatus, ...rest } = pullRequest
     const link = webLinkOrNull(url)
     const changedFiles = diffSummary?.changedFiles
     const lineCounts =
@@ -433,4 +434,24 @@ export const withSavedPullRequest = (
         ...(diffSummary ? { diffSummary } : {}),
         ...(saved.updatedAt ? { updatedAt: saved.updatedAt } : {}),
     }
+}
+
+/**
+ * the pull request of one session: the cached one of the run's end (it has the base
+ * branch) with what the row keeps current put over it, else the saved one. a cached result
+ * with no number (a run that pushed only a branch, or whose pull request was not opened)
+ * is no pull request, so it never shows as one
+ */
+export const pickSessionPullRequest = (data: {
+    cached: SessionPullRequest | null
+    saved: SessionPullRequest | null
+    savedPrTitle: string | null
+    gitProvider: 'GITHUB' | 'GITLAB'
+}): SessionPullRequest | null => {
+    const { cached, saved, savedPrTitle, gitProvider } = data
+    if (cached?.prNumber && saved && cached.prNumber === saved.prNumber) {
+        return withSavedPullRequest(cached, saved, savedPrTitle)
+    }
+    if (saved) return saved
+    return cached?.prNumber ? cleanCachedPullRequest(cached, gitProvider) : null
 }

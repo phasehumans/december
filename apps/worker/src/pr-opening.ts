@@ -79,16 +79,35 @@ export const githubRunGit = (sessionId: string) => ({
     author: DECEMBER_IDENTITY,
 })
 
-/** the text of the error event when the branch or the push failed (review E2) */
-export const gitStepFailure = (data: { step: 'checkout' | 'push'; branch: string }) => {
-    const { step, branch } = data
+/** the git step that failed: the branch, the push, or the pull request on the host */
+type GitStep = 'checkout' | 'push' | 'pull_request'
+
+const GIT_STEP_CODES: Record<GitStep, string> = {
+    checkout: 'GIT_BRANCH_FAILED',
+    push: 'GIT_PUSH_FAILED',
+    pull_request: 'PR_OPEN_FAILED',
+}
+
+/**
+ * the text of the error event when the branch, the push (review E2) or the pull request
+ * failed. `provider` names the host for the pull request step
+ */
+export const gitStepFailure = (data: {
+    step: GitStep
+    branch: string
+    provider?: GitProviderName
+}) => {
+    const { step, branch, provider } = data
+    const host = provider === 'GITLAB' ? 'GitLab' : 'GitHub'
     const error =
         step === 'checkout'
             ? `Could not switch to the branch ${branch}. The work is not pushed and stays in the sandbox.`
-            : `Could not push the branch ${branch}. The work is committed and stays in the sandbox.`
+            : step === 'push'
+              ? `Could not push the branch ${branch}. The work is committed and stays in the sandbox.`
+              : `Could not open the pull request for the branch ${branch}. The branch is pushed, so you can open it on ${host}.`
     return {
         type: 'AgentError',
-        code: step === 'checkout' ? 'GIT_BRANCH_FAILED' : 'GIT_PUSH_FAILED',
+        code: GIT_STEP_CODES[step],
         error,
         message: error,
     }

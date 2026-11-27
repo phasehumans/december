@@ -57,6 +57,20 @@ describe('GitHubApp inbox notifications - Unit Tests', () => {
             expect(activity?.number).toBe(482)
             expect(activity?.installationId).toBe('77')
             expect(activity?.activity).toMatchObject({ kind: 'comment', isPullRequest: true })
+            // this payload has no repository id: none is made up
+            expect(activity).not.toHaveProperty('repoId')
+        })
+
+        it('carries the repository id, so a renamed repository still finds its session', () => {
+            const activity = toGithubActivity('pull_request_review', {
+                action: 'submitted',
+                repository: { ...repository, id: 123456 },
+                installation,
+                pull_request: { number: 9, user: { login: 'trydecember[bot]' } },
+                review: { state: 'approved', body: '', user: { login: 'maya-k', type: 'User' } },
+            })
+            expect(activity?.repoId).toBe('123456')
+            expect(activity?.activity).toMatchObject({ kind: 'review', state: 'approved' })
         })
 
         it('maps only failed check suites with a pull request', () => {

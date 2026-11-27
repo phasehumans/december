@@ -201,6 +201,8 @@ export interface BackendPullRequest {
     vmStatus?: string | null
     /** archived on merge or by hand. merged and closed rows stay listed when archived */
     isArchived?: boolean
+    /** when the session was pinned; an archive takes the pin off, its undo puts it back */
+    pinnedAt?: string | null
     createdAt: string
     updatedAt: string
 }

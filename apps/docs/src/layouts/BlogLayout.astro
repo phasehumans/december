@@ -2,22 +2,12 @@
 import BaseLayout from './BaseLayout.astro';
 
 interface Props {
-  title: string;
+  title?: string;
   description?: string;
-  publishDate?: string;
-  author?: string;
-  readTime?: string;
-  category?: string;
   currentSlug?: string;
-  prevPost?: { slug: string; title: string };
-  nextPost?: { slug: string; title: string };
   frontmatter?: {
     title?: string;
     description?: string;
-    publishDate?: string;
-    author?: string;
-    readTime?: string;
-    category?: string;
     currentSlug?: string;
   };
 }
@@ -25,117 +15,39 @@ interface Props {
 const { frontmatter } = Astro.props;
 const title = frontmatter?.title || Astro.props.title || 'Blog Post';
 const description = frontmatter?.description || Astro.props.description;
-const publishDate = frontmatter?.publishDate || Astro.props.publishDate || 'September 2026';
-const author = frontmatter?.author || Astro.props.author || 'December Engineering';
-const readTime = frontmatter?.readTime || Astro.props.readTime || '7 min read';
-const category = frontmatter?.category || Astro.props.category || 'Research';
-const currentSlug = frontmatter?.currentSlug !== undefined ? frontmatter.currentSlug : (Astro.props.currentSlug ?? '');
-
-const blogPosts = [
-  {
-    slug: 'self-improving-agents',
-    title: 'Building Self-Improving Agents',
-  },
-  {
-    slug: 'how-to-build-tools-for-ai-agents',
-    title: 'Building Tools for AI Agents',
-  },
-  {
-    slug: 'context-rot',
-    title: 'Context Rot in Long-Context LLMs',
-  },
-];
-
-const currentIdx = blogPosts.findIndex((p) => p.slug === currentSlug);
-const prevPost = Astro.props.prevPost || (currentIdx > 0 ? blogPosts[currentIdx - 1] : null);
-const nextPost = Astro.props.nextPost || (currentIdx >= 0 && currentIdx < blogPosts.length - 1 ? blogPosts[currentIdx + 1] : null);
+const currentSlug = frontmatter?.currentSlug ?? Astro.props.currentSlug ?? '';
 ---
 
 <BaseLayout
   title={`${title} | December`}
   description={description}
+  canonicalUrl={`https://trydecember.com/blog/${currentSlug}`}
   activePath="/blog"
-  hideFooter={false}
+  hideHeader={true}
+  hideFooter={true}
 >
-  <!-- Page Blueprint Chassis: 1280px wide column with side rails on desktop -->
-  <div class="relative w-full overflow-hidden flex-1 flex flex-col">
-    <!-- Main Container: 1280px wide centered content -->
-    <div class="relative z-10 mx-auto max-w-[1280px] px-6 sm:px-8 md:px-10 lg:px-12 pt-8 pb-16 sm:pt-12 sm:pb-24 min-w-0 bg-white border-x border-transparent lg:border-[#cbd5e1] flex-1 w-full">
-    <!-- Breadcrumb Navigation Bar -->
-    <nav class="flex items-center flex-wrap font-mono text-xs text-[#64748b] mb-8">
-      <div class="flex items-center flex-wrap gap-2">
-        <a href="/" class="hover:text-[#090a0f] transition-colors">home</a>
-        <span class="text-[#cbd5e1]">/</span>
-        <a href="/blog" class="text-[#87b2f4] hover:underline">[blog]</a>
-        {currentSlug && (
-          <>
-            <span class="text-[#cbd5e1]">/</span>
-            <span class="text-[#090a0f] font-medium">{currentSlug}</span>
-          </>
-        )}
-      </div>
-    </nav>
+  <!-- Same column, size and colours as /me: no site header or footer, a back link to the post list, no links to other posts -->
+  <div class="min-h-dvh w-full flex flex-col items-center px-6 py-8 sm:py-16">
+    <article class="w-full max-w-[520px] min-w-0 flex flex-col">
+      <!-- Back to the post list: grey, black on hover, the arrow moves left a little -->
+      <a
+        href="/me#blog"
+        class="group self-start inline-flex items-center gap-1.5 -ml-0.5 py-1 font-mono text-xs text-[#64748b] hover:text-[#090a0f] transition-colors"
+      >
+        <svg class="w-3 h-3 transition-transform duration-150 group-hover:-translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+        blog
+      </a>
 
-    <!-- Article Container -->
-    <article class="w-full min-w-0 max-w-full">
-      <header class="mb-8 max-w-3xl min-w-0">
-        <div class="font-mono text-xs text-[#64748b] mb-2 flex items-center gap-2">
-          <time>{publishDate}</time>
-          <span class="text-[#cbd5e1]">·</span>
-          <span>{readTime}</span>
-        </div>
-        <h1 class="text-2xl sm:text-3xl font-medium tracking-tight text-[#090a0f] leading-snug">
-          {title}
-        </h1>
-        {description && (
-          <p class="mt-2.5 text-sm sm:text-[15px] text-[#52525b] leading-relaxed">
-            {description}
-          </p>
-        )}
-      </header>
+      <!-- Title only, lowercase like the /me lists: no date or read time -->
+      <h1 class="mt-7 sm:mt-9 text-sm sm:text-base font-medium text-[#090a0f] leading-snug">
+        {title.toLowerCase()}
+      </h1>
 
-      <!-- Article Body -->
-      <div class="docs-prose min-w-0 max-w-full text-[#52525b] text-sm sm:text-[15px] leading-relaxed">
+      <div class="mt-6 docs-prose blog-prose min-w-0 max-w-full">
         <slot />
       </div>
-
-      <!-- Linear Previous / Next Navigation -->
-      <div class="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs">
-        {prevPost ? (
-          <a
-            href={`/blog/${prevPost.slug}`}
-            class="group inline-flex items-center gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all w-full sm:w-auto"
-          >
-            <span class="text-[#94a3b8] group-hover:text-[#87b2f4]">←</span>
-            <span>{prevPost.title}</span>
-          </a>
-        ) : (
-          <a
-            href="/blog"
-            class="inline-flex items-center gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all w-full sm:w-auto"
-          >
-            <span>← Blog Overview</span>
-          </a>
-        )}
-
-        {nextPost ? (
-          <a
-            href={`/blog/${nextPost.slug}`}
-            class="group inline-flex items-center justify-end gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all w-full sm:w-auto sm:ml-auto"
-          >
-            <span>{nextPost.title}</span>
-            <span class="text-[#94a3b8] group-hover:text-[#87b2f4]">→</span>
-          </a>
-        ) : (prevPost ? (
-          <a
-            href="/blog"
-            class="inline-flex items-center gap-2 p-3 border border-[#e2e8f0] bg-white hover:border-[#87b2f4] text-[#090a0f] transition-all w-full sm:w-auto sm:ml-auto"
-          >
-            <span>Blog Overview →</span>
-          </a>
-        ) : null)}
-      </div>
     </article>
-  </div>
   </div>
 </BaseLayout>

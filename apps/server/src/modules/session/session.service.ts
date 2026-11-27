@@ -57,9 +57,8 @@ import {
     toSessionFacets,
     webLinkOrNull,
     PULL_REQUEST_REFRESH_TIMING,
-    cleanCachedPullRequest,
+    pickSessionPullRequest,
     toSavedPullRequest,
-    withSavedPullRequest,
     toTagsCacheKey,
     toLimitQuestionPrompt,
     toListTitle,
@@ -133,6 +132,7 @@ import type {
     GetPullRequests,
     RefreshStalePullRequests,
     ApplyPullRequestEvent,
+    NotifyPullRequestEnded,
     PauseAtLimit,
     AnswerLimitQuestion,
     ContinueAtLimit,
@@ -759,6 +759,34 @@ const runningPullRequestRefreshes = new Map<string, Promise<void>>()
 const toDateOrNull = (value: string | null | undefined): Date | null =>
     value ? new Date(value) : null
 
+/**
+ * N2: a pull request a December session opened was merged or closed. One inbox item per
+ * user, only when this write changed the state, so the webhook and the list refresh that
+ * both see the same merge send one notice. never throws
+ */
+const notifyPullRequestEnded = async (data: NotifyPullRequestEnded) => {
+    const { sessions, state, number, repoOwner, repoName, title } = data
+    if (state !== 'merged' && state !== 'closed') return
+    const told = new Set<string>()
+    for (const session of sessions) {
+        if (!session.userId || session.previousState === state || told.has(session.userId)) {
+            continue
+        }
+        told.add(session.userId)
+        try {
+            await notificationService.sendNotificationToUser({
+                userId: session.userId,
+                title: `#${number} ${state}`,
+                message: `${repoOwner}/${repoName}${title ? `: ${title}` : ''}`,
+                type: state === 'merged' ? 'SUCCESS' : 'INFO',
+                link: `/sessions/${session.id}`,
+            })
+        } catch (error) {
+            console.error('[Session] pull request notice failed:', error)
+        }
+    }
+}
+
 /** reads the state of stale open pull requests from GitHub or GitLab; never throws */
 const refreshStalePullRequests = async (data: RefreshStalePullRequests) => {
     const { userId } = data
@@ -795,7 +823,7 @@ const refreshStalePullRequests = async (data: RefreshStalePullRequests) => {
                       .catch(() => null)
                 : null
             // checked either way, so a pull request the host refuses is not asked every read
-            await sessionRepository.updatePullRequestFields(
+            const written = await sessionRepository.updatePullRequestFields(
                 { id: session.id },
                 {
                     prCheckedAt: new Date(),
@@ -819,6 +847,17 @@ const refreshStalePullRequests = async (data: RefreshStalePullRequests) => {
             // the webhook was missed: the merge is found here, so the archive happens here
             if (pr?.status === 'merged') {
                 await sessionRepository.archiveSessionsOnMerge([session.id])
+            }
+            // the webhook was missed: its merged or closed notice is sent here instead
+            if (pr) {
+                await notifyPullRequestEnded({
+                    sessions: written,
+                    state: pr.status,
+                    number: session.prNumber as number,
+                    repoOwner: owner,
+                    repoName: session.githubRepoName as string,
+                    title: pr.title,
+                })
             }
         })
     )
@@ -901,6 +940,7 @@ const getPullRequests = async (data: GetPullRequests) => {
             prUpdatedAt: row.prUpdatedAt ?? null,
             vmStatus: row.vmStatus,
             isArchived: row.isArchived,
+            pinnedAt: row.pinnedAt ?? null,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
         })),
@@ -975,28 +1015,7 @@ const applyPullRequestEvent = async (data: ApplyPullRequestEvent) => {
     const userIds = [...new Set(sessions.map((session) => session.userId))]
     await Promise.all(userIds.map((userId) => invalidateUserRecentSessions(userId)))
 
-    // N2: a pull request a December session opened was merged or closed. One inbox item per
-    // user, only when this event changed the state (a repeat of the same event is quiet)
-    if (state === 'merged' || state === 'closed') {
-        const told = new Set<string>()
-        for (const session of sessions) {
-            if (!session.userId || session.previousState === state || told.has(session.userId)) {
-                continue
-            }
-            told.add(session.userId)
-            try {
-                await notificationService.sendNotificationToUser({
-                    userId: session.userId,
-                    title: `#${number} ${state}`,
-                    message: `${repoOwner}/${repoName}${title ? `: ${title}` : ''}`,
-                    type: state === 'merged' ? 'SUCCESS' : 'INFO',
-                    link: `/sessions/${session.id}`,
-                })
-            } catch (error) {
-                console.error('[Session] pull request notice failed:', error)
-            }
-        }
-    }
+    await notifyPullRequestEnded({ sessions, state, number, repoOwner, repoName, title })
     return { updated: sessions.length }
 }
 
@@ -1558,15 +1577,13 @@ const getSessionPullRequests = async (
             if (cached) {
                 const parsed = JSON.parse(cached)
                 const pullRequest: SessionPullRequest | null = parsed.pullRequest ?? parsed
-                // the webhook and the list refresh keep the row current; the cache keeps the
-                // pull request of the run's end, with the base branch and the checks
-                if (pullRequest && saved && pullRequest.prNumber === saved.prNumber) {
-                    return {
-                        pullRequest: withSavedPullRequest(pullRequest, saved, session.prTitle),
-                    }
-                }
-                if (pullRequest) {
-                    return { pullRequest: cleanCachedPullRequest(pullRequest, session.gitProvider) }
+                return {
+                    pullRequest: pickSessionPullRequest({
+                        cached: pullRequest,
+                        saved,
+                        savedPrTitle: session.prTitle,
+                        gitProvider: session.gitProvider,
+                    }),
                 }
             }
         }

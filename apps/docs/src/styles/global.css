@@ -130,6 +130,38 @@
     letter-spacing: -0.01em;
 }
 
+/* Blog posts: the /me text style (13-14px, near-black), plain essay subheadings, links as a light blue highlight */
+.docs-prose.blog-prose {
+    color: #090a0f;
+    font-size: 13px;
+    line-height: 1.75;
+}
+
+@media (min-width: 640px) {
+    .docs-prose.blog-prose {
+        font-size: 14px;
+    }
+}
+
+.docs-prose.blog-prose p {
+    color: #090a0f;
+    margin-bottom: 1.1rem;
+}
+
+.docs-prose.blog-prose h2 {
+    font-size: 1em;
+    font-weight: 500;
+    letter-spacing: 0;
+    margin-top: 1.75rem;
+}
+
+.docs-prose.blog-prose a {
+    color: #090a0f;
+    text-decoration: none;
+    background-color: #bfdbfe;
+    padding: 0 2px;
+}
+
 .docs-prose p {
     margin-bottom: 1.25rem;
     color: #52525b;
@@ -172,6 +204,15 @@
     font-weight: 500;
     overflow-wrap: anywhere;
     word-break: break-word;
+}
+
+/* Blog posts: inline code is plain mono text, no grey pill */
+.docs-prose.blog-prose :not(pre) > code {
+    background-color: transparent;
+    border: 0;
+    padding: 0;
+    border-radius: 0;
+    font-weight: 400;
 }
 
 .docs-prose blockquote {

@@ -9,7 +9,7 @@ import {
     ArrowRight,
     GitCommit,
 } from 'lucide-react'
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 import { useAppStore } from '@/app/store'
 import { GIT_HOST_LABELS, webLinkOrNull } from '@/features/pullrequests/lib/pullRequests'
@@ -22,35 +22,69 @@ export interface PullRequestsWorkspaceProps {
     branch?: string | null
 }
 
+/** the session's pull request read from the server: on the way, read, or failed */
+type ReadState = 'loading' | 'ready' | 'error'
+
 export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
     sessionId,
     branch,
 }) => {
-    const pullRequest = useAppStore((state) => state.pullRequest)
+    const storedPullRequest = useAppStore((state) => state.pullRequest)
     const setPullRequest = useAppStore((state) => state.setPullRequest)
+    // a run that pushed only a branch, or whose pull request was not opened, sends a result
+    // with no number: that is no pull request, so the view shows none
+    const pullRequest = storedPullRequest?.prNumber ? storedPullRequest : null
+    const [readState, setReadState] = useState<ReadState>('loading')
+    // a press on Retry reads again
+    const [attempt, setAttempt] = useState(0)
 
+    // read each time the view opens, so a merge or close on the host since the last look
+    // shows. the pull request already on screen stays while the new one is on the way
     useEffect(() => {
-        if (!sessionId || pullRequest) return
+        if (!sessionId) return
 
         // the answer of a session the user already left is dropped, so it never shows on
         // the next session
         let isCurrent = true
+        setReadState('loading')
         sessionAPI
             .getSessionPullRequests(sessionId)
             .then((res) => {
-                if (isCurrent && res?.pullRequest) {
-                    setPullRequest(res.pullRequest)
-                }
+                if (!isCurrent) return
+                if (res?.pullRequest) setPullRequest(res.pullRequest)
+                setReadState('ready')
             })
-            .catch(() => {
-                // Intentionally swallowed: Session PR fetch fallback
+            .catch((error: unknown) => {
+                if (!isCurrent) return
+                console.warn('[PullRequestsWorkspace] could not read the pull request', error)
+                setReadState('error')
             })
         return () => {
             isCurrent = false
         }
-    }, [sessionId, pullRequest, setPullRequest])
+    }, [sessionId, attempt, setPullRequest])
+
+    // a new message empties the store: the session still has its pull request, so it is
+    // read again instead of showing "No pull request yet"
+    const hadPullRequest = useRef(false)
+    useEffect(() => {
+        if (storedPullRequest) {
+            hadPullRequest.current = true
+            return
+        }
+        if (hadPullRequest.current) {
+            hadPullRequest.current = false
+            setAttempt((n) => n + 1)
+        }
+    }, [storedPullRequest])
 
     if (!pullRequest) {
+        // nothing is shown while the first read is on the way, so "No pull request yet"
+        // does not flash before the pull request
+        if (readState === 'loading') {
+            return <div className="flex-1 w-full h-full bg-[#141414]" aria-busy="true" />
+        }
+        const failed = readState === 'error'
         return (
             <div className="flex-1 flex flex-col items-center justify-center bg-[#141414] text-[#8E8D8C] select-none p-6 font-sans w-full h-full">
                 <div className="flex flex-col items-center gap-3 max-w-sm text-center">
@@ -59,22 +93,27 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
                     </div>
                     <div className="flex flex-col gap-1">
                         <span className="text-[14px] font-semibold text-[#EDEDEF]">
-                            No Pull Request Created Yet
+                            {failed ? 'Could not load the pull request' : 'No pull request yet'}
                         </span>
-                        <span className="text-[12px] text-[#8E8D8C]">
-                            When your task completes, an autonomous pull request will be generated
-                            {branch ? (
-                                <>
-                                    {' '}
-                                    for branch{' '}
-                                    <code className="text-[#A1A1AA] bg-[#202022] px-1 py-0.5 rounded">
-                                        {branch}
-                                    </code>
-                                </>
-                            ) : null}
-                            .
-                        </span>
+                        {!failed && branch && (
+                            <span className="text-[12px] text-[#8E8D8C]">
+                                The changes are on the branch{' '}
+                                <code className="text-[#A1A1AA] bg-[#202022] px-1 py-0.5 rounded">
+                                    {branch}
+                                </code>
+                                .
+                            </span>
+                        )}
                     </div>
+                    {failed && (
+                        <button
+                            type="button"
+                            onClick={() => setAttempt((n) => n + 1)}
+                            className="px-3 py-1.5 rounded-lg bg-[#252528] hover:bg-[#2F2F33] text-xs font-medium text-white transition-colors border border-[#3A3A3D]"
+                        >
+                            Retry
+                        </button>
+                    )}
                 </div>
             </div>
         )
@@ -244,27 +283,6 @@ export const PullRequestsWorkspace: React.FC<PullRequestsWorkspaceProps> = ({
                             </div>
                         </div>
                     )}
-                </div>
-
-                {/* Verification Notes */}
-                <div className="p-5 rounded-xl bg-[#1A1A1C] border border-[#2A2A2D] flex flex-col gap-2.5">
-                    <h3 className="text-xs font-semibold text-[#8E8D8C] uppercase tracking-wider">
-                        Verification Notes
-                    </h3>
-                    <div className="text-xs text-[#D4D4D8] leading-relaxed flex flex-col gap-1.5 font-sans">
-                        <p>
-                            • Isolated sandbox container environment build & tests executed cleanly.
-                        </p>
-                        {headRef && (
-                            <p>
-                                • Pushed directly to branch{' '}
-                                <code className="text-[#A1A1AA] bg-[#202022] px-1 py-0.5 rounded">
-                                    {headRef}
-                                </code>{' '}
-                                without default branch overwrite.
-                            </p>
-                        )}
-                    </div>
                 </div>
             </div>
         </div>

@@ -196,8 +196,22 @@ export const toInboxPreview = (body?: string | null, max = 280) => {
     return text.length > max ? `${text.slice(0, max - 1)}…` : text
 }
 
+/** github's id of the webhook repository as text, or undefined when it is not sent */
+export const repositoryIdOf = (payload: any): string | undefined => {
+    const id = payload?.repository?.id
+    return typeof id === 'number' || (typeof id === 'string' && id) ? String(id) : undefined
+}
+
 // maps a webhook to an inbox notice, or null when the event never notifies
 export const toGithubActivity = (event: unknown, payload: any): NotifyGithubActivity | null => {
+    const activity = toGithubActivityFields(event, payload)
+    if (!activity) return null
+    // the repository id finds the session even after the repository is renamed
+    const repoId = repositoryIdOf(payload)
+    return repoId ? { ...activity, repoId } : activity
+}
+
+const toGithubActivityFields = (event: unknown, payload: any): NotifyGithubActivity | null => {
     const repoOwner = payload?.repository?.owner?.login
     const repoName = payload?.repository?.name
     const installationId = payload?.installation?.id?.toString()
@@ -287,6 +301,7 @@ export const toGithubActivity = (event: unknown, payload: any): NotifyGithubActi
 
 // the repository part of a webhook payload
 export const toWebhookRepository = (payload: any) => ({
+    ...(repositoryIdOf(payload) ? { id: repositoryIdOf(payload) } : {}),
     name: payload?.repository?.name,
     fullName: payload?.repository?.full_name,
     owner: {

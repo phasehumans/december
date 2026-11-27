@@ -125,6 +125,8 @@ export type InstallationStatusResponse = {
 }
 
 type WebhookRepository = {
+    /** github's id of the repository: it stays when the repository is renamed */
+    id?: string
     name: string
     fullName: string
     owner: {
@@ -303,6 +305,8 @@ export type GithubActivity =
 
 export type NotifyGithubActivity = {
     installationId?: string
+    /** github's id of the repository, when the webhook sends it */
+    repoId?: string
     repoOwner: string
     repoName: string
     number: number
@@ -314,6 +318,8 @@ export type NotifyGithubActivity = {
 
 export type FindPullRequestOwner = {
     installationId?: string
+    /** github's id of the repository: a session that saved it matches only by it */
+    repoId?: string
     repoOwner: string
     repoName: string
     prNumber: number

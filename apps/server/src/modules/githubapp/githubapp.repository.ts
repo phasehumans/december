@@ -3,6 +3,7 @@ import { prisma } from '@december/database'
 import { escapeLike } from '../../shared/escape-like'
 
 import type { ProcessInstallation } from './githubapp.types'
+import type { Prisma } from '@december/database'
 
 const upsertInstallation = async (data: ProcessInstallation) => {
     const { installationId, userId, accountLogin, accountType, targetType, permissions } = data
@@ -139,17 +140,28 @@ const findUserIdByGithubId = async (githubId: string) => {
 
 // the session whose pull request this is (December saves prNumber on the session)
 const findSessionByPullRequest = async (data: {
+    repoId?: string
     repoOwner: string
     repoName: string
     prNumber: number
 }) => {
-    const { repoOwner, repoName, prNumber } = data
+    const { repoId, repoOwner, repoName, prNumber } = data
+    // escaped: else the pull request of "my_repo" is found on "myXrepo"
+    const byName: Prisma.SessionWhereInput = {
+        githubRepoOwner: { equals: escapeLike(repoOwner), mode: 'insensitive' },
+        githubRepoName: { equals: escapeLike(repoName), mode: 'insensitive' },
+    }
     return prisma.session.findFirst({
         where: {
+            gitProvider: 'GITHUB',
             prNumber,
-            // escaped: else the pull request of "my_repo" is found on "myXrepo"
-            githubRepoOwner: { equals: escapeLike(repoOwner), mode: 'insensitive' },
-            githubRepoName: { equals: escapeLike(repoName), mode: 'insensitive' },
+            // like the pull request state (#632): a session that saved the repository id
+            // matches only by it, so a new repository with the old name of a renamed one
+            // does not take its notices. a session saved before the id was kept matches
+            // by owner and name
+            ...(repoId
+                ? { OR: [{ githubRepoId: repoId }, { githubRepoId: null, ...byName }] }
+                : byName),
         },
         select: { userId: true },
         orderBy: { updatedAt: 'desc' },

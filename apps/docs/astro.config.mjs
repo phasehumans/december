@@ -45,7 +45,8 @@ export default defineConfig({
         '/youtube': 'https://www.youtube.com/@phasehumans',
         '/yt': 'https://www.youtube.com/@phasehumans',
         '/changelog': '/docs/changelog',
-        '/blogs': '/blog',
+        // 302, not the default 301/308: browsers cache permanent redirects, so a later change would not reach them
+        '/blog': { status: 302, destination: '/me' },
         '/llm.txt': '/llms.txt',
         '/login': 'https://app.trydecember.com/login',
     },

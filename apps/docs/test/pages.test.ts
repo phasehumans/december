@@ -99,10 +99,11 @@ describe('apps/docs page content & layout tests', () => {
             const headerHtml = html.slice(html.indexOf('<header'), html.indexOf('</header>'))
             const footerHtml = html.slice(html.indexOf('<footer'))
 
-            // Header: docs and blog visible on mobile, no social icons
+            // Header: docs and blog visible on mobile, no social icons. blog opens /me, where the posts are listed
             expect(headerHtml).toContain('<nav class="flex items-center')
             expect(headerHtml).toContain('href="/docs"')
-            expect(headerHtml).toContain('href="/blog"')
+            expect(headerHtml).toContain('href="/me"')
+            expect(headerHtml).not.toContain('href="/blog"')
             expect(headerHtml).not.toContain('https://x.com/phasehumans')
             expect(headerHtml).not.toContain('https://github.com/phasehumans')
 
@@ -261,21 +262,48 @@ describe('apps/docs page content & layout tests', () => {
         })
     })
 
+    describe('blog post pages (blog/*/index.html)', () => {
+        it('render like /me: no site header or footer, back link, lowercase title, no date or read time, own canonical url', () => {
+            const html = readFileSync(join(distDir, 'blog/context-rot/index.html'), 'utf-8')
+
+            expect(html).not.toContain('<header class="relative top-auto')
+            expect(html).not.toContain('<footer')
+            expect(html).toContain('href="/me#blog"')
+            expect(html).toMatch(/<h1[^>]*>\s*context rot\s*<\/h1>/)
+            expect(html).toContain('blog-prose')
+            expect(html).not.toContain('aug 2026')
+            expect(html).not.toContain('20 Aug 2026')
+            expect(html).not.toContain('min read')
+            expect(html).toContain(
+                '<link rel="canonical" href="https://trydecember.com/blog/context-rot"'
+            )
+        })
+
+        it('have no links to other posts at the bottom', () => {
+            const html = readFileSync(
+                join(distDir, 'blog/self-improving-agents/index.html'),
+                'utf-8'
+            )
+            expect(html).not.toContain('aria-label="Other posts"')
+            expect(html).not.toContain('href="/blog/context-rot"')
+        })
+    })
+
     describe('portfolio page (me/index.html)', () => {
-        it('renders minimal portfolio with education, work, and projects without header or footer', () => {
+        it('renders minimal portfolio with work, projects, and blog without header or footer', () => {
             const html = readFileSync(join(distDir, 'me/index.html'), 'utf-8')
 
             expect(html).toContain('Chaitanya Sonawane')
 
-            // Sections in order: education, work, projects (no writing section)
-            expect(html.indexOf('id="me-education"')).toBeGreaterThan(-1)
-            expect(html.indexOf('id="me-education"')).toBeLessThan(html.indexOf('id="me-work"'))
+            // Sections in order: work, projects, blog (no education or writing section)
+            expect(html).not.toContain('id="me-education"')
+            expect(html.indexOf('id="me-work"')).toBeGreaterThan(-1)
             expect(html.indexOf('id="me-work"')).toBeLessThan(html.indexOf('id="me-projects"'))
-            expect(html).toContain('r. c. patel institute of technology')
+            expect(html.indexOf('id="me-projects"')).toBeLessThan(html.indexOf('id="me-blog"'))
             expect(html).not.toContain('id="me-writing"')
             expect(html).toContain('aakar foundry')
-            expect(html).toContain('argon labs')
-            expect(html).toContain('https://lab.trydecember.com')
+            expect(html).toContain('super dots')
+            expect(html).not.toContain('campuslab')
             expect(html).toContain('https://github.com/phasehumans/spacetime')
             expect(html).toContain('software engineer')
             expect(html).toContain('@trydecember')
@@ -287,7 +315,31 @@ describe('apps/docs page content & layout tests', () => {
             // No LinkedIn icon (the profile stays in the Person schema sameAs list)
             expect(html).not.toContain('aria-label="LinkedIn"')
             expect(html).not.toContain('href="https://www.npmjs.com/~phasehumans"')
-            expect(html).toContain('https://codeforces.com/profile/phasehumans')
+            // no Codeforces icon or profile link
+            expect(html).not.toContain('codeforces.com')
+            // YouTube is grey like the other icons, with no red or white fill of its own
+            expect(html).not.toContain('text-[#b91c1c]')
+            expect(html).not.toContain('fill="#ffffff"')
+            // Blog: every post listed in the order set in its frontmatter, linking to its page
+            expect(html).toContain('href="/blog/self-improving-agents"')
+            expect(html).not.toContain('how-to-build-tools-for-ai-agents')
+            expect(html).toContain('href="/blog/context-rot"')
+            const order = [
+                'sent-folder',
+                'agent-memory',
+                'self-improving-agents',
+                'more-powerful',
+                'context-rot',
+                'belief',
+            ].map((slug) => html.indexOf(`href="/blog/${slug}"`))
+            expect(order.every((at) => at > -1)).toBe(true)
+            expect([...order].sort((a, b) => a - b)).toEqual(order)
+            // Posts show the title only, lowercase like the work and project names, no dates
+            expect(html).toContain('>context rot</a>')
+            expect(html).not.toContain('>Context Rot</a>')
+            expect(html).not.toContain('sep 2026')
+            expect(html).not.toContain('aug 2026')
+            expect(html).not.toContain('29 Sept 2026')
             expect(html).not.toContain('href="/blog"')
             expect(html).toContain('mailto:chetan@trydecember.com')
             // Minimal: Header and footer should be hidden

@@ -51,7 +51,7 @@ const { seed = 1, clear = true, class: className } = Astro.props;
     scale: number; // noise size multiplier (smaller = tighter clouds)
   }
 
-  const DESKTOP: Profile = { pixel: 3, ovalX: 0.3, ovalY: 0.46, riseFrom: 0.9, riseTo: 1.7, peak: 0.55, haze: 0.1, scale: 1 };
+  const DESKTOP: Profile = { pixel: 2, ovalX: 0.28, ovalY: 0.44, riseFrom: 0.8, riseTo: 1.45, peak: 0.7, haze: 0.22, scale: 0.75 };
   const MOBILE: Profile = { pixel: 2, ovalX: 0.26, ovalY: 0.42, riseFrom: 0.75, riseTo: 1.35, peak: 0.72, haze: 0.24, scale: 0.6 };
   const mobileQuery = window.matchMedia('(max-width: 639px)'); // below Tailwind sm
 

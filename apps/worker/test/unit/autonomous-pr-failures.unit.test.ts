@@ -156,6 +156,46 @@ describe('the task branch when git refuses a step (review E2)', () => {
         expect(sessionUpdates).toEqual([])
     })
 
+    it('a pull request the host refuses sends an error event; the pushed branch is kept', async () => {
+        const { sandbox, events, publish } = setup()
+        globalThis.fetch = mock(async (url: string | URL | Request, init?: RequestInit) => {
+            requests.push(`${init?.method ?? 'GET'} ${url.toString()}`)
+            return url.toString().includes('/pulls')
+                ? new Response('{"message":"Resource not accessible"}', { status: 403 })
+                : new Response('{}', { status: 200 })
+        }) as any
+
+        const result = await handleAutonomousTaskBranchAndPr({ sessionId, sandbox, publish })
+
+        expect(result).toBe(null)
+        expect(events).toEqual([
+            {
+                type: 'AgentError',
+                code: 'PR_OPEN_FAILED',
+                error: 'Could not open the pull request for the branch december/sess-e2-1. The branch is pushed, so you can open it on GitHub.',
+                message:
+                    'Could not open the pull request for the branch december/sess-e2-1. The branch is pushed, so you can open it on GitHub.',
+            },
+        ])
+        // the branch stays on the session; no pull request number is saved
+        expect(sessionUpdates.map((update) => update.data)).toEqual([
+            { prBranch: 'december/sess-e2-1' },
+        ])
+    })
+
+    it('a host error that throws is told the same way', async () => {
+        const { sandbox, events, publish } = setup()
+        globalThis.fetch = mock(async (url: string | URL | Request) => {
+            if (url.toString().includes('/pulls')) throw new Error('network down')
+            return new Response('{}', { status: 200 })
+        }) as any
+
+        const result = await handleAutonomousTaskBranchAndPr({ sessionId, sandbox, publish })
+
+        expect(result).toBe(null)
+        expect(events.map((event) => event.code)).toEqual(['PR_OPEN_FAILED'])
+    })
+
     it('a push that ends with an exit code (no throw) is a failure too', async () => {
         const { sandbox, events, publish } = setup()
         const run = sandbox.commands.run

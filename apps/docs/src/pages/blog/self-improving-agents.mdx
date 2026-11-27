@@ -1,129 +1,42 @@
 ---
 layout: ../../layouts/BlogLayout.astro
-title: 'Self-Improving Agents: From One-Shot Prompts to Closed Reasoning Loops'
-description: 'How coding agents go from one-shot code generators to systems that check and fix their own work, using test-time compute and real compiler and test output.'
+title: 'Self-Improving Agents'
+description: 'Coding agents got good when they stopped writing code in one pass and started checking it. Why the loop matters more than the model.'
 publishDate: '29 Sept 2026'
-author: 'December Engineering'
-readTime: '7 min read'
+author: 'Chaitanya Sonawane'
+readTime: '3 min read'
 currentSlug: 'self-improving-agents'
+order: 2
 ---
 
-The first wave of AI code generation treated programming as text completion. You wrote a prompt. The model wrote 200 lines of code in one pass. Then you spent the afternoon debugging its hallucinations (code the model made up, like functions that do not exist).
+the first ai coding tools worked like autocomplete with ambition. you wrote a prompt. the model wrote 200 lines in one pass. then you spent the afternoon finding the functions it made up.
 
-One-pass generation is fine for boilerplate. It breaks on real engineering work: refactors across many files, keeping asynchronous state consistent, and dependency migrations.
+that works for boilerplate. it does not work for a refactor across twelve files.
 
-Agents got reliable when they moved from single-pass prompting to closed reasoning loops. In a closed loop, the agent writes code, checks it, and uses the result to choose its next edit. Research backs this up, starting with the _Self-Refine_ paper ([Madaan et al., arXiv:2303.17651](https://arxiv.org/abs/2303.17651)) and agent designs like Nous Hermes.
+what made agents useful was not mainly better models. it was the loop.
 
-## The Flaw of Single-Pass Generation
+## a model can't take it back
 
-An LLM writes one token (a small chunk of text) at a time. Each token depends on the ones before it. This is called autoregressive generation, and it has no undo. Say the model makes one small wrong assumption at token 40, like an outdated database schema or a deprecated method signature. Every token after that has to work around the mistake. The model does not fix the error. It builds on it.
+a language model writes one token at a time. a token is a small piece of a word, and each one depends on the ones before it. there is no undo. if the model assumes the wrong database schema at token 40, every token after that builds on the mistake. the model does not notice. it gets more confident.
 
-On hard tasks, this causes three failure modes:
+## write, check, fix
 
-1. Compounding Syntax Errors: One missing bracket or bad import causes dozens of compile errors further down.
-2. Hallucinated State: The model has no sandbox to run code in. So it guesses what terminal commands and database queries would return.
-3. Premature Convergence: The model commits to the first design that looks plausible. It keeps that design even after later constraints make it unworkable.
+in 2023, madaan and others published [_self-refine_](https://arxiv.org/abs/2303.17651). the idea is almost too simple. the model writes an answer. then it gives feedback on its own answer. then it rewrites the answer with that feedback. repeat.
 
-## The Self-Refine Framework (arXiv:2303.17651)
+across their tasks, this made answers about 20% better on average. there was no retraining. the model only took more passes at the same problem while it worked on it. people call this test-time compute.
 
-In _Self-Refine: Iterative Refinement with Self-Feedback_, Madaan et al. ran LLMs through a repeated three-step cycle. Performance went up by as much as ~20%:
+## don't let it grade itself
 
-- Generate: Write a first version.
-- Feedback: Check that output against the requirements and edge cases.
-- Refine: Change the output, guided by that feedback.
+there is a catch for code. in the paper, the model writes its own feedback. ask a model to review its own code with nothing to run, and it tends to tell you what you want to hear. it calls broken code correct, or it finds problems that are not there. both answers sound sure.
 
-Here is the important part. The models did not need retraining: no supervised fine-tuning (training on labelled examples) and no reinforcement learning (training on reward signals). They improved at test time, while answering. This is test-time compute: compute you spend while the model works on a task, not while it trains. Here, that means more passes over the same problem.
+the fix is to take the opinion out of the feedback. run the code. a compiler error is not polite. a failing test does not care how good the explanation was. when the feedback comes from running the code, the loop has something true to work with.
 
-## Grounded Feedback vs. Sycophantic Self-Critique
+so the loop for a coding agent is short. make one small edit. run the build and the tests. if something fails, read the error and fix that one thing. if everything passes, keep the change and move on.
 
-In the original paper, the model wrote its own critiques. For code, that runs straight into LLM sycophancy: the model's habit of saying what sounds agreeable instead of what is true.
+## small steps, and a way back
 
-Ask a model to review its own code with nothing to run, and you get confirmation bias. It either invents flaws that do not exist or calls broken code correct, with full confidence. Neither helps you.
+the loop works best when each step is small. if one edit changes five things and a test fails, you do not know which of the five broke it. if the edit changes one thing, the failure points right at it.
 
-So in a coding agent, self-refinement must be environment-grounded. The feedback has to come from running the code, not from the model's opinion of it:
+it also helps to have a way back. in december, you type `/rewind` and pick a turn, and your files and the conversation go back to that point. a loop that drifts is cheap when you can undo it.
 
-| Feedback Mechanism     | Grounding Source                                | Failure Mode                                         |
-| :--------------------- | :---------------------------------------------- | :--------------------------------------------------- |
-| Prompt Self-Reflection | Pure LLM token probability                      | Confirmation bias, sycophancy, missed runtime errors |
-| Compiler Feedback      | `tsc`, `rustc`, `gcc` exit codes                | Syntax-only (does not verify semantic logic)         |
-| Test-Driven Refinement | Unit test assertions, linters, MicroVM runtimes | Checks real behavior; same result on every run       |
-
-Replace text critiques with compiler errors and test output, and the loop gets ground truth: a signal that reflects what the code actually does. A failing test does not flatter you.
-
-## Closed Reasoning Loop Architecture
-
-An autonomous agent runs this cycle on its own, with no human in the middle:
-
-<div class="my-8 max-w-xl mx-auto">
-    <div class="p-4 border border-[#e2e8f0] bg-white">
-        <div class="font-mono text-xs text-[#64748b]">01</div>
-        <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Generate</h4>
-        <p class="mt-1 text-xs leading-relaxed text-[#52525b]">
-            Make one scoped file edit, using AST symbol context.
-        </p>
-    </div>
-    <div class="flex flex-col items-center py-2">
-        <div class="w-px h-4 bg-[#cbd5e1]"></div>
-        <span class="my-1 font-mono text-[11px] text-[#64748b]">Sandboxed execution</span>
-        <svg class="w-3 h-3" viewBox="0 0 12 12" fill="#94a3b8" aria-hidden="true">
-            <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
-        </svg>
-    </div>
-    <div class="p-4 border border-[#e2e8f0] bg-white">
-        <div class="font-mono text-xs text-[#64748b]">02</div>
-        <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Diagnose</h4>
-        <p class="mt-1 text-xs leading-relaxed text-[#52525b]">
-            Compiler and tests report exit codes, typecheck traces, and lint errors.
-        </p>
-    </div>
-    <div class="flex flex-col items-center py-2">
-        <div class="w-px h-4 bg-[#cbd5e1]"></div>
-        <span class="my-1 font-mono text-[11px] text-[#64748b]">Decision gate</span>
-        <svg class="w-3 h-3" viewBox="0 0 12 12" fill="#94a3b8" aria-hidden="true">
-            <path d="M6 9.5L1.5 4h9L6 9.5z"></path>
-        </svg>
-    </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div class="p-4 border border-[#e2e8f0] bg-white">
-            <div class="font-mono text-xs text-[#64748b]">03a / refine</div>
-            <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Fix the failure</h4>
-            <p class="mt-1 text-xs leading-relaxed text-[#52525b]">
-                The error output goes into context. The agent writes a targeted diff.
-            </p>
-        </div>
-        <div class="p-4 border border-[#e2e8f0] bg-white">
-            <div class="font-mono text-xs text-[#64748b]">03b / lock</div>
-            <h4 class="mt-1 text-sm font-semibold text-[#090a0f]">Git checkpoint</h4>
-            <p class="mt-1 text-xs leading-relaxed text-[#52525b]">
-                All tests exit 0. The agent commits and waits for the next instruction.
-            </p>
-        </div>
-    </div>
-</div>
-
-## The Hermes Pattern: Structured Agentic Scratchpads
-
-Nous Research builds the Hermes line of agent models. Hermes keeps two things strictly apart: private scratchpad reasoning (notes the model writes to itself) and public tool invocation (the calls it actually makes):
-
-1. Explicit Pre-Action CoT: CoT is chain of thought, the model's step-by-step reasoning written out as text. Before every file edit, the agent writes down why the edit is needed.
-2. Single-Concern Invocation: Each tool call does one thing. A call that does five things hides which one broke.
-3. Structured Diagnostics: The runtime returns stdout, stderr, and exit codes as strict JSON, not raw text.
-
-When a test fails, the agent does not start over. It keeps its verified scratchpad history. It finds the one assumption that was wrong. Then it writes a small patch for that assumption only.
-
-## How December Implements Self-Improving Loops
-
-December builds the Self-Refine loop into its workflow, from the terminal to the cloud:
-
-- Isolated MicroVM Verification: Every terminal action runs in a sandboxed Linux container. Tests and builds run there in real time.
-- Verifiable Git Checkpoints: Before December changes any file, it snapshots the working tree. A refinement loop can drift, or fail to converge (never reach passing tests). If that happens, run `/rewind` and select the turn. It restores the tree to the exact state before the run.
-- Pruned Diagnostic Memory: December does not paste thousands of lines of terminal logs into the prompt. It parses compiler stderr into short diff hints. This keeps the prompt small and avoids context rot (the drop in accuracy as a prompt gets longer).
-
-Point test-time compute at real compiler and test output, and a coding agent stops guessing. It becomes an engineer that checks its own work.
-
----
-
-_References:_
-
-- _[Madaan et al., Self-Refine: Iterative Refinement with Self-Feedback (arXiv:2303.17651)](https://arxiv.org/abs/2303.17651)_
-- _[Nous Research, Hermes Agent Framework & Structured Function Calling](https://nousresearch.com)_
+an agent that checks its work is not smarter than the one that writes in one pass. it just finds out when it is wrong, and it fixes it.

@@ -79,6 +79,16 @@ export type RefreshStalePullRequests = {
     userId: string
 }
 
+/** sessions whose pull request state was just written, for the merged or closed notice */
+export type NotifyPullRequestEnded = {
+    sessions: { id: string; userId: string | null; previousState: string | null }[]
+    state: 'open' | 'draft' | 'merged' | 'closed'
+    number: number
+    repoOwner: string
+    repoName: string
+    title?: string | null
+}
+
 export type ApplyPullRequestEvent = {
     gitProvider: 'GITHUB' | 'GITLAB'
     /** the host's id of the repository; rows that saved one match only by it */

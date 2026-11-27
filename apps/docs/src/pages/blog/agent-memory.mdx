@@ -1,0 +1,52 @@
+---
+layout: ../../layouts/BlogLayout.astro
+title: 'Agent Memory'
+description: 'Agents forget everything between sessions. What they should write down, why less is better, and why the best memory work happens after the session ends.'
+publishDate: '27 Nov 2026'
+author: 'Chaitanya Sonawane'
+readTime: '4 min read'
+currentSlug: 'agent-memory'
+order: 1
+---
+
+anthropic has a post called [_the components of agent memory_](https://www.anthropic.com/research/components-of-agent-memory), by lance martin. it opens with kierkegaard: life is understood backward, but it has to be lived forward. agents have the same problem, only worse. every session starts at zero.
+
+## four layers
+
+the post splits agent memory into a stack.
+
+at the bottom is the transcript: the raw log of everything that happened in a session. above it are notes, which the agent writes when it learns something it wants to keep. above those are bigger maps, like a wiki of linked pages about one subject. at the top is a small piece of context that gets loaded into every new session.
+
+the higher you go, the less there is, and the more it costs to get wrong.
+
+## memory is a bet
+
+when an agent writes a note, it is making a prediction: this will matter again. a good note is a good bet. a bad note is noise that a future session has to read.
+
+the clearest example in the post is two models playing pokemon red with a memory folder. sonnet 3.7 wrote 413 files with almost a million characters. much of it was stuff it could read off the screen anyway, like its money and its position, so the notes went stale. it got one badge. fable 5 wrote 10 files with about 43,000 characters. it kept only what it had worked out for itself, plus one file with its current goal and plan. it got four badges.
+
+it is the same lesson as [context rot](/blog/context-rot). more is not better. the right less is better.
+
+## tell it what memory is for
+
+the part that surprised me: rules made the strong models worse.
+
+for the newer models, it was enough to say that a memory folder exists. when the researchers added a rule like "record only failures", the strongest model lost a large part of what memory had gained it. older models were the opposite. they needed to be told to read their notes first and to test their guesses.
+
+so the advice is to tell the model what memory is for, not how to use it. the better the model, the more you should trust its judgment about what is worth keeping.
+
+## dreaming
+
+the best idea in the post is that memory work does not have to happen during the task.
+
+in people, the brain stores the day quickly and messily. later, mostly during sleep, it replays some of it and keeps what matters. the post does the same for agents and calls it dreaming. after the sessions are done, the agent goes back over the transcripts. it fixes notes that turned out wrong, merges the ones that repeat, and builds bigger maps.
+
+one example: an agent wrote down the wrong location for a pokemon center and marked a cave as done when it was not. the note sent it the wrong way. with dreaming, the bad note got checked against the transcript and fixed, and the agent went back into the cave and got through. without it, the agent kept walking in circles and at one point said it would stop rather than keep looping.
+
+you do not get to change what happened. you get to go back over it with what you know now, and change what you keep.
+
+## keep the top small
+
+the layer that loads into every session has to stay small. every line costs tokens in every session, and a wrong note at the top gets carried into all of them. claude code, for example, loads only the start of its memory index file, and the details live in other files that the index links to.
+
+an agent does not need to remember everything. it needs a short list of what is true right now, a way to find the rest, and some time after the work is done to look back.

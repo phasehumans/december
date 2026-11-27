@@ -44,6 +44,8 @@ describe('apps/docs astro configuration', () => {
         expect(rawConfig.redirects['/youtube']).toBe('https://www.youtube.com/@phasehumans')
         expect(rawConfig.redirects['/yt']).toBe('https://www.youtube.com/@phasehumans')
         expect(rawConfig.redirects['/changelog']).toBe('/docs/changelog')
+        expect(rawConfig.redirects['/blog']).toEqual({ status: 302, destination: '/me' })
+        expect(rawConfig.redirects['/blogs']).toBeUndefined()
     })
 
     it('configures npm package redirect for /install', async () => {

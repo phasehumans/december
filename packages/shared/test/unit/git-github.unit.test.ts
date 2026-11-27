@@ -267,6 +267,8 @@ describe('git provider: github', () => {
         expect((await open({ merged_at: 'x' }))?.status).toBe('merged')
         expect((await open({ state: 'open', draft: true }))?.status).toBe('draft')
         expect((await open({}))?.status).toBe('closed')
+        // a draft that was closed is closed, not a draft that still counts as open
+        expect((await open({ state: 'closed', draft: true }))?.status).toBe('closed')
     })
 
     it('returns null when the pull request cannot be opened', async () => {

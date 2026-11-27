@@ -30,13 +30,22 @@ describe('apps/docs built HTML SEO & metadata verification', () => {
         'docs/prompting/index.html',
         'docs/integrations/index.html',
         'docs/security/index.html',
-        'blog/index.html',
+    ]
+
+    // Blog posts look like /me: no site header, so they skip the header check
+    const blogPages = [
         'blog/context-rot/index.html',
-        'blog/how-to-build-tools-for-ai-agents/index.html',
+        'blog/agent-memory/index.html',
+        'blog/belief/index.html',
+        'blog/copy-what-you-like/index.html',
+        'blog/write-like-you-say-it/index.html',
+        'blog/more-powerful/index.html',
+        'blog/sent-folder/index.html',
+        'blog/why-i-suck-at-communication/index.html',
         'blog/self-improving-agents/index.html',
     ]
 
-    for (const page of allPages) {
+    for (const page of [...allPages, ...blogPages]) {
         describe(`page: ${page}`, () => {
             const getHtml = (): string => {
                 const fullPath = join(distDir, page)
@@ -103,6 +112,7 @@ describe('apps/docs built HTML SEO & metadata verification', () => {
             })
 
             it('renders persistent site header with brand name and version', () => {
+                if (blogPages.includes(page)) return
                 const html = getHtml()
 
                 expect(html).toContain('December')

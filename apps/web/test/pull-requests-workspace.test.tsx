@@ -20,6 +20,8 @@ describe('Functional Pull Requests Workspace (Ticket #587)', () => {
         useAppStore.setState({
             pullRequest: null,
         })
+        // the view reads the pull request each time it opens: by default the session has none
+        sessionAPI.getSessionPullRequests = mock(async () => ({ pullRequest: null }))
     })
 
     afterEach(() => {
@@ -48,6 +50,9 @@ describe('Functional Pull Requests Workspace (Ticket #587)', () => {
         expect(screen.queryByText('Continuous Integration')).toBeNull()
         expect(screen.queryByText('All checks passed')).toBeNull()
         expect(screen.queryByText(/files? changed/)).toBeNull()
+        // no checks or tests the run did not do are claimed
+        expect(screen.queryByText(/Verification Notes/i)).toBeNull()
+        expect(screen.queryByText(/executed cleanly/i)).toBeNull()
     })
 
     test('renders live PR status badge, number, title, branches, diff summary, and github link', async () => {
@@ -128,18 +133,106 @@ describe('Functional Pull Requests Workspace (Ticket #587)', () => {
         expect(sessionAPI.getSessionPullRequests).toHaveBeenCalledWith('sess-mount-99')
     })
 
-    test('names no branch before a pull request when the session has no saved branch', () => {
+    test('names no branch before a pull request when the session has no saved branch', async () => {
         render(<PullRequestsWorkspace sessionId="sess-no-pr" />)
 
-        expect(screen.getByText(/no pull request created yet/i)).not.toBeNull()
+        expect(await screen.findByText(/no pull request yet/i)).not.toBeNull()
+        // no promise of a pull request: opening one can be off for the session
+        expect(screen.queryByText(/will be generated/i)).toBeNull()
         // the branch prefix is a setting: the name is not `december/<id>` for every user
         expect(screen.queryByText(/december\/sess-no-pr/)).toBeNull()
     })
 
-    test('names the saved branch of the session before a pull request', () => {
+    test('names the saved branch of the session before a pull request', async () => {
         render(<PullRequestsWorkspace sessionId="sess-no-pr" branch="feat/ai-sess-no-pr" />)
 
-        expect(screen.getByText('feat/ai-sess-no-pr')).not.toBeNull()
+        expect(await screen.findByText('feat/ai-sess-no-pr')).not.toBeNull()
+    })
+
+    test('a run that pushed only a branch shows no pull request and no checks', async () => {
+        // what the worker sends when "open pull request" is off: no number, no checks
+        useAppStore.setState({
+            pullRequest: {
+                title: 'Refactor the cart',
+                state: 'branch',
+                headRef: 'feat/cart',
+                baseRef: 'main',
+                diffSummary: { additions: 0, deletions: 0, changedFiles: 3 },
+                ciStatus: 'pending',
+            },
+        })
+        render(<PullRequestsWorkspace sessionId="sess-branch" />)
+
+        expect(await screen.findByText(/no pull request yet/i)).not.toBeNull()
+        expect(screen.queryByText('Open')).toBeNull()
+        expect(screen.queryByText(/checks running/i)).toBeNull()
+        expect(screen.queryByText('+0')).toBeNull()
+    })
+
+    test('"No pull request yet" does not show while the pull request is on the way', async () => {
+        let answer: (value: { pullRequest: any }) => void = () => {}
+        sessionAPI.getSessionPullRequests = mock(
+            () =>
+                new Promise<{ pullRequest: any }>((resolve) => {
+                    answer = resolve
+                })
+        )
+        render(<PullRequestsWorkspace sessionId="sess-slow" />)
+        expect(screen.queryByText(/no pull request yet/i)).toBeNull()
+
+        await act(async () => {
+            answer({
+                pullRequest: { prNumber: 3, title: 'Slow one', state: 'open', headRef: 'feat/s' },
+            })
+        })
+        expect(screen.getByText('Slow one')).not.toBeNull()
+    })
+
+    test('a failed read says so and Retry reads again', async () => {
+        let calls = 0
+        sessionAPI.getSessionPullRequests = mock(async () => {
+            calls += 1
+            if (calls === 1) throw new Error('offline')
+            return {
+                pullRequest: { prNumber: 4, title: 'Back again', state: 'open', headRef: 'f' },
+            }
+        })
+        render(<PullRequestsWorkspace sessionId="sess-fail" />)
+
+        expect(await screen.findByText(/could not load the pull request/i)).not.toBeNull()
+        expect(screen.queryByText(/no pull request yet/i)).toBeNull()
+        await act(async () => {
+            screen.getByRole('button', { name: 'Retry' }).click()
+        })
+        expect(await screen.findByText('Back again')).not.toBeNull()
+        expect(calls).toBe(2)
+    })
+
+    test('opening the view reads the pull request again, so a merge on the host shows', async () => {
+        useAppStore.setState({
+            pullRequest: { prNumber: 12, title: 'Ship it', state: 'open', headRef: 'feat/ship' },
+        })
+        sessionAPI.getSessionPullRequests = mock(async () => ({
+            pullRequest: { prNumber: 12, title: 'Ship it', state: 'merged', headRef: 'feat/ship' },
+        }))
+        render(<PullRequestsWorkspace sessionId="sess-ship" />)
+
+        expect(await screen.findByText('Merged')).not.toBeNull()
+        expect(sessionAPI.getSessionPullRequests).toHaveBeenCalledWith('sess-ship')
+    })
+
+    test('a new message empties the store: the pull request is read again', async () => {
+        const pr = { prNumber: 14, title: 'Keep me', state: 'open', headRef: 'feat/keep' }
+        useAppStore.setState({ pullRequest: pr })
+        sessionAPI.getSessionPullRequests = mock(async () => ({ pullRequest: pr }))
+        render(<PullRequestsWorkspace sessionId="sess-keep" />)
+        await waitFor(() => expect(sessionAPI.getSessionPullRequests).toHaveBeenCalledTimes(1))
+
+        await act(async () => {
+            useAppStore.getState().setPullRequest(null)
+        })
+        await waitFor(() => expect(sessionAPI.getSessionPullRequests).toHaveBeenCalledTimes(2))
+        expect(await screen.findByText('Keep me')).not.toBeNull()
     })
 
     test('shows the real branch and no fixed commit author', () => {

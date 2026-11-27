@@ -39,12 +39,13 @@ const toPullRequest = (pr: any): PullRequest => ({
     url: pr.html_url,
     title: pr.title,
     state: pr.state,
+    // closed before draft: a closed draft is closed, like the webhook reads it
     status: pr.merged_at
         ? 'merged'
-        : pr.draft
-          ? 'draft'
-          : pr.state === 'closed'
-            ? 'closed'
+        : pr.state === 'closed'
+          ? 'closed'
+          : pr.draft
+            ? 'draft'
             : 'open',
     headSha: pr.head?.sha,
     additions: pr.additions ?? 0,

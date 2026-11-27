@@ -632,6 +632,8 @@ const PULL_REQUEST_SELECT = {
     // the Pull requests page rows show Running and offer Stop, Archive or Unarchive
     vmStatus: true,
     isArchived: true,
+    // an archive takes the pin off: the undo of the page puts this one back
+    pinnedAt: true,
     createdAt: true,
     updatedAt: true,
 } satisfies Prisma.SessionSelect
@@ -659,12 +661,32 @@ export async function findPullRequests(userId: string, filters: PullRequestFilte
         // a number past the Int column cannot be a pull request number: only the text matches
         const asNumber = searchedPullRequestNumber(needle)
         const pattern = escapeLike(needle)
+        // "owner/name" as the row's title tip shows it: the end of the owner and the start
+        // of the name, so "humans/dec" finds phasehumans/december
+        const slash = needle.indexOf('/')
+        const ownerPart = slash > 0 ? needle.slice(0, slash) : ''
+        const namePart = slash > 0 ? needle.slice(slash + 1) : ''
+        const fullName: Prisma.SessionWhereInput[] =
+            ownerPart && namePart && !namePart.includes('/')
+                ? [
+                      {
+                          githubRepoOwner: { endsWith: escapeLike(ownerPart), mode: 'insensitive' },
+                          githubRepoName: { startsWith: escapeLike(namePart), mode: 'insensitive' },
+                      },
+                  ]
+                : []
         and.push({
             OR: [
                 { title: { contains: pattern, mode: 'insensitive' } },
                 { prTitle: { contains: pattern, mode: 'insensitive' } },
                 { prBranch: { contains: pattern, mode: 'insensitive' } },
                 { githubRepoName: { contains: pattern, mode: 'insensitive' } },
+                // a number ("#42") asks for a pull request, not an owner whose name has
+                // those digits in it
+                ...(asNumber === null
+                    ? [{ githubRepoOwner: { contains: pattern, mode: 'insensitive' as const } }]
+                    : []),
+                ...fullName,
                 ...(asNumber !== null ? [{ prNumber: asNumber }] : []),
             ],
         })

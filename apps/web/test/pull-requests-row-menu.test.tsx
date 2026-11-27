@@ -32,6 +32,7 @@ type Row = {
     tags: string[]
     vmStatus: string
     isArchived: boolean
+    pinnedAt?: string | null
 }
 
 const makeRows = (): Row[] => [
@@ -310,6 +311,35 @@ describe('pull request row menu', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
         await waitFor(() => expect(api.unarchive).toHaveBeenCalledWith('open-1'))
+        expect(await screen.findByText('feat: ollama provider')).not.toBeNull()
+    })
+
+    test('Undo of a pinned row puts its pin back, like the Sessions page', async () => {
+        db = db.map((row) =>
+            row.sessionId === 'open-1' ? { ...row, pinnedAt: '2026-11-25T08:00:00.000Z' } : row
+        )
+        const { api } = renderPage()
+        const restore = spyOn(sessionAPI, 'unarchiveSessions').mockImplementation((async (
+            ids: string[]
+        ) => {
+            for (const id of ids) {
+                db = db.map((row) => (row.sessionId === id ? { ...row, isArchived: false } : row))
+            }
+            return { sessionIds: ids }
+        }) as any)
+        const menu = await openMenu('feat: ollama provider')
+        fireEvent.click(within(menu).getByRole('menuitem', { name: 'Archive' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
+        await waitFor(() => expect(api.archive).toHaveBeenCalledWith('open-1'))
+
+        fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+        await waitFor(() =>
+            expect(restore).toHaveBeenCalledWith(
+                ['open-1'],
+                [{ sessionId: 'open-1', pinnedAt: '2026-11-25T08:00:00.000Z' }]
+            )
+        )
+        expect(api.unarchive).not.toHaveBeenCalled()
         expect(await screen.findByText('feat: ollama provider')).not.toBeNull()
     })
 

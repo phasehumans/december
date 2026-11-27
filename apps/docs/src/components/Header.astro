@@ -10,7 +10,7 @@ const { activePath = '/' } = Astro.props;
 ---
 
 <header class="relative top-auto z-20 w-full bg-white sm:bg-transparent transition-colors">
-  <div class="relative z-10 mx-auto flex h-12 max-w-[1280px] items-center justify-between px-6 sm:px-8 md:px-10 lg:px-12 border-x border-transparent lg:border-[#cbd5e1] bg-transparent sm:bg-white">
+  <div class="relative z-10 mx-auto flex h-12 max-w-[1152px] items-center justify-between px-6 sm:px-8 md:px-10 lg:px-12 border-x border-transparent lg:border-[#cbd5e1] bg-transparent sm:bg-white">
     <!-- Brand (Left): December [version] -->
     <a href="/" class="flex items-center gap-1.5 sm:gap-2 py-1 transition-opacity hover:opacity-85 font-mono text-xs sm:text-sm shrink-0 whitespace-nowrap">
       <span class="font-medium text-[#090a0f]">December</span>
@@ -23,16 +23,16 @@ const { activePath = '/' } = Astro.props;
         <a 
           href="/docs" 
           class={`transition-colors py-1 ${
-            activePath.startsWith('/docs') ? 'text-[#87b2f4]' : 'text-[#475569] hover:text-[#87b2f4]'
+            activePath.startsWith('/docs') ? 'text-[#87b2f4]' : 'text-[#475569]'
           }`}
         >
           docs
         </a>
 
         <a 
-          href="/blog" 
+          href="/me" 
           class={`transition-colors py-1 ${
-            activePath.startsWith('/blog') ? 'text-[#87b2f4]' : 'text-[#475569] hover:text-[#87b2f4]'
+            activePath.startsWith('/blog') ? 'text-[#87b2f4]' : 'text-[#475569]'
           }`}
         >
           blog
