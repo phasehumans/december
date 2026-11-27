@@ -57,6 +57,20 @@ describe('Auth Account Management & Signout All Integration Tests', () => {
         // Relogin to get fresh token
         const loginRes = await signInWithEmailCode(app, testEmail)
         const freshAccessToken = authCookieToken(loginRes)
+        const installationId = `acct-del-${Date.now()}`
+        await prisma.githubAppInstallation.create({
+            data: { installationId, userId: testUserId, accountLogin: 'acct-test' },
+        })
+        await prisma.gitConnection.create({
+            data: {
+                userId: testUserId,
+                provider: 'GITLAB',
+                externalId: `acct-del-${Date.now()}`,
+                username: 'acct-gl',
+                encryptedAccessToken: 'x',
+            },
+        })
+        await prisma.user.update({ where: { id: testUserId }, data: { githubAppInstall: true } })
 
         const deleteRes = await request(app)
             .delete('/api/v1/auth/account')
@@ -69,6 +83,15 @@ describe('Auth Account Management & Signout All Integration Tests', () => {
         const user = await prisma.user.findUnique({ where: { id: testUserId } })
         expect(user?.isDeleted).toBe(true)
         expect(user?.deletedAt).not.toBeNull()
+        expect(user?.githubAppInstall).toBe(false)
+
+        // git hosts are let go, so a new account can connect them
+        const installation = await prisma.githubAppInstallation.findUnique({
+            where: { installationId },
+        })
+        expect(installation?.userId).toBeNull()
+        expect(await prisma.gitConnection.count({ where: { userId: testUserId } })).toBe(0)
+        await prisma.githubAppInstallation.delete({ where: { installationId } })
 
         // Signing in to a deleted account should fail
         const loginDeletedRes = await signInWithEmailCode(app, testEmail)

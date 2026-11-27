@@ -71,7 +71,7 @@ async function findGitlabConnectionTokens(userId: string) {
 async function findGitlabOwner(externalId: string) {
     return prisma.gitConnection.findUnique({
         where: { provider_externalId: { provider: 'GITLAB', externalId } },
-        select: { userId: true },
+        select: { userId: true, user: { select: { isDeleted: true } } },
     })
 }
 

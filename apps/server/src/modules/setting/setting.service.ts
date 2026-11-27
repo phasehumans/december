@@ -103,7 +103,11 @@ const getMe = async (data: GetMe) => {
         }
 
         const fullName = profile.name || 'Profile'
-        const isGithubConnected = profile.githubConnected
+        // any linked install counts, the same rule as onboarding
+        const isGithubConnected =
+            profile.githubConnected ||
+            profile.githubAppInstall ||
+            profile._count.githubInstallations > 0
 
         return { fullName, isGithubConnected }
     })
@@ -112,7 +116,10 @@ const getMe = async (data: GetMe) => {
 const getProfile = async (data: GetProfile) => {
     const { userId } = data
     return appCache.wrap(appCache.key('setting', 'profile', userId), 300, async () => {
-        const profile = await settingRepository.findUserByIdForProfile(userId, settingSelect)
+        const [profile, installations] = await Promise.all([
+            settingRepository.findUserByIdForProfile(userId, settingSelect),
+            settingRepository.countGithubInstallations(userId),
+        ])
 
         if (!profile) {
             throw new AppError('user not found', 404)
@@ -123,6 +130,8 @@ const getProfile = async (data: GetProfile) => {
         const isAdmin = profile.emailVerified && isAdminEmail(profile.email)
         return {
             ...profile,
+            // any linked install counts as installed, the same rule as onboarding
+            githubAppInstall: Boolean(profile.githubAppInstall) || installations > 0,
             preferences: toPreferences(profile.preferences),
             isAdmin,
             ...(isAdmin ? { adminPath: getAdminPath() } : {}),

@@ -9,8 +9,14 @@ async function findUserByIdForInfo(id: string) {
         select: {
             name: true,
             githubConnected: true,
+            githubAppInstall: true,
+            _count: { select: { githubInstallations: true } },
         },
     })
+}
+
+async function countGithubInstallations(userId: string) {
+    return prisma.githubAppInstallation.count({ where: { userId } })
 }
 
 async function findUserByIdForProfile(id: string, selectFields: Prisma.UserSelect) {
@@ -421,6 +427,7 @@ export const settingRepository = {
     deleteDataExports,
     disableProductUpdates,
     findUserByIdForInfo,
+    countGithubInstallations,
     findUserByIdForProfile,
     findUserByIdForExistCheck,
     updateUserName,

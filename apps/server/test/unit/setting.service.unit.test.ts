@@ -46,6 +46,8 @@ describe('Setting Service - Unit Tests', () => {
             settingRepository.findUserByIdForInfo = (async () => ({
                 name: null,
                 githubConnected: false,
+                githubAppInstall: false,
+                _count: { githubInstallations: 0 },
             })) as any
 
             try {

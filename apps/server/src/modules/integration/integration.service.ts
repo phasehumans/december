@@ -139,7 +139,10 @@ const connectGitlab = async (data: ConnectGitlab) => {
 
     // one gitlab account belongs to one december account, like the github id
     const owner = await integrationRepository.findGitlabOwner(gitlabUser.id)
-    if (owner && owner.userId !== userId) {
+    if (owner && owner.userId !== userId && owner.user.isDeleted) {
+        // a deleted account owns nothing: the oauth sign-in just proved who owns it
+        await integrationRepository.deleteGitlabConnection(owner.userId)
+    } else if (owner && owner.userId !== userId) {
         throw new AppError('This GitLab account is connected to another December account', 409)
     }
 

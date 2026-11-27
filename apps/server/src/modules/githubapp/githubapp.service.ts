@@ -5,6 +5,7 @@ import { enqueueJob } from '@december/shared/queue'
 
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
+import { appCache } from '../../shared/cache'
 import { notificationService } from '../notification/notification.service'
 import { secretsService } from '../secrets/secrets.service'
 import { sessionService } from '../session/session.service'
@@ -59,9 +60,19 @@ import type {
 } from './githubapp.types'
 import type { FailedCheckRun, GithubRun, PullRequestInfo } from '@december/shared'
 
+// the profile and /setting/me answers are cached for 5 minutes: without this, a page
+// opened right after the install still says GitHub is not connected
+const clearSettingCache = async (userId: string | null | undefined) => {
+    if (!userId) return
+    await Promise.all([
+        appCache.del(appCache.key('setting', 'me', userId)),
+        appCache.del(appCache.key('setting', 'profile', userId)),
+    ])
+}
+
 const processInstallation = async (data: ProcessInstallation) => {
     const { installationId, userId, accountLogin, accountType, targetType, permissions } = data
-    return githubAppRepository.upsertInstallation({
+    const installation = await githubAppRepository.upsertInstallation({
         installationId,
         userId,
         accountLogin,
@@ -69,6 +80,8 @@ const processInstallation = async (data: ProcessInstallation) => {
         targetType,
         permissions,
     })
+    await clearSettingCache(installation.userId)
+    return installation
 }
 
 const claimInstallation = async (data: ClaimInstallation): Promise<ClaimInstallationResult> => {
@@ -80,13 +93,18 @@ const claimInstallation = async (data: ClaimInstallation): Promise<ClaimInstalla
     }
 
     const existing = await githubAppRepository.findByInstallationId(installationId)
-    const existingOwner = existing?.userId && existing.userId !== 'system' ? existing.userId : null
+    let existingOwner = existing?.userId && existing.userId !== 'system' ? existing.userId : null
+    // a deleted account owns nothing: the install is free to claim, with the same proof
+    if (existingOwner && existingOwner !== userId) {
+        const owner = await githubAppRepository.findUserGithubId(existingOwner)
+        if (!owner || owner.isDeleted) existingOwner = null
+    }
 
     // only ask github when the database alone cannot decide
     const details = existingOwner ? null : await getInstallationDetails(installationId)
 
     const decision = canClaimInstallation({
-        existingUserId: existing?.userId,
+        existingUserId: existingOwner,
         userId,
         userGithubId: user.githubId,
         details,
@@ -107,6 +125,7 @@ const claimInstallation = async (data: ClaimInstallation): Promise<ClaimInstalla
         ...(details?.target_type ? { targetType: details.target_type } : {}),
         ...(details?.permissions ? { permissions: details.permissions } : {}),
     })
+    await clearSettingCache(userId)
 
     return decision
 }
@@ -153,7 +172,9 @@ const processUninstallation = async (data: ProcessUninstallation) => {
     const { installationId } = data
     // before the row goes: it holds the owner
     await notifyInstallationLost({ installationId, reason: 'removed' })
-    return githubAppRepository.deleteInstallation(installationId)
+    const deleted = await githubAppRepository.deleteInstallation(installationId)
+    await clearSettingCache(deleted?.userId)
+    return deleted
 }
 
 const verifySignature = (data: VerifySignature): boolean => {

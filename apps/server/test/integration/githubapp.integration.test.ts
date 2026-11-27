@@ -498,7 +498,7 @@ describe('GitHubApp Module Integration Tests', () => {
             .set('x-forwarded-for', getRandomIP())
 
         expect(res.status).toBe(302)
-        expect(res.headers.location).toContain('/profile/integrations')
+        expect(res.headers.location).toContain('/profile/integrations?github=signed_out')
 
         const installation = await prisma.githubAppInstallation.findUnique({
             where: { installationId: '98765' },
@@ -515,7 +515,9 @@ describe('GitHubApp Module Integration Tests', () => {
             .set('x-forwarded-for', getRandomIP())
 
         expect(res.status).toBe(302)
-        expect(res.headers.location).toBe('http://localhost:3000/settings/connections')
+        expect(res.headers.location).toBe(
+            'http://localhost:3000/settings/connections?github=signed_out'
+        )
     })
 
     it('7c. GET /api/v1/githubapp/callback - does not claim an unclaimed installation it cannot verify (302)', async () => {
@@ -529,7 +531,7 @@ describe('GitHubApp Module Integration Tests', () => {
             .set('Authorization', `Bearer ${accessToken}`)
 
         expect(res.status).toBe(302)
-        expect(res.headers.location).toContain('/settings/repositories')
+        expect(res.headers.location).toContain('/settings/repositories?github=unverified')
 
         const afterCallback = await prisma.githubAppInstallation.findUnique({
             where: { installationId: '77777' },
@@ -559,6 +561,7 @@ describe('GitHubApp Module Integration Tests', () => {
                 .set('Authorization', `Bearer ${accessToken}`)
 
             expect(res.status).toBe(302)
+            expect(res.headers.location).toContain('/settings/repositories?github=in_use')
 
             const installation = await prisma.githubAppInstallation.findUnique({
                 where: { installationId: '98767' },
@@ -593,8 +596,20 @@ describe('GitHubApp Module Integration Tests', () => {
         })
         expect(installation?.userId).toBe(testUserId)
 
+        expect(res.headers.location).not.toContain('github=')
+
         const user = await prisma.user.findUnique({ where: { id: testUserId } })
         expect(user?.githubAppInstall).toBe(true)
+    })
+
+    it('7f. GET /api/v1/githubapp/callback - an organisation install request says so (302)', async () => {
+        const res = await request(app)
+            .get('/api/v1/githubapp/callback?setup_action=request&state=%2Fpull-requests')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(res.status).toBe(302)
+        expect(res.headers.location).toContain('/pull-requests?github=requested')
     })
 
     it('8. GET /api/v1/githubapp/status - returns installation status for authenticated user (200)', async () => {

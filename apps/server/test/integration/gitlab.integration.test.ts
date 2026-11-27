@@ -208,6 +208,42 @@ describe('GitLab connection (#627)', () => {
         expect(await prisma.gitConnection.count({ where: { userId: bob.user.id } })).toBe(0)
     })
 
+    it('takes a gitlab account back from a deleted december account', async () => {
+        const gone = await signedInUser('gone')
+        try {
+            await prisma.gitConnection.create({
+                data: {
+                    userId: gone.user.id,
+                    provider: 'GITLAB',
+                    externalId: '9002',
+                    username: 'carol-gl',
+                    encryptedAccessToken: 'x',
+                },
+            })
+            await prisma.user.update({ where: { id: gone.user.id }, data: { isDeleted: true } })
+            stubGitlab((url) =>
+                url.endsWith('/oauth/token')
+                    ? json({ access_token: 'gl-access-c', refresh_token: 'r', expires_in: 7200 })
+                    : json({ id: 9002, username: 'carol-gl' })
+            )
+
+            const res = await request(app)
+                .get('/api/v1/integrations/gitlab/callback?code=c3&state=n3:/settings/repositories')
+                .set('x-forwarded-for', getRandomIP())
+                .set('Authorization', bob.auth)
+                .set('Cookie', 'gitlab_oauth_state=n3')
+
+            expect(res.headers.location).toBe(`${env.APP_URL}/settings/repositories`)
+            const row = await prisma.gitConnection.findUnique({
+                where: { provider_externalId: { provider: 'GITLAB', externalId: '9002' } },
+            })
+            expect(row?.userId).toBe(bob.user.id)
+        } finally {
+            await prisma.gitConnection.deleteMany({ where: { externalId: '9002' } })
+            await cleanupTestUser({ id: gone.user.id })
+        }
+    })
+
     it('lists gitlab projects with the stored token', async () => {
         stubGitlab(() =>
             json([

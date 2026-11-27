@@ -5,6 +5,7 @@ import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { useModelSelection } from '@/features/home/model-selection'
 import { useByokList } from '@/features/profile/hooks/useByokData'
 import { useGithubConnection } from '@/features/profile/hooks/useGithubConnection'
+import { useGitlabConnection } from '@/features/profile/hooks/useGitlabConnection'
 
 interface HomeAction {
     label: string
@@ -20,11 +21,12 @@ interface HomeStatus {
 /**
  * One line under the Home prompt box, as wide as the box and tucked behind its bottom
  * edge. It shows the one thing that needs action, and nothing when nothing does.
- * Order: GitHub not connected, then no credits.
+ * Order: no git host connected (GitHub or GitLab), then no credits.
  */
 export const HomeStatusStrip: React.FC = () => {
     const navigate = useNavigate()
     const github = useGithubConnection(true)
+    const gitlab = useGitlabConnection(true)
     const { data: overview } = useBillingOverview(true)
     const billingSource = useModelSelection((s) => s.source)
     const lastOwnKey = useModelSelection((s) => s.lastOwnKey)
@@ -46,9 +48,10 @@ export const HomeStatusStrip: React.FC = () => {
     }
 
     let status: HomeStatus | null = null
-    if (github.isReady && !github.isConnected) {
+    // a user with GitLab connected has a git host: only a user with neither is asked
+    if (github.isReady && gitlab.isReady && !github.isConnected && !gitlab.isConnected) {
         status = {
-            text: 'GitHub is not connected',
+            text: github.connectError ?? 'GitHub is not connected',
             actions: [{ label: 'Connect', href: github.connectUrl }],
         }
     } else if (

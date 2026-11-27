@@ -7,10 +7,14 @@ import { githubAppService } from './githubapp.service'
 import {
     resolveInstallReturnUrl,
     toGithubActivity,
+    toInstallProblem,
+    toLocalCallbackUrl,
+    withInstallProblem,
     toPullRequestStateEvent,
     toWebhookRepository,
 } from './githubapp.utils'
 
+import type { InstallProblem } from './githubapp.types'
 import type { Request, Response } from 'express'
 
 const startInstall = asyncHandler(async (req: Request, res: Response) => {
@@ -42,15 +46,28 @@ const handleCallback = asyncHandler(async (req: Request, res: Response) => {
         }
     }
 
+    const setupAction = req.query.setup_action as string | undefined
+    const localCallback = toLocalCallbackUrl({ returnUrl, installationId, setupAction, state })
+    if (localCallback) {
+        return res.redirect(localCallback)
+    }
+
     const userId: string | undefined = (req as any).user?.userId
+    let problem: InstallProblem | null = null
     if (installationId && userId) {
-        await githubAppService.claimInstallation({
+        const result = await githubAppService.claimInstallation({
             installationId: installationId.toString(),
             userId,
         })
+        problem = toInstallProblem(result)
+    } else if (installationId) {
+        problem = 'signed_out'
+    } else if (setupAction === 'request') {
+        // an organisation member asked for the install: an owner must approve it on github
+        problem = 'requested'
     }
 
-    const redirectTarget = resolveInstallReturnUrl({ returnUrl })
+    const redirectTarget = withInstallProblem(resolveInstallReturnUrl({ returnUrl }), problem)
 
     return res.redirect(redirectTarget)
 })

@@ -8,6 +8,7 @@ import { blueButtonClass, boxSurfaceClass, outlineButtonClass } from './settings
 import { EmptyRow, ListBox } from '@/features/connections/components/ConnectionsUi'
 import { type GithubRepo } from '@/features/profile/api/profile'
 import { repoKey, useConnectedRepos } from '@/features/profile/hooks/useConnectedRepos'
+import { readGithubConnectError } from '@/features/profile/hooks/useGithubConnection'
 import { useGitlabConnection } from '@/features/profile/hooks/useGitlabConnection'
 import { Tooltip } from '@/shared/components/ui/Tooltip'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
@@ -64,6 +65,7 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
 
     const reposQuery = useConnectedRepos({ enabled: true, isGithubConnected })
     const gitlab = useGitlabConnection()
+    const [githubConnectError] = useState(readGithubConnectError)
 
     const githubConnected = isGithubConnected || gitlab.isConnected
     const allRepos = reposQuery.repos
@@ -134,6 +136,11 @@ export const ProfileRepositoriesSettings: React.FC<ProfileRepositoriesSettingsPr
                         </div>
                     </div>
 
+                    {githubConnectError && (
+                        <p role="alert" className="text-[12.5px] text-red-400">
+                            {githubConnectError}
+                        </p>
+                    )}
                     {gitlab.connectError && (
                         <p role="alert" className="text-[12.5px] text-red-400">
                             {gitlab.connectError}

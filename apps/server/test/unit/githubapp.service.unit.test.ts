@@ -9,10 +9,14 @@ import { githubAppService } from '../../src/modules/githubapp/githubapp.service'
 import {
     canClaimInstallation,
     resolveInstallReturnUrl,
+    toInstallProblem,
+    toLocalCallbackUrl,
+    withInstallProblem,
 } from '../../src/modules/githubapp/githubapp.utils'
 import { secretsService } from '../../src/modules/secrets/secrets.service'
 import { sessionService } from '../../src/modules/session/session.service'
 import { AppError } from '../../src/shared/appError'
+import { appCache } from '../../src/shared/cache'
 
 describe('GitHubApp Service - Unit Tests', () => {
     describe('verifySignature', () => {
@@ -208,6 +212,68 @@ describe('GitHubApp Service - Unit Tests', () => {
         })
     })
 
+    describe('toLocalCallbackUrl', () => {
+        it('prod sends a localhost install on to the local callback, state unchanged', () => {
+            const state = 'user-1|http://localhost:3000/pull-requests?x=1'
+            const url = toLocalCallbackUrl({
+                returnUrl: 'http://localhost:3000/pull-requests?x=1',
+                installationId: '123',
+                setupAction: 'install',
+                state,
+                isProduction: true,
+            })
+            const parsed = new URL(url!)
+            expect(parsed.origin).toBe('http://localhost:3000')
+            expect(parsed.pathname).toBe('/api/v1/githubapp/callback')
+            expect(parsed.searchParams.get('installation_id')).toBe('123')
+            expect(parsed.searchParams.get('setup_action')).toBe('install')
+            expect(parsed.searchParams.get('state')).toBe(state)
+        })
+
+        it('only for localhost, and never on a local server', () => {
+            const base = { installationId: '1', isProduction: true }
+            expect(
+                toLocalCallbackUrl({ ...base, returnUrl: 'https://app.trydecember.com/x' })
+            ).toBeNull()
+            expect(toLocalCallbackUrl({ ...base, returnUrl: 'https://evil.com/x' })).toBeNull()
+            expect(toLocalCallbackUrl({ ...base, returnUrl: '/settings/repositories' })).toBeNull()
+            expect(
+                toLocalCallbackUrl({ ...base, returnUrl: 'http://localhost.evil.com/x' })
+            ).toBeNull()
+            expect(
+                toLocalCallbackUrl({
+                    ...base,
+                    returnUrl: 'http://localhost:3000/x',
+                    isProduction: false,
+                })
+            ).toBeNull()
+            expect(toLocalCallbackUrl({ ...base, returnUrl: 'http://127.0.0.1:3000/x' })).toContain(
+                'http://127.0.0.1:3000/api/v1/githubapp/callback'
+            )
+        })
+    })
+
+    describe('install problems in the return url', () => {
+        it('names why an install did not link, and nothing when it did', () => {
+            expect(toInstallProblem({ linked: true, reason: 'account_matches' })).toBeNull()
+            expect(toInstallProblem({ linked: false, reason: 'owned_by_other_user' })).toBe(
+                'in_use'
+            )
+            expect(toInstallProblem({ linked: false, reason: 'stale_unclaimed' })).toBe(
+                'unverified'
+            )
+        })
+
+        it('keeps the query and hash of the return url', () => {
+            expect(withInstallProblem('https://app.trydecember.com/a?x=1#h', 'in_use')).toBe(
+                'https://app.trydecember.com/a?x=1&github=in_use#h'
+            )
+            expect(withInstallProblem('https://app.trydecember.com/a', null)).toBe(
+                'https://app.trydecember.com/a'
+            )
+        })
+    })
+
     describe('findInstallationOwner', () => {
         const withGithubIds = async (ids: Record<string, string>, run: () => Promise<void>) => {
             const original = githubAppRepository.findUserIdByGithubId
@@ -255,7 +321,7 @@ describe('GitHubApp Service - Unit Tests', () => {
 
     describe('claimInstallation', () => {
         const withRepoStubs = async (
-            stubs: { user?: any; existing?: any },
+            stubs: { user?: any; users?: Record<string, any>; existing?: any },
             run: (upserts: any[]) => Promise<void>
         ) => {
             const upserts: any[] = []
@@ -264,7 +330,8 @@ describe('GitHubApp Service - Unit Tests', () => {
                 findByInstallationId: githubAppRepository.findByInstallationId,
                 upsertInstallation: githubAppRepository.upsertInstallation,
             }
-            githubAppRepository.findUserGithubId = (async () => stubs.user ?? null) as any
+            githubAppRepository.findUserGithubId = (async (id: string) =>
+                stubs.users ? (stubs.users[id] ?? null) : (stubs.user ?? null)) as any
             githubAppRepository.findByInstallationId = (async () => stubs.existing ?? null) as any
             githubAppRepository.upsertInstallation = (async (data: any) => {
                 upserts.push(data)
@@ -305,6 +372,52 @@ describe('GitHubApp Service - Unit Tests', () => {
                 expect(res.linked).toBe(false)
                 expect(upserts).toHaveLength(0)
             })
+        })
+
+        it('a deleted account does not hold an installation', async () => {
+            await withRepoStubs(
+                {
+                    users: {
+                        me: { id: 'me', githubId: null, isDeleted: false },
+                        gone: { id: 'gone', githubId: null, isDeleted: true },
+                    },
+                    existing: { installationId: '1', userId: 'gone' },
+                },
+                async () => {
+                    const res = await githubAppService.claimInstallation({
+                        installationId: '1',
+                        userId: 'me',
+                    })
+                    // github cannot be asked in tests, so it needs proof, but it is not "in use"
+                    expect(res.reason).not.toBe('owned_by_other_user')
+                }
+            )
+        })
+
+        it('clears the cached profile after it links', async () => {
+            const cleared: string[] = []
+            const originalDel = appCache.del
+            appCache.del = (async (key: string) => {
+                cleared.push(key)
+            }) as any
+            try {
+                await withRepoStubs(
+                    {
+                        user: { id: 'me', githubId: '42', isDeleted: false },
+                        existing: { installationId: '1', userId: 'me' },
+                    },
+                    async () => {
+                        await githubAppService.claimInstallation({
+                            installationId: '1',
+                            userId: 'me',
+                        })
+                    }
+                )
+            } finally {
+                appCache.del = originalDel
+            }
+            expect(cleared).toContain(appCache.key('setting', 'me', 'me'))
+            expect(cleared).toContain(appCache.key('setting', 'profile', 'me'))
         })
 
         it('refreshes an installation the user already owns', async () => {

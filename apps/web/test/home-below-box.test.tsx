@@ -11,6 +11,7 @@ const { render, screen, fireEvent, cleanup, within } = await import('@testing-li
 const { MemoryRouter, useLocation } = await import('react-router-dom')
 const { useAppStore } = await import('../src/app/store')
 const { billingQueryKeys } = await import('../src/features/billing/hooks/useBillingData')
+const { GITLAB_STATUS_KEY } = await import('../src/features/profile/hooks/useGitlabConnection')
 const { HomeHero } = await import('../src/features/home/components/HomeHero')
 const { useModelSelection } = await import('../src/features/home/model-selection')
 const { peekWorkspaceTabRequest, clearWorkspaceTabRequest } =
@@ -107,6 +108,7 @@ const LocationProbe: React.FC = () => <div data-testid="location">{useLocation()
 
 interface Scenario {
     githubConnected?: boolean
+    gitlabConnected?: boolean
     creditBalance?: number
     sessions?: unknown[]
     joined?: boolean
@@ -123,6 +125,11 @@ const renderHome = (scenario: Scenario = {}, onOpenProject = mock((_id: string) 
     const connected = scenario.githubConnected ?? true
     client.setQueryData(['profile'], { id: 'user-1', githubConnected: connected })
     client.setQueryData(['quickinfo'], { fullName: 'Test', githubConnected: connected })
+    client.setQueryData(GITLAB_STATUS_KEY, {
+        available: true,
+        connected: scenario.gitlabConnected ?? false,
+        username: null,
+    })
     client.setQueryData(billingQueryKeys.overview, {
         creditBalance: scenario.creditBalance ?? 500,
     })
@@ -200,6 +207,28 @@ describe('status strip under the Home prompt box', () => {
         const strip = screen.getByTestId('home-status-strip')
         expect(within(strip).getByText('GitHub is not connected')).not.toBeNull()
         expect(within(strip).getByText('Connect').getAttribute('href')).toContain('github')
+    })
+
+    test('GitLab connected: no GitHub line', () => {
+        renderHome({ githubConnected: false, gitlabConnected: true })
+        expect(screen.queryByTestId('home-status-strip')).toBeNull()
+    })
+
+    test('a GitHub install that did not link says why', () => {
+        const happyDOM = (window as any).happyDOM
+        const before = window.location.href
+        happyDOM.setURL('http://localhost/?github=in_use')
+        try {
+            renderHome({ githubConnected: false })
+            const strip = screen.getByTestId('home-status-strip')
+            expect(
+                within(strip).getByText(
+                    'This GitHub install is connected to another December account.'
+                )
+            ).not.toBeNull()
+        } finally {
+            happyDOM.setURL(before)
+        }
     })
 
     test('no credits: Add credits opens billing', () => {

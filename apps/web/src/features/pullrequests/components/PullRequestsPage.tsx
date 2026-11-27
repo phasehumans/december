@@ -372,6 +372,11 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = ({ onOpenProjec
                     />
                 ) : needsGithub ? (
                     <ListEmptyState art="connect" title="Connect GitHub to see pull requests">
+                        {github.connectError && (
+                            <p role="alert" className="text-[12.5px] text-red-400">
+                                {github.connectError}
+                            </p>
+                        )}
                         <a href={github.connectUrl} className={listActionButtonClass}>
                             Connect GitHub
                         </a>

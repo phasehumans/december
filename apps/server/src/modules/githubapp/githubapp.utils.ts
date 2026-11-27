@@ -7,9 +7,11 @@ import type {
     BuildGithubRunPrompt,
     CanClaimInstallation,
     ClaimInstallationResult,
+    InstallProblem,
     NotifyGithubActivity,
     ResolveInstallReturnUrl,
     ShouldAutoReview,
+    ToLocalCallbackUrl,
 } from './githubapp.types'
 
 export const generateAppJwt = (): string => {
@@ -97,6 +99,54 @@ export const resolveInstallReturnUrl = (data: ResolveInstallReturnUrl): string =
     }
 
     return `${baseAppUrl}${DEFAULT_INSTALL_RETURN_PATH}`
+}
+
+// Prod has the app's one Setup URL. An install started from a local web app (its return url
+// is on localhost) is sent on to that app's own callback, through its /api proxy, so the
+// local server links it to the local user. Prod links nothing for it. Only localhost is a
+// target, so this cannot send anyone to another site.
+export const toLocalCallbackUrl = (data: ToLocalCallbackUrl): string | null => {
+    const {
+        returnUrl,
+        installationId,
+        setupAction,
+        state,
+        isProduction = env.NODE_ENV === 'production',
+    } = data
+    if (!isProduction || !/^https?:\/\//i.test(returnUrl)) return null
+
+    try {
+        const { hostname, origin } = new URL(returnUrl)
+        if (hostname !== 'localhost' && hostname !== '127.0.0.1') return null
+
+        const target = new URL('/api/v1/githubapp/callback', origin)
+        if (installationId) target.searchParams.set('installation_id', installationId)
+        if (setupAction) target.searchParams.set('setup_action', setupAction)
+        if (state) target.searchParams.set('state', state)
+        return target.toString()
+    } catch {
+        // Intentionally swallowed: an invalid url is handled here like any other return url
+        return null
+    }
+}
+
+// the one short reason the web page shows, or null when the install linked
+export const toInstallProblem = (result: ClaimInstallationResult): InstallProblem | null => {
+    if (result.linked) return null
+    return result.reason === 'owned_by_other_user' ? 'in_use' : 'unverified'
+}
+
+// adds ?github=<problem> to the return url, keeping its own query and hash
+export const withInstallProblem = (url: string, problem: InstallProblem | null): string => {
+    if (!problem) return url
+    try {
+        const parsed = new URL(url)
+        parsed.searchParams.set('github', problem)
+        return parsed.toString()
+    } catch {
+        // Intentionally swallowed: the return url is always absolute here; keep it unchanged
+        return url
+    }
 }
 
 // An installation we cannot tie to the user by github id can only be claimed

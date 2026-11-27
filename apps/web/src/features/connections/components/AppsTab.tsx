@@ -25,6 +25,7 @@ import {
 import type { BrandKey } from '../types'
 
 import { profileAPI } from '@/features/profile/api/profile'
+import { readGithubConnectError } from '@/features/profile/hooks/useGithubConnection'
 import {
     GITLAB_STATUS_KEY,
     useGitlabConnection,
@@ -64,6 +65,7 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
     const { profile, isProfileLoading, profileError, isGithubConnected, connectGithub } =
         useProfileSettingsController()
     const gitlab = useGitlabConnection()
+    const [githubConnectError] = React.useState(readGithubConnectError)
     const [query, setQuery] = React.useState('')
     const [isConnecting, setIsConnecting] = React.useState(false)
     const [isConnectingGitlab, setIsConnectingGitlab] = React.useState(false)
@@ -114,6 +116,11 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
             </div>
             {profileError && !profile && (
                 <p className="text-[12.5px] text-red-500 font-medium">Could not load apps</p>
+            )}
+            {githubConnectError && (
+                <p role="alert" className="text-[12.5px] text-red-500 font-medium">
+                    {githubConnectError}
+                </p>
             )}
             {gitlab.connectError && (
                 <p role="alert" className="text-[12.5px] text-red-500 font-medium">

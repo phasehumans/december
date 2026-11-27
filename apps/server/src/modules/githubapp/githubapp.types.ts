@@ -46,6 +46,9 @@ export type ClaimInstallationResult = {
     reason: ClaimInstallationReason
 }
 
+/** why the install did not link, sent back to the web page as ?github=<problem> */
+export type InstallProblem = 'in_use' | 'unverified' | 'signed_out' | 'requested'
+
 export type CanClaimInstallation = {
     existingUserId?: string | null
     userId: string
@@ -61,6 +64,14 @@ export type FindInstallationOwner = {
     accountId?: string
     accountType?: string
     senderId?: string
+}
+
+export type ToLocalCallbackUrl = {
+    returnUrl: string
+    installationId?: string
+    setupAction?: string
+    state?: string
+    isProduction?: boolean
 }
 
 export type ResolveInstallReturnUrl = {

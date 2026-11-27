@@ -137,6 +137,9 @@ async function deleteAccount(userId: string) {
     return prisma.$transaction([
         // deletion is a soft delete, but saved api keys are always removed for real
         prisma.providerCredential.deleteMany({ where: { userId } }),
+        // git hosts are let go, so a new account can connect the same github or gitlab
+        prisma.gitConnection.deleteMany({ where: { userId } }),
+        prisma.githubAppInstallation.updateMany({ where: { userId }, data: { userId: null } }),
         prisma.authSession.updateMany({
             where: {
                 userId,
@@ -154,6 +157,7 @@ async function deleteAccount(userId: string) {
                 deletedAt: new Date(),
                 githubToken: null,
                 githubConnected: false,
+                githubAppInstall: false,
                 githubUsername: null,
             },
             select: {
