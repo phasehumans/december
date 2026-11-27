@@ -119,7 +119,7 @@ jobs:
 
                       echo "==> Verifying local health check..."
                       for i in $(seq 1 30); do
-                        curl -fs http://127.0.0.1:4000/health > /dev/null && break
+                        if curl -fs http://127.0.0.1:4000/health > /dev/null; then break; fi
                         if [ "$i" = 30 ]; then echo "server not healthy after 60s"; exit 1; fi
                         sleep 2
                       done
