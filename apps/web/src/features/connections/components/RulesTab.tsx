@@ -1,13 +1,19 @@
+import {
+    RULE_MAX_BYTES,
+    RULE_NAME_PATTERN,
+    RULES_TOTAL_MAX_BYTES,
+    utf8Bytes,
+} from '@december/shared/agent-context'
 import React from 'react'
 
+import { useRules } from '../hooks/useAccountContext'
+import { connectionErrorMessage } from '../hooks/useConnectionsData'
 import { useConnectionsNav } from '../hooks/useConnectionsNav'
-import { isPluginOff, useConnectionsStore } from '../hooks/useConnectionsStore'
 import { useUnsavedGuard } from '../hooks/useUnsavedGuard'
-import { RULE_SIZE_LIMIT, type ConnectionsRule, type RuleTrigger } from '../types'
+import { CONNECTIONS_BASE_PATH } from '../lib/paths'
 
 import {
     BackLink,
-    ChoiceGroup,
     ConfirmModal,
     DetailHeader,
     DoneHint,
@@ -18,8 +24,8 @@ import {
     ListHeader,
     ListRow,
     ListRows,
+    ListSkeleton,
     MoreMenu,
-    Pill,
     PrimaryButton,
     RowActions,
     SearchInput,
@@ -33,13 +39,12 @@ import {
     useFlash,
 } from './ConnectionsUi'
 
+import type { ApiRule } from '../api/rules'
+
 import { cn } from '@/shared/lib/utils'
 
-const NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/
+const NEW_RULE_PATH = `${CONNECTIONS_BASE_PATH}/rules/new`
 
-const TRIGGER_LABEL: Record<RuleTrigger, string> = { always: 'Always', manual: 'Manual' }
-
-const byteSize = (text: string) => new TextEncoder().encode(text).length
 const formatKib = (bytes: number) => `${(bytes / 1024).toFixed(1)} KiB`
 
 export const RulesTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
@@ -49,43 +54,53 @@ export const RulesTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
 
 const RulesList: React.FC = () => {
     const { navigate, toItem } = useConnectionsNav()
-    const rules = useConnectionsStore((s) => s.rules)
-    const plugins = useConnectionsStore((s) => s.plugins)
-    const setRuleEnabled = useConnectionsStore((s) => s.setRuleEnabled)
-    const deleteRule = useConnectionsStore((s) => s.deleteRule)
+    const { rules, isLoading, loadFailed, retry, setRuleEnabled, deleteRule } = useRules()
     const [query, setQuery] = React.useState('')
     const [deleting, setDeleting] = React.useState<string | null>(null)
+    const [actionError, setActionError] = React.useState<string | null>(null)
 
-    const visible = rules.filter(
-        (rule) => !rule.plugin || plugins.some((p) => p.name === rule.plugin && p.installed)
-    )
-    const filtered = visible.filter((rule) => matchesQuery(query, rule.name))
+    /** runs a change from a row. a change the server refuses shows above the list */
+    const run = (change: Promise<unknown>, fallback: string) => {
+        setActionError(null)
+        change.catch((error) => setActionError(connectionErrorMessage(error, fallback)))
+    }
+
+    const filtered = rules.filter((rule) => matchesQuery(query, rule.name, rule.body))
+    const totalBytes = rules.reduce((sum, rule) => sum + utf8Bytes(rule.body), 0)
 
     return (
         <div className="flex flex-col gap-4">
-            {visible.length > 0 && (
+            {rules.length > 0 && (
                 <div className="flex items-center gap-2">
                     <SearchInput value={query} onChange={setQuery} placeholder="Search rules" />
                     <span className="hidden md:block flex-1" />
-                    <PrimaryButton onClick={() => navigate('/settings/connections/rules/new')}>
-                        New rule
-                    </PrimaryButton>
+                    <PrimaryButton onClick={() => navigate(NEW_RULE_PATH)}>New rule</PrimaryButton>
                 </div>
             )}
+            <FormError>{actionError}</FormError>
             <ListBox>
                 <ListHeader>
                     <span className="flex-1">Name</span>
-                    <span className="w-[130px]">Source</span>
-                    <span className="w-[80px]">When</span>
-                    <span className="w-[70px]">Size</span>
-                    <span className="w-[104px]" />
+                    <span className="w-[80px]">Size</span>
+                    <span className="w-[136px] text-right whitespace-nowrap">
+                        {rules.length > 0 &&
+                            `${formatKib(totalBytes)} / ${RULES_TOTAL_MAX_BYTES / 1024} KiB`}
+                    </span>
                 </ListHeader>
-                {visible.length === 0 ? (
+                {isLoading ? (
+                    <ListSkeleton />
+                ) : loadFailed ? (
                     <EmptyRow
                         action={
-                            <SecondaryButton
-                                onClick={() => navigate('/settings/connections/rules/new')}
-                            >
+                            <SecondaryButton onClick={() => retry()}>Try again</SecondaryButton>
+                        }
+                    >
+                        Could not load rules
+                    </EmptyRow>
+                ) : rules.length === 0 ? (
+                    <EmptyRow
+                        action={
+                            <SecondaryButton onClick={() => navigate(NEW_RULE_PATH)}>
                                 New rule
                             </SecondaryButton>
                         }
@@ -96,70 +111,65 @@ const RulesList: React.FC = () => {
                     <EmptyRow>No results for "{query.trim()}"</EmptyRow>
                 ) : (
                     <ListRows>
-                        {filtered.map((rule) => {
-                            const locked = isPluginOff(plugins, rule.plugin)
-                            const isOwn = !rule.plugin
-                            return (
-                                <ListRow key={rule.name} onClick={() => toItem('rules', rule.name)}>
-                                    <span className="flex-1 min-w-0 flex flex-col">
-                                        <span className="font-mono text-[#D6D5C9] truncate">
-                                            {rule.name}
-                                        </span>
-                                        <span className="md:hidden text-[12px] text-[#7B7A79] truncate">
-                                            {rule.plugin ?? 'You'} · {TRIGGER_LABEL[rule.when]}
-                                        </span>
-                                    </span>
-                                    <span className="hidden md:block w-[130px] truncate text-[12.5px] text-[#7B7A79]">
-                                        {rule.plugin ?? 'You'}
-                                    </span>
-                                    <span className="hidden md:block w-[80px] text-[12.5px] text-[#7B7A79]">
-                                        {TRIGGER_LABEL[rule.when]}
-                                    </span>
-                                    <span className="hidden md:block w-[70px] text-[12.5px] text-[#7B7A79]">
-                                        {formatKib(byteSize(rule.body))}
-                                    </span>
-                                    <span className="md:w-[104px] flex items-center justify-end gap-2">
-                                        {isOwn && (
-                                            <RowActions
-                                                noun="rule"
-                                                onEdit={() => toItem('rules', rule.name)}
-                                                onDelete={() => setDeleting(rule.name)}
-                                            />
+                        {filtered.map((rule) => (
+                            <ListRow key={rule.name} onClick={() => toItem('rules', rule.name)}>
+                                <span className="flex-1 min-w-0 flex flex-col">
+                                    <span
+                                        className={cn(
+                                            'font-mono truncate',
+                                            rule.enabled ? 'text-[#D6D5C9]' : 'text-[#7B7A79]'
                                         )}
-                                        <Switch
-                                            checked={rule.enabled && !locked}
-                                            disabled={locked}
-                                            disabledReason="Plugin is off"
-                                            label={`Turn ${rule.name} on or off`}
-                                            onChange={(on) => setRuleEnabled(rule.name, on)}
-                                        />
-                                        {isOwn && (
-                                            <MoreMenu
-                                                mobileOnly
-                                                label={`${rule.name} options`}
-                                                items={[
-                                                    {
-                                                        label: 'Delete rule',
-                                                        danger: true,
-                                                        onClick: () => setDeleting(rule.name),
-                                                    },
-                                                ]}
-                                            />
-                                        )}
+                                    >
+                                        {rule.name}
                                     </span>
-                                </ListRow>
-                            )
-                        })}
+                                    <span className="md:hidden text-[12px] text-[#7B7A79] truncate">
+                                        {formatKib(utf8Bytes(rule.body))}
+                                    </span>
+                                </span>
+                                <span className="hidden md:block w-[80px] text-[12.5px] text-[#7B7A79]">
+                                    {formatKib(utf8Bytes(rule.body))}
+                                </span>
+                                <span className="md:w-[136px] flex items-center justify-end gap-2">
+                                    <RowActions
+                                        noun="rule"
+                                        onEdit={() => toItem('rules', rule.name)}
+                                        onDelete={() => setDeleting(rule.name)}
+                                    />
+                                    <Switch
+                                        checked={rule.enabled}
+                                        label={`Turn ${rule.name} on or off`}
+                                        onChange={(on) =>
+                                            run(
+                                                setRuleEnabled(rule.name, on),
+                                                'Could not update the rule'
+                                            )
+                                        }
+                                    />
+                                    <MoreMenu
+                                        mobileOnly
+                                        label={`${rule.name} options`}
+                                        items={[
+                                            {
+                                                label: 'Delete rule',
+                                                danger: true,
+                                                onClick: () => setDeleting(rule.name),
+                                            },
+                                        ]}
+                                    />
+                                </span>
+                            </ListRow>
+                        ))}
                     </ListRows>
                 )}
             </ListBox>
             <ConfirmModal
                 isOpen={deleting !== null}
                 title={`Delete ${deleting ?? ''}?`}
+                body="Sessions stop following this rule."
                 confirmLabel="Delete"
                 onClose={() => setDeleting(null)}
                 onConfirm={() => {
-                    if (deleting) deleteRule(deleting)
+                    if (deleting) run(deleteRule(deleting), 'Could not delete the rule')
                     setDeleting(null)
                 }}
             />
@@ -167,63 +177,110 @@ const RulesList: React.FC = () => {
     )
 }
 
-const emptyRule: ConnectionsRule = { name: '', when: 'always', body: '', enabled: true }
+type RuleDraft = { name: string; body: string }
 
 const RuleEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
+    const { toTab } = useConnectionsNav()
+    const data = useRules()
+
+    // the form starts from the saved rule, so it waits for the list
+    if (data.isLoading) {
+        return (
+            <div className="flex flex-col">
+                <BackLink label="Rules" onClick={() => toTab('rules')} />
+                <ListBox className="mt-4">
+                    <ListSkeleton />
+                </ListBox>
+            </div>
+        )
+    }
+    return <RuleForm itemId={itemId} data={data} />
+}
+
+const RuleForm: React.FC<{ itemId: string; data: ReturnType<typeof useRules> }> = ({
+    itemId,
+    data,
+}) => {
     const { toTab, toItem } = useConnectionsNav()
-    const rules = useConnectionsStore((s) => s.rules)
-    const plugins = useConnectionsStore((s) => s.plugins)
-    const saveRule = useConnectionsStore((s) => s.saveRule)
-    const deleteRule = useConnectionsStore((s) => s.deleteRule)
-    const setRuleEnabled = useConnectionsStore((s) => s.setRuleEnabled)
+    const { rules, loadFailed, saveRule, deleteRule, setRuleEnabled } = data
 
     const isNew = itemId === 'new'
-    const existing = rules.find((r) => r.name === itemId)
-    const [draft, setDraft] = React.useState<ConnectionsRule>(existing ?? emptyRule)
+    const existing: ApiRule | undefined = rules.find((rule) => rule.name === itemId)
+    const [draft, setDraft] = React.useState<RuleDraft>({
+        name: existing?.name ?? '',
+        body: existing?.body ?? '',
+    })
     const [touched, setTouched] = React.useState(false)
     const [isDeleting, setIsDeleting] = React.useState(false)
+    const [isSaving, setIsSaving] = React.useState(false)
+    const [actionError, setActionError] = React.useState<string | null>(null)
     const [saved, flashSaved] = useFlash()
 
-    const readOnly = Boolean(existing?.plugin)
-    const locked = isPluginOff(plugins, existing?.plugin)
-    const isDirty =
-        !readOnly &&
-        (isNew
-            ? Boolean(draft.name || draft.body)
-            : JSON.stringify(draft) !== JSON.stringify(existing))
-    const { guard, modal } = useUnsavedGuard(isDirty)
+    const isDirty = isNew
+        ? Boolean(draft.name || draft.body)
+        : Boolean(existing && (draft.name !== existing.name || draft.body !== existing.body))
+    const { guard, modal } = useUnsavedGuard(isDirty && !isSaving)
 
     if (!isNew && !existing) {
         return (
             <div className="flex flex-col">
                 <BackLink label="Rules" onClick={() => toTab('rules')} />
                 <ListBox className="mt-4">
-                    <EmptyRow>Rule not found</EmptyRow>
+                    <EmptyRow>{loadFailed ? 'Could not load rules' : 'Rule not found'}</EmptyRow>
                 </ListBox>
             </div>
         )
     }
 
-    const size = byteSize(draft.body)
-    const isOverLimit = size > RULE_SIZE_LIMIT
-    const nameTaken = rules.some((r) => r.name === draft.name && r.name !== existing?.name)
+    const size = utf8Bytes(draft.body)
+    const isOverLimit = size > RULE_MAX_BYTES
+    const nameTaken = rules.some((rule) => rule.name === draft.name && rule.name !== existing?.name)
     const nameError = !draft.name
-        ? null
-        : !NAME_PATTERN.test(draft.name)
-          ? 'Use lowercase letters, numbers and hyphens'
+        ? touched
+            ? 'Add a name'
+            : null
+        : !RULE_NAME_PATTERN.test(draft.name)
+          ? 'Use lowercase letters, numbers and dashes'
           : nameTaken
             ? 'You already have a rule with this name'
             : null
-    const canSave = Boolean(draft.name && draft.body.trim() && !nameError && isDirty)
+    const bodyError =
+        touched && !draft.body.trim()
+            ? 'Write the rule'
+            : isOverLimit
+              ? `A rule is at most ${RULE_MAX_BYTES / 1024} KiB`
+              : null
+    const canSave = Boolean(
+        draft.name && draft.body.trim() && !nameError && !isOverLimit && isDirty && !isSaving
+    )
 
-    const handleSave = () => {
+    /** runs a change. a change the server refuses shows in the form */
+    const run = async (change: () => Promise<void>, fallback: string) => {
+        setActionError(null)
+        try {
+            await change()
+        } catch (error) {
+            setActionError(connectionErrorMessage(error, fallback))
+        }
+    }
+
+    const handleSave = async () => {
         setTouched(true)
         if (!canSave) return
-        saveRule(draft, existing?.name)
-        flashSaved()
-        if (isNew || draft.name !== existing?.name) {
-            toItem('rules', draft.name, { replace: true })
-        }
+        setIsSaving(true)
+        await run(async () => {
+            const result = await saveRule(
+                // the switch owns `enabled`, so a save keeps the saved value
+                { name: draft.name, body: draft.body, enabled: existing?.enabled ?? true },
+                existing?.name
+            )
+            setDraft({ name: result.name, body: result.body })
+            flashSaved()
+            if (isNew || result.name !== existing?.name) {
+                toItem('rules', result.name, { replace: true })
+            }
+        }, 'Could not save the rule')
+        setIsSaving(false)
     }
 
     return (
@@ -231,12 +288,12 @@ const RuleEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
             className="flex flex-col"
             onSubmit={(e) => {
                 e.preventDefault()
-                handleSave()
+                void handleSave()
             }}
             onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 's') {
                     e.preventDefault()
-                    handleSave()
+                    void handleSave()
                 }
             }}
         >
@@ -244,85 +301,54 @@ const RuleEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
             <DetailHeader title={isNew ? 'New rule' : existing?.name} mono={!isNew}>
                 {existing && (
                     <Switch
-                        checked={existing.enabled && !locked}
-                        disabled={locked}
-                        disabledReason="Plugin is off"
+                        checked={existing.enabled}
                         label="Turn this rule on or off"
-                        onChange={(on) => setRuleEnabled(existing.name, on)}
+                        onChange={(on) =>
+                            run(
+                                () => setRuleEnabled(existing.name, on),
+                                'Could not update the rule'
+                            )
+                        }
                     />
                 )}
-                {existing?.plugin && <Pill>{existing.plugin}</Pill>}
                 <span className="flex-1" />
-                {readOnly ? (
-                    <SecondaryButton onClick={() => toItem('plugins', existing?.plugin ?? '')}>
-                        Open plugin
-                    </SecondaryButton>
-                ) : (
-                    <>
-                        {saved && <DoneHint>Saved</DoneHint>}
-                        <GhostButton onClick={() => guard(() => toTab('rules'))}>
-                            Cancel
-                        </GhostButton>
-                        <WhiteButton type="submit" disabled={!canSave}>
-                            Save rule
-                        </WhiteButton>
-                        {existing && (
-                            <MoreMenu
-                                label="Rule options"
-                                items={[
-                                    {
-                                        label: 'Duplicate',
-                                        onClick: () => {
-                                            const copy = {
-                                                ...existing,
-                                                name: `${existing.name}-copy`,
-                                            }
-                                            saveRule(copy)
-                                            setDraft(copy)
-                                            toItem('rules', copy.name)
-                                        },
-                                    },
-                                    {
-                                        label: 'Delete rule',
-                                        danger: true,
-                                        onClick: () => setIsDeleting(true),
-                                    },
-                                ]}
-                            />
-                        )}
-                    </>
+                {saved && <DoneHint>Saved</DoneHint>}
+                <span className="hidden md:block">
+                    <GhostButton onClick={() => guard(() => toTab('rules'))}>Cancel</GhostButton>
+                </span>
+                <WhiteButton type="submit" disabled={!canSave}>
+                    {isSaving ? 'Saving' : 'Save rule'}
+                </WhiteButton>
+                {existing && (
+                    <MoreMenu
+                        label="Rule options"
+                        items={[
+                            {
+                                label: 'Delete rule',
+                                danger: true,
+                                onClick: () => setIsDeleting(true),
+                            },
+                        ]}
+                    />
                 )}
             </DetailHeader>
 
             <div className="flex flex-col gap-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1.5">
-                        <label htmlFor="rule-name" className={fieldLabelClass}>
-                            Name
-                        </label>
-                        <input
-                            id="rule-name"
-                            autoFocus={isNew}
-                            readOnly={readOnly}
-                            value={draft.name}
-                            placeholder="e.g. code-style"
-                            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                            className={cn(inputClass, 'font-mono')}
-                        />
-                        {(touched || draft.name) && <FormError>{nameError}</FormError>}
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        <span className={fieldLabelClass}>When</span>
-                        <ChoiceGroup
-                            label="When the rule is used"
-                            value={draft.when}
-                            onChange={(when) => !readOnly && setDraft((d) => ({ ...d, when }))}
-                            options={[
-                                { value: 'always', label: 'Always' },
-                                { value: 'manual', label: 'Manual' },
-                            ]}
-                        />
-                    </div>
+                <FormError>{actionError}</FormError>
+                <div className="flex flex-col gap-1.5 md:max-w-[50%]">
+                    <label htmlFor="rule-name" className={fieldLabelClass}>
+                        Name
+                    </label>
+                    <input
+                        id="rule-name"
+                        autoFocus={isNew}
+                        value={draft.name}
+                        maxLength={64}
+                        placeholder="e.g. code-style"
+                        onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value.trim() }))}
+                        className={cn(inputClass, 'font-mono')}
+                    />
+                    <FormError>{nameError}</FormError>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
@@ -336,20 +362,18 @@ const RuleEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
                                 isOverLimit ? 'text-red-500' : 'text-[#7B7A79]'
                             )}
                         >
-                            {formatKib(size)} / 16 KiB
+                            {formatKib(size)} / {RULE_MAX_BYTES / 1024} KiB
                         </span>
                     </div>
                     <textarea
                         id="rule-body"
-                        readOnly={readOnly}
                         value={draft.body}
                         rows={14}
                         placeholder="- Use arrow functions in services."
                         onChange={(e) => setDraft((d) => ({ ...d, body: e.target.value }))}
                         className={textareaClass}
                     />
-                    {isOverLimit && <FormError>Only the first 16 KiB is used.</FormError>}
-                    {touched && !draft.body.trim() && <FormError>Write the rule</FormError>}
+                    <FormError>{bodyError}</FormError>
                 </div>
             </div>
 
@@ -357,12 +381,16 @@ const RuleEditor: React.FC<{ itemId: string }> = ({ itemId }) => {
             <ConfirmModal
                 isOpen={isDeleting}
                 title={`Delete ${existing?.name ?? ''}?`}
+                body="Sessions stop following this rule."
                 confirmLabel="Delete"
                 onClose={() => setIsDeleting(false)}
                 onConfirm={() => {
-                    if (existing) deleteRule(existing.name)
                     setIsDeleting(false)
-                    toTab('rules')
+                    if (!existing) return
+                    void run(async () => {
+                        await deleteRule(existing.name)
+                        toTab('rules')
+                    }, 'Could not delete the rule')
                 }}
             />
         </form>

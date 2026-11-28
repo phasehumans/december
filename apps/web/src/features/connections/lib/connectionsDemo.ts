@@ -1,12 +1,8 @@
 /**
- * Connections demo mode
+ * The settings preview flag. Settings sections that have no server yet stay behind it and
+ * show a Demo pill (usePreviewOn in SettingsUi.tsx). Every Connections tab has a server now.
  *
- * The Apps, Skills and MCPs tabs have a backend. The other tabs (plugins, hooks,
- * rules, memory) run on local demo data and stay hidden behind this flag: normal
- * users see a "coming soon" state on those tabs. With the flag on, Skills and MCPs
- * also read the local demo data, because the sample plugins add skills and servers.
- *
- * To turn it on: open any /connections page with ?demo, or set
+ * To turn it on: open a settings page with ?demo, or set
  * localStorage.preview_connections = 'true'. To turn it off: ?demo=off.
  */
 const STORAGE_KEY = 'preview_connections'

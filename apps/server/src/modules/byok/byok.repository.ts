@@ -27,9 +27,11 @@ const findCredentialSummary = async (userId: string, provider: string) => {
     })
 }
 
+// the only read that returns the encrypted key; used to check a saved key again
 const findCredentialWithKey = async (userId: string, provider: string) => {
     return prisma.providerCredential.findUnique({
         where: { userId_provider: { userId, provider } },
+        select: { ...summarySelect, encryptedKey: true },
     })
 }
 
@@ -43,13 +45,18 @@ const upsertCredential = async (data: UpsertCredentialData) => {
     })
 }
 
+/**
+ * Saves the result of "check again". The row changes only while it still holds the key that
+ * was checked: a key saved or removed during the check is not overwritten with the models of
+ * the old key. Returns false when the row changed.
+ */
 const updateVerification = async (data: UpdateVerificationData) => {
-    const { userId, provider, models, defaultModel, verifiedAt } = data
-    return prisma.providerCredential.update({
-        where: { userId_provider: { userId, provider } },
+    const { userId, provider, encryptedKey, models, defaultModel, verifiedAt } = data
+    const result = await prisma.providerCredential.updateMany({
+        where: { userId, provider, encryptedKey },
         data: { models, defaultModel, verifiedAt },
-        select: summarySelect,
     })
+    return result.count > 0
 }
 
 const deleteCredential = async (userId: string, provider: string) => {

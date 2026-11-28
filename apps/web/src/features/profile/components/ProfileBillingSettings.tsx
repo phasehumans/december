@@ -2,26 +2,30 @@ import { useQuery } from '@tanstack/react-query'
 import React, { useState } from 'react'
 
 import { AddCreditsModal } from './AddCreditsModal'
-import { BillingLimitsSection, ReferralRow } from './BillingPreviewSections'
+import { BillingLimitsSection, ReferralRow } from './BillingSections'
 import { FreeCreditsSection } from './FreeCreditsSection'
-import { ProfileBillingSkeleton } from './ProfileSettingsSkeleton'
+import { ListPager } from './ListPager'
+import { ProfileBillingHistorySkeleton, ProfileBillingSkeleton } from './ProfileSettingsSkeleton'
 import {
     PAGE_SUBTITLES,
     blueButtonClass,
+    listBoxClass,
     listEmptyClass,
     listHeaderClass,
+    listRowNoteClass,
+    listRowTitleClass,
     listRowsClass,
     textLinkClass,
 } from './settingsStyles'
-import { SettingsPage, SettingsSection } from './SettingsUi'
+import { SettingsEmptyArt, SettingsPage, SettingsSection } from './SettingsUi'
 
-import { billingAPI } from '@/features/billing/api/billing'
-import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
-import { ListBox } from '@/features/connections/components/ConnectionsUi'
+import { billingAPI, type BillingTransaction } from '@/features/billing/api/billing'
+import { useBillingOverview, useBillingTransactions } from '@/features/billing/hooks/useBillingData'
 import { profileAPI } from '@/features/profile/api/profile'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { downloadBlob } from '@/shared/lib/downloadBlob'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
+import { cn } from '@/shared/lib/utils'
 
 interface ProfileBillingSettingsProps {
     profile?: {
@@ -30,15 +34,203 @@ interface ProfileBillingSettingsProps {
     }
 }
 
-interface CreditTransaction {
-    id: string
-    date: string
-    type: 'purchase' | 'gift'
-    methodOrCode: string
-    amountInCents: number
-    status: 'SUCCESS' | 'PENDING' | 'FAILED'
-    // a payment that went through has a receipt. free credits, a credit change and a code do not
-    hasReceipt: boolean
+/** "$12.50", and "-$0.40" for a balance under zero (a run can take a little more than is left) */
+const formatMoney = (cents: number) =>
+    `${cents < 0 ? '-' : ''}$${(Math.abs(cents) / 100).toFixed(2)}`
+
+/** "+$10.00" for credits in, "-$5.00" for credits an admin took out */
+const formatChange = (cents: number) => `${cents < 0 ? '-' : '+'}${formatMoney(Math.abs(cents))}`
+
+const DETAILS: Record<BillingTransaction['kind'], string> = {
+    payment: 'Card or UPI',
+    grant: 'Free credits',
+    adjustment: 'Credit change',
+    referral: 'Referral',
+    code: 'Code',
+}
+
+const detailsOf = (tx: BillingTransaction) =>
+    tx.kind === 'code' && tx.code ? `Code ${tx.code}` : DETAILS[tx.kind]
+
+const STATUS = {
+    SUCCESS: { label: 'Paid', color: 'text-emerald-500' },
+    FAILED: { label: 'Failed', color: 'text-red-500' },
+} as const
+
+const statusOf = (tx: BillingTransaction) =>
+    tx.status === 'FAILED'
+        ? STATUS.FAILED
+        : { ...STATUS.SUCCESS, label: tx.kind === 'payment' ? 'Paid' : 'Added' }
+
+const formatDay = (iso: string) =>
+    new Date(iso).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    })
+
+// one grid for the header band and the rows on desktop. no plain "grid": with "hidden" in
+// the same cn() call, tailwind-merge would keep only one of the two
+const historyGridClass = 'hidden md:grid grid-cols-[120px_1fr_80px_100px_64px] gap-3 items-center'
+
+const HistoryHeader: React.FC = () => (
+    <div className={listHeaderClass}>
+        <div className="flex md:hidden items-center justify-between">
+            <span>Details / Date</span>
+            <span>Amount</span>
+        </div>
+        <div className={historyGridClass}>
+            <div>Date</div>
+            <div>Details</div>
+            <div>Status</div>
+            <div className="text-right">Amount</div>
+            <div className="text-right">Receipt</div>
+        </div>
+    </div>
+)
+
+/**
+ * Payments, free credits, referral credits and credit changes, one page at a time from the
+ * server. Phones get two lines for each row, so the list never scrolls sideways.
+ */
+const BillingHistory: React.FC = () => {
+    const [limit, setLimit] = useState(10)
+    const [offset, setOffset] = useState(0)
+    const { data, isLoading, error } = useBillingTransactions({ limit, offset })
+    const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null)
+    const [receiptError, setReceiptError] = useState<string | null>(null)
+
+    // the receipt is fetched, not linked: the request needs the sign-in of the user
+    const handleDownloadReceipt = async (tx: BillingTransaction) => {
+        if (receiptLoadingId) return
+        setReceiptError(null)
+        setReceiptLoadingId(tx.id)
+        try {
+            const receipt = await billingAPI.downloadReceipt(tx.id)
+            const day = new Date(tx.createdAt)
+            const fallbackName = `december-receipt-${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}.pdf`
+            downloadBlob(receipt.blob, receipt.fileName ?? fallbackName)
+        } catch (err) {
+            console.error('Failed to download the receipt:', err)
+            setReceiptError('The receipt did not download. Try again.')
+        } finally {
+            setReceiptLoadingId(null)
+        }
+    }
+
+    const items = data?.items ?? []
+    const total = data?.total ?? 0
+
+    const receiptButton = (tx: BillingTransaction) => (
+        <button
+            type="button"
+            onClick={() => void handleDownloadReceipt(tx)}
+            disabled={receiptLoadingId === tx.id}
+            aria-label={`Download the receipt of ${formatDay(tx.createdAt)}`}
+            className={textLinkClass}
+        >
+            PDF
+        </button>
+    )
+
+    return (
+        <SettingsSection title="History" description="Payments and credits added." bare>
+            <div className={listBoxClass}>
+                <HistoryHeader />
+                {isLoading ? (
+                    <div className="px-3.5 md:px-4">
+                        <ProfileBillingHistorySkeleton />
+                    </div>
+                ) : error ? (
+                    <div className={listEmptyClass}>History did not load. Reload the page.</div>
+                ) : items.length === 0 ? (
+                    <SettingsEmptyArt art="payments" title="No payments yet" />
+                ) : (
+                    <div className={listRowsClass}>
+                        {items.map((tx) => {
+                            const status = statusOf(tx)
+                            const day = formatDay(tx.createdAt)
+                            const amountClass =
+                                tx.status === 'FAILED'
+                                    ? 'text-[#7B7A79] line-through'
+                                    : 'text-[#D6D5C9]'
+                            return (
+                                <div
+                                    key={tx.id}
+                                    data-testid="history-row"
+                                    className="px-3.5 md:px-4 py-3 text-[13px]"
+                                >
+                                    {/* phones: details and amount, then date, status and PDF */}
+                                    <div className="md:hidden flex flex-col gap-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className={listRowTitleClass}>
+                                                {detailsOf(tx)}
+                                            </span>
+                                            <span
+                                                className={cn(
+                                                    'font-mono font-medium shrink-0',
+                                                    amountClass
+                                                )}
+                                            >
+                                                {formatChange(tx.amountInCents)}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className={listRowNoteClass}>
+                                                {day} ·{' '}
+                                                <span className={cn('font-medium', status.color)}>
+                                                    {status.label}
+                                                </span>
+                                            </span>
+                                            {tx.hasReceipt && (
+                                                <span className="shrink-0 text-[12px]">
+                                                    {receiptButton(tx)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* desktop: one row of the grid */}
+                                    <div className={historyGridClass}>
+                                        <div className="text-[#7B7A79] truncate">{day}</div>
+                                        <div className={listRowTitleClass} title={detailsOf(tx)}>
+                                            {detailsOf(tx)}
+                                        </div>
+                                        <div className={cn('font-medium', status.color)}>
+                                            {status.label}
+                                        </div>
+                                        <div
+                                            className={cn(
+                                                'text-right font-mono font-medium',
+                                                amountClass
+                                            )}
+                                        >
+                                            {formatChange(tx.amountInCents)}
+                                        </div>
+                                        <div className="text-right text-[#7B7A79]">
+                                            {tx.hasReceipt ? receiptButton(tx) : '-'}
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+            </div>
+            <ListPager
+                total={total}
+                limit={limit}
+                offset={offset}
+                onOffsetChange={setOffset}
+                onLimitChange={(next) => {
+                    setLimit(next)
+                    setOffset(0)
+                }}
+                className="mt-2"
+            />
+            <ErrorAlert message={receiptError} onClear={() => setReceiptError(null)} />
+        </SettingsSection>
+    )
 }
 
 export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (props) => {
@@ -57,68 +249,6 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
     } = useBillingOverview()
 
     const [showAddCreditsModal, setShowAddCreditsModal] = useState(false)
-    const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null)
-    const [receiptError, setReceiptError] = useState<string | null>(null)
-
-    // the receipt is fetched, not linked: the request needs the sign-in of the user
-    const handleDownloadReceipt = async (tx: CreditTransaction) => {
-        setReceiptError(null)
-        setReceiptLoadingId(tx.id)
-        try {
-            const receipt = await billingAPI.downloadReceipt(tx.id)
-            const day = new Date(tx.date)
-            const fallbackName = `december-receipt-${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}.pdf`
-            downloadBlob(receipt.blob, receipt.fileName ?? fallbackName)
-        } catch (error) {
-            console.error('Failed to download the receipt:', error)
-            setReceiptError('The receipt did not download. Try again.')
-        } finally {
-            setReceiptLoadingId(null)
-        }
-    }
-
-    const formatCents = (cents: number | null) => {
-        if (cents === null) return 'Unlimited'
-        return `$${(cents / 100).toFixed(2)}`
-    }
-
-    const mergedHistory = React.useMemo(() => {
-        if (!overview) return []
-
-        const dbClaims: CreditTransaction[] = (overview.claims || []).map((claim: any) => ({
-            id: claim.id,
-            date: claim.createdAt,
-            type: 'gift',
-            methodOrCode: `Promo code ${claim.code}`,
-            amountInCents: claim.amountInCents,
-            status: 'SUCCESS',
-            hasReceipt: false,
-        }))
-
-        const dbTransactions: CreditTransaction[] = (overview.transactions || [])
-            .filter((tx: any) => tx.status !== 'PENDING')
-            .map((tx: any) => ({
-                id: tx.id,
-                date: tx.createdAt,
-                type: 'purchase',
-                methodOrCode:
-                    tx.provider === 'GRANT'
-                        ? 'Free credits'
-                        : tx.provider === 'ADJUSTMENT'
-                          ? 'Credit change'
-                          : tx.provider === 'REFERRAL'
-                            ? 'Referral'
-                            : 'Card/UPI (Razorpay)',
-                amountInCents: tx.amountInCents,
-                status: tx.status as 'SUCCESS' | 'PENDING' | 'FAILED',
-                hasReceipt:
-                    tx.status === 'SUCCESS' &&
-                    (tx.provider === 'RAZORPAY' || tx.provider === 'COINBASE'),
-            }))
-
-        const combined = [...dbClaims, ...dbTransactions]
-        return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    }, [overview])
 
     if (isOverviewLoading || isSkeletonPreviewActive()) {
         return (
@@ -142,7 +272,7 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
         )
     }
 
-    const remainingInCents = overview.creditBalance ?? 0
+    const balance = overview.creditBalance ?? 0
 
     return (
         <>
@@ -151,25 +281,29 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
                 subtitle={PAGE_SUBTITLES.billing}
                 className="animate-in fade-in duration-200"
             >
-                {/* credits: a section like the ones on Account. the balance and its two
-                    buttons are one box on desktop and on phones */}
+                {/* credits: a section like the ones on Account. the balance and its button
+                    are one box on desktop and on phones */}
                 <SettingsSection title="Credits" description="Your balance, and how to add to it.">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1 min-w-0">
                             <span className="text-[12px] font-medium text-[#7B7A79]">Balance</span>
-                            <span className="text-[24px] sm:text-[28px] font-medium text-[#D6D5C9] font-mono leading-none tracking-tight">
-                                {formatCents(remainingInCents)}
+                            <span
+                                data-testid="credit-balance"
+                                className={cn(
+                                    'text-[24px] sm:text-[28px] font-medium font-mono leading-none tracking-tight truncate',
+                                    balance < 0 ? 'text-red-400' : 'text-[#D6D5C9]'
+                                )}
+                            >
+                                {formatMoney(balance)}
                             </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setShowAddCreditsModal(true)}
-                                className={`${blueButtonClass} flex-1 sm:flex-initial text-center`}
-                            >
-                                Add credits
-                            </button>
-                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowAddCreditsModal(true)}
+                            className={`${blueButtonClass} w-full sm:w-auto text-center`}
+                        >
+                            Add credits
+                        </button>
                     </div>
                     <ReferralRow />
                 </SettingsSection>
@@ -178,159 +312,9 @@ export const ProfileBillingSettings: React.FC<ProfileBillingSettingsProps> = (pr
 
                 <BillingLimitsSection />
 
-                {/* history: the same list box as Secrets and Usage */}
-                <SettingsSection title="History" description="Payments and codes you added." bare>
-                    <ListBox>
-                        {mergedHistory.length === 0 ? (
-                            <div className={listEmptyClass}>No payments yet</div>
-                        ) : (
-                            <>
-                                <div
-                                    className={`hidden md:grid grid-cols-12 gap-2 ${listHeaderClass}`}
-                                >
-                                    <div className="col-span-3">Date</div>
-                                    <div className="col-span-4">Details</div>
-                                    <div className="col-span-2">Status</div>
-                                    <div className="col-span-2 text-right">Amount</div>
-                                    <div className="col-span-1 text-right">Receipt</div>
-                                </div>
-
-                                <div className={listRowsClass}>
-                                    {mergedHistory.map((tx) => {
-                                        const formattedDate = new Date(tx.date).toLocaleDateString(
-                                            undefined,
-                                            {
-                                                year: 'numeric',
-                                                month: 'short',
-                                                day: 'numeric',
-                                            }
-                                        )
-                                        const txId =
-                                            tx.id.startsWith('claim_') || tx.id.length < 5
-                                                ? tx.id
-                                                : `tx_${tx.id}`
-
-                                        // status styling mapping
-                                        const statusConfig = {
-                                            SUCCESS: {
-                                                label: 'Success',
-                                                color: 'text-emerald-500',
-                                            },
-                                            PENDING: { label: 'Pending', color: 'text-amber-500' },
-                                            FAILED: { label: 'Failed', color: 'text-red-500' },
-                                        }[tx.status] || {
-                                            label: tx.status,
-                                            color: 'text-neutral-500',
-                                        }
-
-                                        return (
-                                            <div
-                                                key={tx.id}
-                                                className="px-3.5 md:px-4 py-3 text-[13px]"
-                                            >
-                                                {/* phones: two lines */}
-                                                <div className="md:hidden flex items-start justify-between gap-2">
-                                                    <div className="flex flex-col min-w-0 pr-2">
-                                                        <span className="text-[#D6D5C9] font-medium truncate">
-                                                            {tx.methodOrCode}
-                                                        </span>
-                                                        <div className="flex items-center gap-1.5 text-[11.5px] text-[#7B7A79] mt-0.5">
-                                                            <span>{formattedDate}</span>
-                                                            <span>•</span>
-                                                            <span
-                                                                className={`font-medium ${statusConfig.color}`}
-                                                            >
-                                                                {statusConfig.label}
-                                                            </span>
-                                                        </div>
-                                                        <span className="text-[11px] text-[#7B7A79] mt-0.5 truncate select-all">
-                                                            {txId}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex flex-col items-end gap-1 shrink-0 pt-0.5">
-                                                        <span className="font-medium text-emerald-400 text-[13.5px]">
-                                                            {tx.amountInCents < 0 ? '-' : '+'}
-                                                            {formatCents(
-                                                                Math.abs(tx.amountInCents)
-                                                            )}
-                                                        </span>
-                                                        {tx.hasReceipt && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    handleDownloadReceipt(tx)
-                                                                }
-                                                                disabled={
-                                                                    receiptLoadingId === tx.id
-                                                                }
-                                                                className={`text-[12px] ${textLinkClass}`}
-                                                            >
-                                                                PDF
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* desktop: one grid row */}
-                                                <div className="hidden md:grid grid-cols-12 gap-2 items-center">
-                                                    <div className="col-span-3 text-[#7B7A79]">
-                                                        {formattedDate}
-                                                    </div>
-                                                    <div className="col-span-4 flex flex-col min-w-0 pr-2">
-                                                        <span
-                                                            className="text-[#D6D5C9] font-medium truncate"
-                                                            title={tx.methodOrCode}
-                                                        >
-                                                            {tx.methodOrCode}
-                                                        </span>
-                                                        <span
-                                                            className="text-[11px] text-[#7B7A79] mt-0.5 truncate select-all"
-                                                            title={txId}
-                                                        >
-                                                            {txId}
-                                                        </span>
-                                                    </div>
-                                                    <div
-                                                        className={`col-span-2 font-medium ${statusConfig.color}`}
-                                                    >
-                                                        {statusConfig.label}
-                                                    </div>
-                                                    <div className="col-span-2 text-right text-[#D6D5C9] font-medium">
-                                                        {tx.amountInCents < 0 ? '-' : '+'}
-                                                        {formatCents(Math.abs(tx.amountInCents))}
-                                                    </div>
-                                                    <div className="col-span-1 text-right text-[#7B7A79]">
-                                                        {tx.hasReceipt ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    handleDownloadReceipt(tx)
-                                                                }
-                                                                disabled={
-                                                                    receiptLoadingId === tx.id
-                                                                }
-                                                                className={textLinkClass}
-                                                            >
-                                                                PDF
-                                                            </button>
-                                                        ) : (
-                                                            '-'
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </>
-                        )}
-                    </ListBox>
-                </SettingsSection>
+                <BillingHistory />
             </SettingsPage>
 
-            <ErrorAlert message={receiptError} onClear={() => setReceiptError(null)} />
-
-            {/* modals */}
             {showAddCreditsModal && (
                 <AddCreditsModal onClose={() => setShowAddCreditsModal(false)} />
             )}

@@ -12,7 +12,9 @@
         "./commands": "./src/commands/index.ts",
         "./review": "./src/review-prompt.ts",
         "./attachments": "./src/attachments.ts",
-        "./pull-request-settings": "./src/pull-request-settings.ts"
+        "./pull-request-settings": "./src/pull-request-settings.ts",
+        "./secrets": "./src/secrets.ts",
+        "./agent-context": "./src/agent-context.ts"
     },
     "private": true,
     "scripts": {

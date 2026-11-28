@@ -6,7 +6,7 @@ import {
     openrouterProvider,
     anthropicProvider,
 } from '@december/providers'
-import { isGithubRun } from '@december/shared'
+import { appendHookContext, attachUserHooks, isGithubRun } from '@december/shared'
 import {
     AskQuestionTool,
     BashTool,
@@ -25,11 +25,18 @@ import {
 import { Sandbox } from 'e2b'
 import Redis from 'ioredis'
 
+import {
+    createMemoryTool,
+    loadAccountContext,
+    readSessionTitle,
+    withAccountContext,
+} from './account-context'
 import { readJobAttachments, writeTurnAttachments } from './attachments'
 import {
     buildSkillRules,
     connectAgentMcpServers,
     disconnectAgentMcpServers,
+    loadPluginFiles,
     loadUserConnections,
     pickTurnSkills,
 } from './connections'
@@ -37,21 +44,24 @@ import { resolveGitToken, resolveSessionGit, withGitToken } from './git-remote'
 import { getGithubRunToken, prepareGithubWorkspace } from './github-run'
 import { runModelConfig } from './llm-source'
 import { clearPendingQuestion } from './pending-question'
+import {
+    activePlugins,
+    connectPluginMcpServers,
+    installPluginsInSandbox,
+    pluginMcpServers,
+    pluginSkillRows,
+} from './plugins'
 import { gitIdentityCommand } from './pr-opening'
+import { projectRules } from './project-rules'
 import { publishWhenReady } from './redis-subscriber'
 import { RemotePlatformAdapter } from './remote-operations'
 import { failedRunEvents, runKillableCommand, stoppableRun } from './run-stop'
 import { E2B_SANDBOX_TIMEOUT_MS, reserveSandboxSlot, touchSandboxActivity } from './sandbox-limits'
-import { applySecretsToSandbox, secretEnvsOf } from './sandbox-secrets'
+import { applySecretsToSandbox, secretEnvsOf, toSecretEnvs } from './sandbox-secrets'
 import { buildDenyRulesHook, buildTurnPrompt, createTurnCheckpoint } from './session-commands'
-import {
-    SETUP_TIMEOUT_MS,
-    runSetupCommands,
-    setupRepoFullName,
-    withSetupFailure,
-} from './setup-commands'
 import { shellQuote } from './shell-quote'
 import { TerminalBridgeService } from './terminal-bridge.service'
+import { createSandboxHookRunner, questionText, toUserHooks } from './user-hooks'
 import { archiveWorkspaceState } from './workspace'
 
 import type {
@@ -71,7 +81,6 @@ import type {
     HandleDisconnectInput,
     EphemeralTaskInput,
     EphemeralTaskResult,
-    RunRepositorySetupInput,
 } from './e2b-sandbox.types'
 import type { SteeringItem } from './run-steering'
 import type { AgentMessage } from '@december/shared'
@@ -109,10 +118,6 @@ const lastKeepAliveAt = new Map<string, number>()
 
 // Active sandboxes cache in worker memory
 const activeSandboxes = new Map<string, any>()
-
-// sessions whose repository was cloned into a new sandbox by this worker: the run that
-// follows runs the setup commands of the repository once (#637). a resume is never here
-const sessionsAwaitingSetup = new Set<string>()
 
 // Active platform adapters tracking for graceful detach
 const activeAdapters = new Set<RemotePlatformAdapter>()
@@ -177,13 +182,8 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
     if (envs) {
         Object.assign(envsMap, envs)
     }
-    if (Array.isArray(secrets)) {
-        for (const s of secrets) {
-            if (s?.key && s?.value) {
-                envsMap[s.key] = s.value
-            }
-        }
-    }
+    // the same names as the secrets file: no name a shell cannot export, no system name
+    Object.assign(envsMap, toSecretEnvs(secrets))
 
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
@@ -448,9 +448,6 @@ const provisionSandbox = async (data: ProvisionSandboxInput): Promise<ProvisionS
                                     )
                                 })
                         }
-
-                        // a new clone: the run that follows runs the setup commands (#637)
-                        sessionsAwaitingSetup.add(sessionId)
 
                         if (githubRun) {
                             await prepareGithubWorkspace({ sandbox, sessionId, run: githubRun })
@@ -872,65 +869,6 @@ const executeCommand = async (
     return { exitCode: 0, output }
 }
 
-/**
- * Setup commands (#637): after the clone of a new sandbox, the commands the user saved for
- * the repository run once in the workspace, with a time limit and the stop of the run. The
- * chat shows them as a command. Gives the text for the agent when setup failed, or null.
- */
-async function* runRepositorySetup(
-    data: RunRepositorySetupInput
-): AsyncGenerator<{ data: string }, string | null, undefined> {
-    const { sessionId, userId, sandboxId, stop } = data
-    if (!userId || !sessionsAwaitingSetup.has(sessionId) || stop?.signal.aborted) return null
-
-    const session = await prisma.session
-        .findUnique({
-            where: { id: sessionId },
-            select: { githubRepoOwner: true, githubRepoName: true },
-        })
-        .catch(() => null)
-    const repoFullName = session ? setupRepoFullName(session) : null
-    const setting = repoFullName
-        ? await prisma.repositorySetting
-              .findUnique({
-                  where: { userId_repoFullName: { userId, repoFullName } },
-                  select: { setupCommands: true },
-              })
-              .catch(() => null)
-        : null
-    const commands = setting?.setupCommands.trim()
-    if (!commands) {
-        // nothing to run for this sandbox
-        sessionsAwaitingSetup.delete(sessionId)
-        return null
-    }
-
-    const setup = runSetupCommands({
-        toolCallId: `setup-${sessionId}-${Date.now()}`,
-        commands,
-        execute: (script, onData) =>
-            executeCommand({
-                sandboxId,
-                command: script,
-                cwd: '/workspace',
-                timeoutMs: SETUP_TIMEOUT_MS,
-                onData,
-                signal: stop?.signal,
-            }),
-        stopped: () => stop?.signal.aborted === true,
-    })
-    for (;;) {
-        const step = await setup.next()
-        if (step.done) {
-            // done only when setup ran to the end. after a stop it is still to do: the
-            // next run of this sandbox starts it again
-            if (step.value.completed) sessionsAwaitingSetup.delete(sessionId)
-            return step.value.note
-        }
-        yield { data: JSON.stringify(step.value) }
-    }
-}
-
 export const getLlmProvider = (providerName?: string, apiKey?: string) => {
     const key =
         apiKey ||
@@ -982,6 +920,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         userMessageSequence,
         skills: pickedSkillNames,
         disabledMcps,
+        disabledPlugins,
         attachments: jobAttachments,
     } = data
     console.log(`[E2BSandboxService] Starting in-sandbox agent runner session for ${sessionId}`)
@@ -1060,18 +999,54 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
     // the user's saved skills and mcp servers (#632): the skills the agent may run by
     // itself go into the rules, the mcp servers connect when the run starts
     const connections = await loadUserConnections(userId)
-    const rulesWithSkills = [effectiveUserRules, buildSkillRules(connections.skills)]
+    // installed plugins (connections page): their skills join the saved skills
+    const runPlugins = activePlugins({
+        plugins: connections.plugins,
+        disabledPlugins: disabledPlugins ?? [],
+    })
+    const runSkills = [
+        ...connections.skills,
+        ...pluginSkillRows({ plugins: runPlugins, ownSkills: connections.skills }),
+    ]
+    const rulesWithSkills = [effectiveUserRules, buildSkillRules(runSkills)]
         .filter(Boolean)
         .join('\n\n')
 
+    // the account rules and the memory (connections): the rules and memories go into the
+    // prompt, and the memory tool saves new ones while the user has memory on
+    const account = await loadAccountContext(userId)
+    const accountRules = withAccountContext({ context: account, userRules: rulesWithSkills })
+    const memoryTool =
+        userId && account.memoryEnabled
+            ? createMemoryTool({
+                  userId,
+                  sessionId: sessionId ?? null,
+                  sessionTitle: sessionId ? await readSessionTitle(sessionId) : null,
+                  memories: account.memories,
+                  secretValues: Array.isArray(secrets)
+                      ? secrets.map((s) => s.value).filter(Boolean)
+                      : [],
+              })
+            : null
+
+    // the repository's own AGENTS.md / CLAUDE.md, read in the sandbox: the worker's disk is
+    // not the repository, so the harness does not look there (localDiscovery: false)
+    const runWorkspaceDir = workspaceDir || '/workspace'
+    const repoRules = await projectRules.loadSandboxProjectRules({
+        fs: adapter.fs,
+        workspaceDir: runWorkspaceDir,
+    })
+
     const harness = new AgentHarness({
         llm,
-        tools,
+        tools: memoryTool ? [...tools, memoryTool] : tools,
         operations: adapter,
-        workspaceDir: workspaceDir || '/workspace',
+        workspaceDir: runWorkspaceDir,
+        projectRules: repoRules,
+        localDiscovery: false,
         sessionId,
         userId,
-        userRules: rulesWithSkills || undefined,
+        userRules: accountRules || undefined,
         runtime: 'cloud',
         availableSecrets: secretKeys,
         // the session's effort is the agent's reasoning level; runs started without one
@@ -1099,6 +1074,39 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
         }
     }
 
+    // the user hooks saved on the account (connections page): the cli's rules, but each
+    // command runs in the sandbox. the command text is never logged (it can hold a secret)
+    const accountHooks = toUserHooks(connections.hooks)
+    const userHooks =
+        accountHooks.length > 0
+            ? attachUserHooks(agent, {
+                  listHooks: () => accountHooks,
+                  cwd: workspaceDir || '/workspace',
+                  runCommand: createSandboxHookRunner(
+                      () =>
+                          activeSandboxes.get(sessionId) || activeSandboxes.get(effectiveSandboxId)
+                  ),
+                  onNotice: (_message, tone) =>
+                      console.log(
+                          `[AGENT EXECUTION] a user hook ${tone === 'error' ? 'failed' : 'acted'} in session '${sessionId}'`
+                      ),
+              })
+            : null
+    if (userHooks && accountHooks.some((hook) => hook.event === 'Notification')) {
+        // Notification hooks run when the agent asks the user a question, like in the cli
+        const hooked = agent.hooks?.beforeToolCall
+        agent.hooks = {
+            ...agent.hooks,
+            beforeToolCall: async (toolCall) => {
+                const outcome = await hooked?.(toolCall)
+                if (toolCall.name === 'ask_question' && !(outcome as any)?.block) {
+                    void userHooks.runNotification('ask_question', questionText(toolCall.input))
+                }
+                return outcome
+            },
+        }
+    }
+
     // a new message while December works (#637): the agent reads it at its next turn, with
     // its files and picked skills like the prompt of a run
     const steering = data.steering
@@ -1122,7 +1130,7 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
                     sandbox,
                     attachments,
                     skills: pickTurnSkills({
-                        skills: connections.skills,
+                        skills: runSkills,
                         names: item.skills ?? [],
                     }),
                 })
@@ -1227,6 +1235,17 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
                 activeSandboxes.get(sessionId) || activeSandboxes.get(effectiveSandboxId)
             // the files before this turn, for /rewind
             await createTurnCheckpoint({ sandbox: activeSandbox, sequence: userMessageSequence })
+            // installed plugins (connections page): their files go into the sandbox first, so
+            // their skills and mcp servers find them. a plugin that fails is skipped
+            if (activeSandbox && userId) {
+                await installPluginsInSandbox({
+                    sandbox: activeSandbox,
+                    plugins: runPlugins,
+                    loadFiles: (id) => loadPluginFiles({ userId, id }),
+                }).catch((error: unknown) => {
+                    console.warn(`[AGENT EXECUTION] plugins skipped for '${sessionId}':`, error)
+                })
+            }
             // the user's mcp servers (#632): a server that fails never fails the run
             await connectAgentMcpServers({
                 agent,
@@ -1235,6 +1254,43 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
             }).catch((error: unknown) => {
                 console.warn(`[AGENT EXECUTION] mcp servers skipped for '${sessionId}':`, error)
             })
+            // the mcp servers of the plugins: a command server runs in the sandbox
+            await connectPluginMcpServers({
+                agent,
+                sandbox: activeSandbox,
+                servers: pluginMcpServers({
+                    plugins: runPlugins,
+                    takenNames: connections.mcpServers.map((server) => server.name),
+                    disabledMcps: disabledMcps ?? [],
+                }),
+                cwd: workspaceDir || '/workspace',
+                secrets: toSecretEnvs(secrets),
+            }).catch((error: unknown) => {
+                console.warn(
+                    `[AGENT EXECUTION] plugin mcp servers skipped for '${sessionId}':`,
+                    error
+                )
+            })
+            // user hooks: SessionStart on the first run of the session, then UserPromptSubmit,
+            // which can stop the prompt or add to it
+            let hookedPrompt = prompt
+            if (userHooks) {
+                if (!agent.messages.some((message) => message.role !== 'system')) {
+                    await userHooks.runSessionStart('startup')
+                }
+                const outcome = await userHooks.runPromptSubmit(prompt)
+                if (outcome.block) {
+                    yield {
+                        data: JSON.stringify({
+                            type: 'AgentError',
+                            error: `A UserPromptSubmit hook blocked the prompt: ${outcome.block}`,
+                        }),
+                    }
+                    yield { data: JSON.stringify({ type: 'AgentEnd' }) }
+                    return
+                }
+                hookedPrompt = appendHookContext(prompt, outcome.context)
+            }
             // the files sent with this message (#634) go into the sandbox, outside the
             // repository. the agent takes text only, so an image goes as a path too
             const turnAttachments =
@@ -1246,26 +1302,18 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
                       })
                     : []
             const turnPrompt = await buildTurnPrompt({
-                prompt,
+                prompt: hookedPrompt,
                 planFirst: Boolean(planFirst),
                 sandbox: activeSandbox,
                 attachments: turnAttachments,
                 skills: pickTurnSkills({
-                    skills: connections.skills,
+                    skills: runSkills,
                     names: pickedSkillNames ?? [],
                 }),
             })
-            // the setup commands of the repository (#637): once, after the clone of a new
-            // sandbox. a failed setup does not stop the run: the agent is told
-            const setupFailure = yield* runRepositorySetup({
-                sessionId,
-                userId,
-                sandboxId: effectiveSandboxId,
-                stop: data.stop,
-            })
             // the loop starts at its first read. with a stop watch (#637), a stop ends the
             // run at once, and a stop that came before this point never starts the agent
-            const agentLoop = runAgentLoop(agent, withSetupFailure(turnPrompt, setupFailure))
+            const agentLoop = runAgentLoop(agent, turnPrompt)
             const runEvents = data.stop
                 ? stoppableRun({ events: agentLoop, stop: data.stop, abort: () => agent.abort() })
                 : agentLoop
@@ -1316,6 +1364,17 @@ const runAgentSession = async (data: RunAgentSessionInput) => {
             yield { data: JSON.stringify({ type: 'AgentEnd' }) }
         } finally {
             activeAdapters.delete(adapter)
+            // Notification hooks run when the turn is done, like in the cli
+            if (userHooks) {
+                await userHooks
+                    .runNotification('turn_finished', 'December finished the turn.')
+                    .catch((error: unknown) => {
+                        console.warn(
+                            `[AGENT EXECUTION] notification hooks failed for '${sessionId}':`,
+                            error
+                        )
+                    })
+            }
             // the mcp connections belong to this run: the next run connects again
             await disconnectAgentMcpServers(agent)
             // a run that ends (or is stopped) no longer waits for an answer

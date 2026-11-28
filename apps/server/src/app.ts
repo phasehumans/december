@@ -16,9 +16,13 @@ import byokRouter from './modules/byok/byok.routes'
 import cliRouter from './modules/cli/cli.routes'
 import connectionRouter from './modules/connection/connection.routes'
 import githubAppRouter from './modules/githubapp/githubapp.routes'
+import hookRouter from './modules/hook/hook.routes'
 import integrationsRouter from './modules/integration/integration.routes'
+import memoryRouter from './modules/memory/memory.routes'
 import notificationRouter from './modules/notification/notification.routes'
 import platformRouter from './modules/platform/platform.routes'
+import pluginRouter from './modules/plugin/plugin.routes'
+import ruleRouter from './modules/rule/rule.routes'
 import runtimeRouter from './modules/runtime/runtime.routes'
 import secretsRouter from './modules/secrets/secrets.routes'
 import sessionRouter from './modules/session/session.routes'
@@ -126,6 +130,12 @@ app.use('/api/v1/sessions', sessionCommandRouter)
 app.use('/api/v1/session', sessionRouter)
 app.use('/api/v1/sessions', sessionRouter)
 app.use('/api/v1/secrets', secretsRouter)
+// account rules and agent memory, before the rest of connections
+app.use('/api/v1/connections/rules', ruleRouter)
+app.use('/api/v1/connections/memory', memoryRouter)
+// plugins and user hooks of the connections page, before the rest of /connections
+app.use('/api/v1/connections/plugins', pluginRouter)
+app.use('/api/v1/connections/hooks', hookRouter)
 app.use('/api/v1/connections', connectionRouter)
 app.use('/api/v1/byok', byokRouter)
 app.use('/api/v1/githubapp', githubAppRouter)

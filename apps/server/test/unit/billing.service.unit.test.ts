@@ -23,59 +23,25 @@ describe('Billing Service - Unit Tests', () => {
             }
         })
 
-        it('should aggregate credit balance, gifted credits, usage, and transactions', async () => {
+        it('answers only the balance, the start date and the rate', async () => {
             const originalFindUser = billingRepository.findUserForOverview
-            const originalAggregate = billingRepository.aggregateUsage
-            const originalGifted = billingRepository.findGiftedCreditsSum
 
             const mockCreatedAt = new Date('2026-01-01T00:00:00.000Z')
             billingRepository.findUserForOverview = (async () => ({
                 id: 'user-1',
                 creditBalance: 5000,
                 createdAt: mockCreatedAt,
-                redeemClaims: [
-                    {
-                        id: 'claim-1',
-                        redeemedAt: new Date(),
-                        redeemCode: { creditAmount: 1000, metadata: { code: 'WELCOME10' } },
-                    },
-                ],
-                walletTransactions: [
-                    {
-                        id: 'tx-1',
-                        createdAt: new Date(),
-                        amountInCents: 2000,
-                        currency: 'USD',
-                        provider: 'RAZORPAY',
-                        status: 'SUCCESS',
-                    },
-                ],
-            })) as any
-
-            billingRepository.findGiftedCreditsSum = (async () => 1000) as any
-
-            billingRepository.aggregateUsage = (async () => ({
-                _sum: {
-                    inputTokens: 100,
-                    outputTokens: 200,
-                    totalTokens: 300,
-                    costInCents: 150,
-                },
             })) as any
 
             try {
                 const res = await billingService.getOverview({ userId: 'user-1' })
-                expect(res.creditBalance).toBe(5000)
-                expect(res.giftedCredits).toBe(1000)
-                expect(res.usdToInrRate).toBe(95.26)
-                expect(res.usage.totalTokens).toBe(300)
-                expect(res.usage.costInCents).toBe(150)
-                expect(res.claims.length).toBe(1)
-                expect(res.transactions.length).toBe(1)
+                expect(res).toEqual({
+                    creditBalance: 5000,
+                    createdAt: mockCreatedAt,
+                    usdToInrRate: 95.26,
+                })
             } finally {
                 billingRepository.findUserForOverview = originalFindUser
-                billingRepository.aggregateUsage = originalAggregate
-                billingRepository.findGiftedCreditsSum = originalGifted
             }
         })
     })
@@ -453,7 +419,7 @@ describe('Billing Service - Unit Tests', () => {
             }
         })
 
-        it('should query usage events and aggregate into periods', async () => {
+        it('answers one page of events with the totals of the whole range', async () => {
             const originalFindUser = billingRepository.findUserById
             const originalFindEvents = billingRepository.findManyUsageEvents
             const originalCountEvents = billingRepository.countUsageEvents
@@ -487,67 +453,14 @@ describe('Billing Service - Unit Tests', () => {
 
                 expect(res.events.length).toBe(2)
                 expect(res.total).toBe(2)
-                expect(res.periods.length).toBe(1)
-                expect(res.periods[0]?.costInCents).toBe(80)
+                expect(res.totals.costInCents).toBe(80)
+                expect('periods' in res).toBe(false)
             } finally {
                 billingRepository.findUserById = originalFindUser
                 billingRepository.findManyUsageEvents = originalFindEvents
                 billingRepository.countUsageEvents = originalCountEvents
                 billingRepository.sumUsage = originalSumUsage
                 billingRepository.sumUsageByBucket = originalSumByBucket
-            }
-        })
-    })
-
-    describe('addCredits', () => {
-        it('should throw AppError 404 if user not found', async () => {
-            const originalFindUser = billingRepository.findUserByIdForCredits
-            billingRepository.findUserByIdForCredits = (async () => null) as any
-
-            try {
-                await expect(
-                    billingService.addCredits({
-                        userId: 'user-999',
-                        amountInCents: 2000,
-                        paymentMethod: 'card',
-                    })
-                ).rejects.toThrow(new AppError('user not found', 404))
-            } finally {
-                billingRepository.findUserByIdForCredits = originalFindUser
-            }
-        })
-
-        it('should add credits and send purchase notification', async () => {
-            const originalFindUser = billingRepository.findUserByIdForCredits
-            const originalAddCredits = billingRepository.addCredits
-            const originalSendNotif = notificationService.sendNotificationToUser
-
-            billingRepository.findUserByIdForCredits = (async () => ({ id: 'user-1' })) as any
-            billingRepository.addCredits = (async () => ({
-                id: 'user-1',
-                creditBalance: 7000,
-            })) as any
-
-            let notificationSent = false
-            notificationService.sendNotificationToUser = (async () => {
-                notificationSent = true
-                return {} as any
-            }) as any
-
-            try {
-                const res = await billingService.addCredits({
-                    userId: 'user-1',
-                    amountInCents: 2000,
-                    paymentMethod: 'card',
-                })
-
-                expect(res.amountInCents).toBe(2000)
-                expect(res.newBalance).toBe(7000)
-                expect(notificationSent).toBe(true)
-            } finally {
-                billingRepository.findUserByIdForCredits = originalFindUser
-                billingRepository.addCredits = originalAddCredits
-                notificationService.sendNotificationToUser = originalSendNotif
             }
         })
     })
@@ -709,9 +622,9 @@ describe('Billing Service - Unit Tests', () => {
                 .digest('hex')
 
             const originalFindTx = billingRepository.findWalletTransactionByOrderId
-            const originalUpdateTx = billingRepository.updateWalletTransaction
+            const originalMarkFailed = billingRepository.markWalletTransactionFailed
 
-            let updatedStatus = ''
+            let markedError = ''
             billingRepository.findWalletTransactionByOrderId = (async () => ({
                 id: 'tx-wh-fail',
                 userId: 'user-wh',
@@ -719,9 +632,9 @@ describe('Billing Service - Unit Tests', () => {
                 amountInCents: 2000,
             })) as any
 
-            billingRepository.updateWalletTransaction = (async (_id: string, data: any) => {
-                updatedStatus = data.status
-                return {} as any
+            billingRepository.markWalletTransactionFailed = (async (_id: string, data: any) => {
+                markedError = data.error
+                return true
             }) as any
 
             try {
@@ -733,10 +646,210 @@ describe('Billing Service - Unit Tests', () => {
 
                 expect(res.received).toBe(true)
                 expect(res.status).toBe('failed_recorded')
-                expect(updatedStatus).toBe('FAILED')
+                expect(markedError).toBe('Payment was declined by bank')
             } finally {
                 billingRepository.findWalletTransactionByOrderId = originalFindTx
-                billingRepository.updateWalletTransaction = originalUpdateTx
+                billingRepository.markWalletTransactionFailed = originalMarkFailed
+            }
+        })
+    })
+
+    describe('listTransactions', () => {
+        it('maps the rows of the page and answers the total of all rows', async () => {
+            const originalList = billingRepository.listTransactions
+            const originalCount = billingRepository.countTransactions
+            let asked: any = null
+            billingRepository.listTransactions = (async (data: any) => {
+                asked = data
+                return [
+                    {
+                        id: 'a',
+                        createdAt: new Date('2026-03-11T10:00:00.000Z'),
+                        amountInCents: 1000,
+                        status: 'SUCCESS',
+                        provider: 'RAZORPAY',
+                        code: null,
+                    },
+                    {
+                        id: 'b',
+                        createdAt: new Date('2026-03-10T10:00:00.000Z'),
+                        amountInCents: 250,
+                        status: 'SUCCESS',
+                        provider: 'CODE',
+                        code: 'HELLO',
+                    },
+                ]
+            }) as any
+            billingRepository.countTransactions = (async () => 12) as any
+
+            try {
+                const res = await billingService.listTransactions({
+                    userId: 'user-1',
+                    limit: 2,
+                    offset: 4,
+                })
+                expect(asked).toEqual({ userId: 'user-1', limit: 2, offset: 4 })
+                expect(res.total).toBe(12)
+                expect(res.limit).toBe(2)
+                expect(res.offset).toBe(4)
+                expect(res.items.map((item) => [item.kind, item.hasReceipt, item.code])).toEqual([
+                    ['payment', true, null],
+                    ['code', false, 'HELLO'],
+                ])
+            } finally {
+                billingRepository.listTransactions = originalList
+                billingRepository.countTransactions = originalCount
+            }
+        })
+    })
+
+    describe('handleRazorpayWebhook: payment.failed on a row that is not pending', () => {
+        it('answers ignored when the row was paid in the meantime', async () => {
+            process.env.RAZORPAY_WEBHOOK_SECRET = 'test_wh_secret_999'
+            const payload = {
+                event: 'payment.failed',
+                payload: { payment: { entity: { id: 'pay_f', order_id: 'order_f' } } },
+            }
+            const rawBody = JSON.stringify(payload)
+            const signature = crypto
+                .createHmac('sha256', 'test_wh_secret_999')
+                .update(rawBody)
+                .digest('hex')
+            const originalFind = billingRepository.findWalletTransactionByOrderId
+            const originalMark = billingRepository.markWalletTransactionFailed
+            billingRepository.findWalletTransactionByOrderId = (async () => ({
+                id: 'tx-f',
+                userId: 'user-f',
+                status: 'PENDING',
+                amountInCents: 1000,
+            })) as any
+            billingRepository.markWalletTransactionFailed = (async () => false) as any
+            try {
+                const res = await billingService.handleRazorpayWebhook({
+                    rawBody,
+                    signature,
+                    eventPayload: payload,
+                })
+                expect(res.status).toBe('ignored')
+            } finally {
+                billingRepository.findWalletTransactionByOrderId = originalFind
+                billingRepository.markWalletTransactionFailed = originalMark
+            }
+        })
+    })
+
+    describe('requestFreeCredits: the admin notice', () => {
+        it('answers the saved request when the admin notice fails', async () => {
+            const originalContact = billingRepository.findUserContact
+            const originalFind = billingRepository.findCreditRequestByEmail
+            const originalCreate = billingRepository.createCreditRequest
+            const originalNotify = notificationService.sendNotificationToAdmins
+            billingRepository.findUserContact = (async () => ({
+                id: 'u1',
+                email: 'A.B+x@gmail.com',
+                name: 'A',
+            })) as any
+            billingRepository.findCreditRequestByEmail = (async () => null) as any
+            let saved: any = null
+            billingRepository.createCreditRequest = (async (data: any) => {
+                saved = data
+                return {
+                    status: 'PENDING',
+                    createdAt: new Date(),
+                    reviewedAt: null,
+                    rejectReason: 'not shown',
+                }
+            }) as any
+            notificationService.sendNotificationToAdmins = (async () => {
+                throw new Error('inbox down')
+            }) as any
+            try {
+                const res = await billingService.requestFreeCredits({
+                    userId: 'u1',
+                    buildPlan: 'a game',
+                    heardFrom: 'a friend',
+                    userAgent: 'x'.repeat(900),
+                })
+                expect(res.status).toBe('PENDING')
+                // the reason of another state is never sent for a pending request
+                expect(res.rejectReason).toBeNull()
+                expect(saved.normalizedEmail).toBe('ab@gmail.com')
+                expect(saved.userAgent).toHaveLength(500)
+            } finally {
+                billingRepository.findUserContact = originalContact
+                billingRepository.findCreditRequestByEmail = originalFind
+                billingRepository.createCreditRequest = originalCreate
+                notificationService.sendNotificationToAdmins = originalNotify
+            }
+        })
+
+        it('answers 409 for an email that asked before, and a race on the unique email is 409 too', async () => {
+            const originalContact = billingRepository.findUserContact
+            const originalFind = billingRepository.findCreditRequestByEmail
+            const originalCreate = billingRepository.createCreditRequest
+            billingRepository.findUserContact = (async () => ({
+                id: 'u1',
+                email: 'a@example.com',
+                name: 'A',
+            })) as any
+            billingRepository.findCreditRequestByEmail = (async () => ({
+                status: 'REJECTED',
+            })) as any
+            try {
+                await expect(
+                    billingService.requestFreeCredits({
+                        userId: 'u1',
+                        buildPlan: 'a game',
+                        heardFrom: 'x',
+                    })
+                ).rejects.toThrow(new AppError('free credits were declined for this email', 409))
+
+                billingRepository.findCreditRequestByEmail = (async () => null) as any
+                billingRepository.createCreditRequest = (async () => {
+                    throw Object.assign(new Error('unique'), { code: 'P2002' })
+                }) as any
+                await expect(
+                    billingService.requestFreeCredits({
+                        userId: 'u1',
+                        buildPlan: 'a game',
+                        heardFrom: 'x',
+                    })
+                ).rejects.toThrow(
+                    new AppError('free credits were already requested for this email', 409)
+                )
+            } finally {
+                billingRepository.findUserContact = originalContact
+                billingRepository.findCreditRequestByEmail = originalFind
+                billingRepository.createCreditRequest = originalCreate
+            }
+        })
+    })
+
+    describe('updateLimits', () => {
+        it('changes only the amounts that were sent', async () => {
+            const originalUpdate = billingRepository.updateLimits
+            let changes: any = null
+            billingRepository.updateLimits = (async (_userId: string, data: any) => {
+                changes = data
+                return {
+                    lowBalanceAlertCents: 100,
+                    sessionLimitCents: null,
+                    dayLimitCents: 2000,
+                }
+            }) as any
+            const { auditService } = await import('../../src/modules/audit/audit.service')
+            const originalAudit = auditService.recordForUser
+            auditService.recordForUser = (async () => undefined) as any
+            try {
+                await billingService.updateLimits({
+                    userId: 'u1',
+                    sessionLimitCents: null,
+                    dayLimitCents: 2000,
+                })
+                expect(changes).toEqual({ sessionLimitCents: null, dayLimitCents: 2000 })
+            } finally {
+                billingRepository.updateLimits = originalUpdate
+                auditService.recordForUser = originalAudit
             }
         })
     })

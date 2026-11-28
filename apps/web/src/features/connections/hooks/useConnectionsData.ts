@@ -7,24 +7,19 @@ import {
     type ApiSkill,
     type ImportRepo,
 } from '../api/connections'
-import { isConnectionsDemoActive } from '../lib/connectionsDemo'
 
-import { useConnectionsStore } from './useConnectionsStore'
+import { CONNECTIONS_RULES_KEY } from './useAccountContext'
 
-import type { ConnectionsMcp, ConnectionsPlugin, ConnectionsSkill } from '../types'
+import type { ConnectionsMcp, ConnectionsSkill } from '../types'
 
 import { PROMPT_BOX_CONNECTIONS_KEY } from '@/features/home/api/promptBoxConnections'
-import { ApiError } from '@/shared/api/client'
 import { CACHE_PRESETS } from '@/shared/lib/query-cache'
 
-// the skills and mcp servers of the account (#632 section 2). with the preview off they
-// come from the api and every action calls it. with the preview on they are the sample
-// values of useConnectionsStore, and nothing is sent.
+// the skills and mcp servers of the account (#632 section 2). they come from the api and
+// every action calls it.
 
 export const CONNECTIONS_SKILLS_KEY = ['connections', 'skills'] as const
 export const CONNECTIONS_MCPS_KEY = ['connections', 'mcps'] as const
-
-const NO_PLUGINS: ConnectionsPlugin[] = []
 
 // the same words for a failed request as every other page
 export { apiErrorMessage as connectionErrorMessage } from '@/shared/lib/apiErrorMessage'
@@ -78,21 +73,12 @@ const toMcp = (server: ApiMcpServer): ConnectionsMcp => ({
     lastError: server.lastError ?? undefined,
 })
 
-export const useConnectionsDemo = (): boolean => React.useState(isConnectionsDemoActive)[0]
-
 export const useSkills = () => {
-    const isDemo = useConnectionsDemo()
     const queryClient = useQueryClient()
-    const demoSkills = useConnectionsStore((s) => s.skills)
-    const demoPlugins = useConnectionsStore((s) => s.plugins)
-    const demoSave = useConnectionsStore((s) => s.saveSkill)
-    const demoSetEnabled = useConnectionsStore((s) => s.setSkillEnabled)
-    const demoDelete = useConnectionsStore((s) => s.deleteSkill)
 
     const query = useQuery({
         queryKey: CONNECTIONS_SKILLS_KEY,
         queryFn: connectionsAPI.listSkills,
-        enabled: !isDemo,
         staleTime: CACHE_PRESETS.DYNAMIC,
     })
     const apiSkills = React.useMemo(() => (query.data ?? []).map(toSkill), [query.data])
@@ -106,10 +92,6 @@ export const useSkills = () => {
     /** creates or saves a skill. `previousName` is the saved name when the skill is renamed */
     const saveSkill = React.useCallback(
         async (skill: ConnectionsSkill, previousName?: string): Promise<ConnectionsSkill> => {
-            if (isDemo) {
-                demoSave(skill, previousName)
-                return skill
-            }
             const currentName = previousName ?? skill.name
             const saved = await connectionsAPI.saveSkill(currentName, {
                 name: skill.name,
@@ -124,16 +106,12 @@ export const useSkills = () => {
             refreshPromptBox()
             return toSkill(saved)
         },
-        [isDemo, demoSave, queryClient, refreshPromptBox]
+        [queryClient, refreshPromptBox]
     )
 
     /** the switch moves at once and moves back when the server refuses */
     const setSkillEnabled = React.useCallback(
         async (name: string, enabled: boolean) => {
-            if (isDemo) {
-                demoSetEnabled(name, enabled)
-                return
-            }
             const change = (patch: Partial<ApiSkill>) =>
                 commit<ApiSkill>(queryClient, CONNECTIONS_SKILLS_KEY, (list) =>
                     withPatch(list, name, patch)
@@ -148,31 +126,25 @@ export const useSkills = () => {
                 refreshPromptBox()
             }
         },
-        [isDemo, demoSetEnabled, queryClient, refreshPromptBox]
+        [queryClient, refreshPromptBox]
     )
 
     const deleteSkill = React.useCallback(
         async (name: string) => {
-            if (isDemo) {
-                demoDelete(name)
-                return
-            }
             await connectionsAPI.deleteSkill(name)
             await commit<ApiSkill>(queryClient, CONNECTIONS_SKILLS_KEY, (list) =>
                 list.filter((row) => row.name !== name)
             )
             refreshPromptBox()
         },
-        [isDemo, demoDelete, queryClient, refreshPromptBox]
+        [queryClient, refreshPromptBox]
     )
 
     return {
-        isDemo,
-        skills: isDemo ? demoSkills : apiSkills,
-        // installing plugins has no server yet, so an account has none
-        plugins: isDemo ? demoPlugins : NO_PLUGINS,
-        isLoading: !isDemo && query.isPending,
-        loadFailed: !isDemo && query.isError && !query.data,
+        skills: apiSkills,
+        isLoading: query.isPending,
+        loadFailed: query.isError && !query.data,
+        retry: query.refetch,
         saveSkill,
         setSkillEnabled,
         deleteSkill,
@@ -180,21 +152,11 @@ export const useSkills = () => {
 }
 
 export const useMcps = () => {
-    const isDemo = useConnectionsDemo()
     const queryClient = useQueryClient()
-    const demoMcps = useConnectionsStore((s) => s.mcps)
-    const demoPlugins = useConnectionsStore((s) => s.plugins)
-    const demoSave = useConnectionsStore((s) => s.saveMcp)
-    const demoSetEnabled = useConnectionsStore((s) => s.setMcpEnabled)
-    const demoSetToolEnabled = useConnectionsStore((s) => s.setMcpToolEnabled)
-    const demoRemove = useConnectionsStore((s) => s.removeMcp)
-    /** sample values only: the api sets the status when a session uses the server */
-    const setMcpStatus = useConnectionsStore((s) => s.setMcpStatus)
 
     const query = useQuery({
         queryKey: CONNECTIONS_MCPS_KEY,
         queryFn: connectionsAPI.listMcpServers,
-        enabled: !isDemo,
         staleTime: CACHE_PRESETS.DYNAMIC,
     })
     const apiMcps = React.useMemo(() => (query.data ?? []).map(toMcp), [query.data])
@@ -239,13 +201,6 @@ export const useMcps = () => {
     /** creates or saves a server. `previousName` is the saved name when it is renamed */
     const saveMcp = React.useCallback(
         async (mcp: ConnectionsMcp, previousName?: string): Promise<ConnectionsMcp> => {
-            if (isDemo) {
-                demoSave(mcp, previousName)
-                return mcp
-            }
-            if (mcp.auth === 'oauth') {
-                throw new ApiError('Sign-in with OAuth is not supported yet.', 400)
-            }
             const currentName = previousName ?? mcp.name
             const saved = await connectionsAPI.saveMcpServer(currentName, {
                 name: mcp.name,
@@ -262,59 +217,42 @@ export const useMcps = () => {
             refreshPromptBox()
             return toMcp(saved)
         },
-        [isDemo, demoSave, queryClient, refreshPromptBox, savedServer]
+        [queryClient, refreshPromptBox, savedServer]
     )
 
     const setMcpEnabled = React.useCallback(
-        async (name: string, enabled: boolean) => {
-            if (isDemo) {
-                demoSetEnabled(name, enabled)
-                return
-            }
-            await patchServer(name, { enabled })
-        },
-        [isDemo, demoSetEnabled, patchServer]
+        (name: string, enabled: boolean) => patchServer(name, { enabled }),
+        [patchServer]
     )
 
     /** a tool that is off is a name in `disabledTools` of the server */
     const setMcpToolEnabled = React.useCallback(
         async (name: string, tool: string, enabled: boolean) => {
-            if (isDemo) {
-                demoSetToolEnabled(name, tool, enabled)
-                return
-            }
             const others = (savedServer(name)?.disabledTools ?? []).filter((t) => t !== tool)
             await patchServer(name, { disabledTools: enabled ? others : [...others, tool] })
         },
-        [isDemo, demoSetToolEnabled, patchServer, savedServer]
+        [patchServer, savedServer]
     )
 
     const removeMcp = React.useCallback(
         async (name: string) => {
-            if (isDemo) {
-                demoRemove(name)
-                return
-            }
             await connectionsAPI.deleteMcpServer(name)
             await commit<ApiMcpServer>(queryClient, CONNECTIONS_MCPS_KEY, (list) =>
                 list.filter((row) => row.name !== name)
             )
             refreshPromptBox()
         },
-        [isDemo, demoRemove, queryClient, refreshPromptBox]
+        [queryClient, refreshPromptBox]
     )
 
     return {
-        isDemo,
-        mcps: isDemo ? demoMcps : apiMcps,
-        // installing plugins has no server yet, so an account has none
-        plugins: isDemo ? demoPlugins : NO_PLUGINS,
-        isLoading: !isDemo && query.isPending,
-        loadFailed: !isDemo && query.isError && !query.data,
+        mcps: apiMcps,
+        isLoading: query.isPending,
+        loadFailed: query.isError && !query.data,
+        retry: query.refetch,
         saveMcp,
         setMcpEnabled,
         setMcpToolEnabled,
-        setMcpStatus,
         removeMcp,
     }
 }
@@ -342,6 +280,7 @@ export const useImportSetup = () => {
             for (const queryKey of [
                 CONNECTIONS_SKILLS_KEY,
                 CONNECTIONS_MCPS_KEY,
+                CONNECTIONS_RULES_KEY,
                 PROMPT_BOX_CONNECTIONS_KEY,
             ]) {
                 void queryClient.invalidateQueries({ queryKey })

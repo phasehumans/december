@@ -3,10 +3,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
+import { sessionRepository } from '../../src/modules/session/session.repository'
+import { settingRepository } from '../../src/modules/setting/setting.repository'
 import { settingService } from '../../src/modules/setting/setting.service'
 import { cleanupTestUser, createSignedInUser, getRandomIP } from '../helpers'
 
-// #637 section 4: the sandbox settings of a user and the setup commands of a repository
+// #637 section 4: the sandbox settings of a user (setup commands were removed 2026-11-28)
 describe('sandbox settings (#637)', () => {
     const stamp = Date.now()
     let owner: { userId: string; token: string }
@@ -34,7 +36,6 @@ describe('sandbox settings (#637)', () => {
 
     beforeEach(async () => {
         const ids = [owner.userId, stranger.userId]
-        await prisma.repositorySetting.deleteMany({ where: { userId: { in: ids } } })
         await prisma.user.updateMany({
             where: { id: { in: ids } },
             data: { idleStopMinutes: 10, archiveAfterDays: null },
@@ -48,15 +49,11 @@ describe('sandbox settings (#637)', () => {
     })
 
     describe('GET /setting/sandbox', () => {
-        it('starts on 10 minutes idle, no archive and no setup commands', async () => {
+        it('starts on 10 minutes idle and no archive', async () => {
             const res = await as(owner.token).get('/setting/sandbox')
 
             expect(res.status).toBe(200)
-            expect(res.body.data).toEqual({
-                idleStopMinutes: 10,
-                archiveAfterDays: null,
-                setupCommands: [],
-            })
+            expect(res.body.data).toEqual({ idleStopMinutes: 10, archiveAfterDays: null })
         })
 
         it('needs a signed in user', async () => {
@@ -65,6 +62,37 @@ describe('sandbox settings (#637)', () => {
                 .set('x-forwarded-for', getRandomIP())
 
             expect(res.status).toBe(401)
+        })
+
+        it('refuses a token that is not valid', async () => {
+            const res = await as('not-a-token').get('/setting/sandbox')
+            expect(res.status).toBe(401)
+        })
+
+        it('reads a value that is not a choice any more as the default', async () => {
+            // a value from an older version, written straight to the database
+            await prisma.user.update({
+                where: { id: owner.userId },
+                data: { idleStopMinutes: 45, archiveAfterDays: 14 },
+            })
+
+            const res = await as(owner.token).get('/setting/sandbox')
+
+            expect(res.status).toBe(200)
+            expect(res.body.data).toEqual({ idleStopMinutes: 10, archiveAfterDays: null })
+        })
+
+        it('each user reads only their own settings', async () => {
+            await prisma.user.update({
+                where: { id: stranger.userId },
+                data: { idleStopMinutes: 60, archiveAfterDays: 30 },
+            })
+
+            const mine = await as(owner.token).get('/setting/sandbox')
+            const theirs = await as(stranger.token).get('/setting/sandbox')
+
+            expect(mine.body.data).toEqual({ idleStopMinutes: 10, archiveAfterDays: null })
+            expect(theirs.body.data).toEqual({ idleStopMinutes: 60, archiveAfterDays: 30 })
         })
     })
 
@@ -75,11 +103,7 @@ describe('sandbox settings (#637)', () => {
                 .send({ idleStopMinutes: 30 })
 
             expect(saved.status).toBe(200)
-            expect(saved.body.data).toEqual({
-                idleStopMinutes: 30,
-                archiveAfterDays: null,
-                setupCommands: [],
-            })
+            expect(saved.body.data).toEqual({ idleStopMinutes: 30, archiveAfterDays: null })
 
             const read = await as(owner.token).get('/setting/sandbox')
             expect(read.body.data.idleStopMinutes).toBe(30)
@@ -108,12 +132,64 @@ describe('sandbox settings (#637)', () => {
             expect(saved.body.data.archiveAfterDays).toBeNull()
         })
 
+        it('saves both fields in one call', async () => {
+            const saved = await as(owner.token)
+                .patch('/setting/sandbox')
+                .send({ idleStopMinutes: 60, archiveAfterDays: 30 })
+
+            expect(saved.status).toBe(200)
+            expect(saved.body.data).toEqual({ idleStopMinutes: 60, archiveAfterDays: 30 })
+        })
+
+        it('needs a signed in user, and saves nothing without one', async () => {
+            const res = await request(app)
+                .patch('/api/v1/setting/sandbox')
+                .set('x-forwarded-for', getRandomIP())
+                .send({ idleStopMinutes: 60 })
+
+            expect(res.status).toBe(401)
+            const read = await as(owner.token).get('/setting/sandbox')
+            expect(read.body.data.idleStopMinutes).toBe(10)
+        })
+
+        it('refuses a body that is not an object', async () => {
+            for (const body of ['[]', '"30"', '30', 'null']) {
+                const res = await as(owner.token)
+                    .patch('/setting/sandbox')
+                    .set('Content-Type', 'application/json')
+                    .send(body)
+                expect(res.status).toBe(400)
+            }
+        })
+
+        it('a user id in the body changes nothing for that user', async () => {
+            const res = await as(owner.token)
+                .patch('/setting/sandbox')
+                .send({ idleStopMinutes: 60, userId: stranger.userId })
+
+            expect(res.status).toBe(400)
+            const theirs = await as(stranger.token).get('/setting/sandbox')
+            expect(theirs.body.data.idleStopMinutes).toBe(10)
+        })
+
         it('refuses a value that is not a choice, and saves nothing', async () => {
             const bodies = [
                 { idleStopMinutes: 15 },
+                { idleStopMinutes: 0 },
+                { idleStopMinutes: -10 },
+                { idleStopMinutes: 10.5 },
                 { idleStopMinutes: '30' },
+                { idleStopMinutes: null },
+                { idleStopMinutes: true },
+                { idleStopMinutes: [10] },
                 { archiveAfterDays: 14 },
+                { archiveAfterDays: 0 },
+                { archiveAfterDays: '7' },
+                { archiveAfterDays: 'never' },
+                { archiveAfterDays: { days: 7 } },
                 { machineSize: 'large' },
+                { setupCommands: [] },
+                { idleStopMinutes: 30, extra: 1 },
                 {},
             ]
             for (const body of bodies) {
@@ -126,75 +202,71 @@ describe('sandbox settings (#637)', () => {
         })
     })
 
-    describe('PUT /setting/sandbox/setup-commands', () => {
-        it('saves the commands of a repository, and the settings list them', async () => {
-            const saved = await as(owner.token)
-                .put('/setting/sandbox/setup-commands')
-                .send({ repoFullName: 'Acme/Web', commands: 'bun install\r\nbun run build\n\n' })
-
-            expect(saved.status).toBe(200)
-            expect(saved.body.data.setupCommands).toEqual([
-                { repoFullName: 'acme/web', commands: 'bun install\nbun run build' },
-            ])
-
-            const read = await as(owner.token).get('/setting/sandbox')
-            expect(read.body.data.setupCommands).toEqual([
-                { repoFullName: 'acme/web', commands: 'bun install\nbun run build' },
-            ])
-            // a repository setting belongs to one user
-            const other = await as(stranger.token).get('/setting/sandbox')
-            expect(other.body.data.setupCommands).toEqual([])
-        })
-
-        it('replaces the commands of the same repository', async () => {
-            await as(owner.token)
+    describe('PUT /setting/sandbox/setup-commands (removed)', () => {
+        it('is gone: setup commands are no longer saved', async () => {
+            const res = await as(owner.token)
                 .put('/setting/sandbox/setup-commands')
                 .send({ repoFullName: 'acme/web', commands: 'npm ci' })
-            await as(owner.token)
-                .put('/setting/sandbox/setup-commands')
-                .send({ repoFullName: 'acme/api', commands: 'make deps' })
-            const saved = await as(owner.token)
-                .put('/setting/sandbox/setup-commands')
-                .send({ repoFullName: 'acme/web', commands: 'pnpm install' })
 
-            expect(saved.body.data.setupCommands).toEqual([
-                { repoFullName: 'acme/api', commands: 'make deps' },
-                { repoFullName: 'acme/web', commands: 'pnpm install' },
-            ])
+            expect(res.status).toBe(404)
+        })
+    })
+
+    describe('the repository functions', () => {
+        afterAll(async () => {
+            await prisma.session.deleteMany({
+                where: { userId: { in: [owner.userId, stranger.userId] } },
+            })
         })
 
-        it('removes the row when the text is empty', async () => {
-            await as(owner.token)
-                .put('/setting/sandbox/setup-commands')
-                .send({ repoFullName: 'acme/web', commands: 'npm ci' })
-            const cleared = await as(owner.token)
-                .put('/setting/sandbox/setup-commands')
-                .send({ repoFullName: 'acme/web', commands: '  \n ' })
+        it('findSandboxSettings and updateSandboxSettings touch one user only', async () => {
+            await settingRepository.updateSandboxSettings(owner.userId, { idleStopMinutes: 60 })
 
-            expect(cleared.status).toBe(200)
-            expect(cleared.body.data.setupCommands).toEqual([])
-            expect(await prisma.repositorySetting.count({ where: { userId: owner.userId } })).toBe(
-                0
+            expect(await settingRepository.findSandboxSettings(owner.userId)).toEqual({
+                idleStopMinutes: 60,
+                archiveAfterDays: null,
+            })
+            expect(await settingRepository.findSandboxSettings(stranger.userId)).toEqual({
+                idleStopMinutes: 10,
+                archiveAfterDays: null,
+            })
+            expect(
+                await settingRepository.findSandboxSettings('00000000-0000-4000-8000-000000000000')
+            ).toBeNull()
+        })
+
+        it('findSessionRunState finds a session only for its owner', async () => {
+            const session = await prisma.session.create({
+                data: { userId: owner.userId, title: 'run state', sandboxStatus: 'RUNNING' },
+            })
+
+            expect(await sessionRepository.findSessionRunState(session.id, owner.userId)).toEqual({
+                id: session.id,
+                vmId: null,
+                vmStatus: session.vmStatus,
+                sandboxStatus: 'RUNNING',
+            })
+            expect(await sessionRepository.findSessionRunState(session.id, stranger.userId)).toBe(
+                null
             )
         })
 
-        it('refuses a text over 4000 characters and a name that is not a repository', async () => {
-            const tooLong = await as(owner.token)
-                .put('/setting/sandbox/setup-commands')
-                .send({ repoFullName: 'acme/web', commands: 'x'.repeat(4001) })
-            expect(tooLong.status).toBe(400)
+        it('findRunningSandboxes counts a start as stale after 15 minutes', async () => {
+            await prisma.session.deleteMany({ where: { userId: owner.userId } })
+            const starting = await prisma.session.create({
+                data: { userId: owner.userId, title: 'starting', sandboxStatus: 'STARTING' },
+            })
+            await prisma.session.create({
+                data: { userId: stranger.userId, title: 'theirs', sandboxStatus: 'STARTING' },
+            })
+            const in14 = new Date(Date.now() + 14 * 60 * 1000)
+            const in16 = new Date(Date.now() + 16 * 60 * 1000)
 
-            const longest = await as(owner.token)
-                .put('/setting/sandbox/setup-commands')
-                .send({ repoFullName: 'acme/web', commands: 'x'.repeat(4000) })
-            expect(longest.status).toBe(200)
+            const soon = await sessionRepository.findRunningSandboxes(owner.userId, in14)
+            const later = await sessionRepository.findRunningSandboxes(owner.userId, in16)
 
-            for (const repoFullName of ['web', 'acme/web; rm -rf /', '', '../x', 'acme/..']) {
-                const res = await as(owner.token)
-                    .put('/setting/sandbox/setup-commands')
-                    .send({ repoFullName, commands: 'npm ci' })
-                expect(res.status).toBe(400)
-            }
+            expect(soon.map((row) => row.id)).toEqual([starting.id])
+            expect(later).toEqual([])
         })
     })
 

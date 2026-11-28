@@ -38,12 +38,46 @@ const TOOL_EVENTS = new Set<UserHookEvent>(['PreToolUse', 'PostToolUse'])
 
 export const DEFAULT_HOOK_TIMEOUT_SECONDS = 60
 
+/** limits of the hooks saved on a web account; a cloud session runs them in the sandbox */
+export const MAX_ACCOUNT_HOOKS = 50
+export const MAX_HOOK_TIMEOUT_SECONDS = 600
+export const MAX_HOOK_COMMAND_LENGTH = 2000
+export const MAX_HOOK_MATCHER_LENGTH = 200
+
+/**
+ * A matcher runs as a regex on every tool call. A web account may save a matcher only when it
+ * is a valid regex with no repeated group that holds a repeat ("(a+)+"), which can take very
+ * long on some names. Empty and "*" match every tool.
+ */
+export const isSafeHookMatcher = (matcher: string): boolean => {
+    if (!matcher || matcher === '*') return true
+    if (matcher.length > MAX_HOOK_MATCHER_LENGTH) return false
+    try {
+        new RegExp(matcher)
+    } catch {
+        // Intentionally swallowed: a matcher that is not a regex is not safe
+        return false
+    }
+    return !/\([^)]*[+*}][^)]*\)\s*[+*{?]/.test(matcher)
+}
+
+/** true for the events that match on the tool name */
+export const isToolHookEvent = (event: UserHookEvent): boolean => TOOL_EVENTS.has(event)
+
+/** runs one hook command; the cli spawns it here, a cloud session runs it in the sandbox */
+export type HookCommandRunner = (
+    hook: UserHook,
+    payload: Record<string, unknown>,
+    cwd: string
+) => Promise<HookRunResult>
+
 export interface UserHook {
     event: UserHookEvent
     /** regex on the tool name for tool events; empty or "*" matches every tool */
     matcher: string
     command: string
     timeoutSeconds: number
+    /** a cloud session gives the hooks saved on the web account as global */
     source: 'global' | 'project'
     sourcePath: string
 }
@@ -71,13 +105,24 @@ export function parseUserHooksFile(
     filePath: string,
     source: 'global' | 'project'
 ): { hooks: UserHook[]; problems: string[] } {
+    const { data, error } = readHooksJson(filePath)
+    if (error) return { hooks: [], problems: [error] }
+    if (data === undefined) return { hooks: [], problems: [] }
+    return parseUserHooksData(data, source, filePath)
+}
+
+/**
+ * Parses the JSON of a hooks.json that is already read. The web reads a pasted file with
+ * this, so a file means the same in the cli and in a cloud session.
+ */
+export function parseUserHooksData(
+    data: unknown,
+    source: UserHook['source'],
+    sourcePath: string
+): { hooks: UserHook[]; problems: string[] } {
     const hooks: UserHook[] = []
     const problems: string[] = []
-    const { data, error } = readHooksJson(filePath)
-    if (error) return { hooks, problems: [error] }
-    if (data === undefined) return { hooks, problems }
-
-    const root = data?.hooks
+    const root = (data as { hooks?: unknown } | null)?.hooks
     if (!root || typeof root !== 'object' || Array.isArray(root)) {
         return { hooks, problems: ['missing a "hooks" object'] }
     }
@@ -126,7 +171,7 @@ export function parseUserHooksFile(
                     command: entry.command,
                     timeoutSeconds: timeout,
                     source,
-                    sourcePath: filePath,
+                    sourcePath,
                 })
             }
         }
@@ -239,17 +284,14 @@ export async function runUserHooks(
     hooks: UserHook[],
     event: UserHookEvent,
     payload: Record<string, unknown>,
-    options: { cwd: string; toolName?: string }
+    options: { cwd: string; toolName?: string; runCommand?: HookCommandRunner }
 ): Promise<HookRunResult[]> {
     const results: HookRunResult[] = []
+    const run = options.runCommand ?? runHookCommand
     for (const hook of hooks) {
         if (!hookMatches(hook, event, options.toolName)) continue
         results.push(
-            await runHookCommand(
-                hook,
-                { hook_event_name: event, cwd: options.cwd, ...payload },
-                options.cwd
-            )
+            await run(hook, { hook_event_name: event, cwd: options.cwd, ...payload }, options.cwd)
         )
     }
     return results

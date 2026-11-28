@@ -26,6 +26,10 @@ import { usePreferences } from '@/features/profile/lib/preferences'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { Icons } from '@/shared/components/ui/Icons'
 
+// the balance a session needs to start on credits (the server's default
+// MIN_SESSION_START_BALANCE_IN_CENTS); under it, a saved key is the better start
+const MIN_START_BALANCE_IN_CENTS = 50
+
 export const MENTION_PROVIDERS = [
     {
         id: 'repos',
@@ -297,9 +301,9 @@ export const usePromptInputController = ({
         })
     }, [initialModel])
 
-    // the user's default model source: when it is "your keys", start on the first saved
-    // key's default model, until the user picks a model. a selection on a deleted key
-    // falls back to december credits.
+    // a new prompt starts on december credits. with no credits left and a saved key, it
+    // starts on the first saved key's default model (runs from GitHub use the same rule),
+    // until the user picks a model. a selection on a deleted key falls back to credits.
     const { data: defaultsProfile } = useQuery({
         queryKey: ['profile'],
         queryFn: profileAPI.getProfile,
@@ -328,7 +332,8 @@ export const usePromptInputController = ({
         if (
             !store.userChosen &&
             !initialModel &&
-            defaultsProfile?.defaultModelSource === 'OWN_KEY' &&
+            typeof defaultsProfile?.creditBalance === 'number' &&
+            defaultsProfile.creditBalance < MIN_START_BALANCE_IN_CENTS &&
             first &&
             selectedSource !== 'OWN_KEY'
         ) {

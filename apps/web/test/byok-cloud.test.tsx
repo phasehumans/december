@@ -10,8 +10,6 @@ if (!globalThis.document) {
 
 const { render, fireEvent, screen, cleanup, waitFor } = await import('@testing-library/react')
 const { PromptFooter } = await import('../src/shared/components/ui/PromptFooter')
-const { ProfileModelKeysSettings } =
-    await import('../src/features/profile/components/ProfileModelKeysSettings')
 const { byokAPI } = await import('../src/features/profile/api/byok')
 const { profileAPI } = await import('../src/features/profile/api/profile')
 const { sessionAPI } = await import('../src/features/sessions/api/session')
@@ -47,23 +45,13 @@ const renderWithClient = (ui: React.ReactElement) => {
     )
 }
 
-// under happy-dom, input events inside a react portal (the Modal) never reach react,
-// while clicks do. call the onChange handler react attached to the element instead.
-// typing in a real browser is checked by hand.
-const typeInto = (input: HTMLInputElement, value: string) => {
-    const propsKey = Object.keys(input).find((key) => key.startsWith('__reactProps'))
-    if (!propsKey) throw new Error('not a react-managed input')
-    input.value = value
-    ;(input as any)[propsKey].onChange({ target: input, currentTarget: input })
-}
-
 const spies: Array<{ mockRestore: () => void }> = []
 
 beforeEach(() => {
     useModelSelection.getState().reset()
     spies.push(
         spyOn(profileAPI, 'getProfile').mockImplementation(
-            async () => ({ id: 'u1', defaultModelSource: 'CREDITS' }) as any
+            async () => ({ id: 'u1', creditBalance: 500 }) as any
         )
     )
 })
@@ -192,152 +180,6 @@ describe('sending a prompt on an own key', () => {
             provider: 'groq',
             billingSource: 'OWN_KEY',
         })
-    })
-})
-
-describe('API keys settings page', () => {
-    it('shows saved keys by hint only', async () => {
-        spies.push(
-            spyOn(byokAPI, 'list').mockImplementation(async () => ({
-                providers: PROVIDERS,
-                credentials: [GROQ],
-            }))
-        )
-        renderWithClient(<ProfileModelKeysSettings />)
-        const row = await screen.findByTestId('byok-row-groq')
-        expect(row.textContent).toContain('Groq')
-        expect(row.textContent).toContain('••••abcd')
-        expect(row.textContent).toContain('2 models')
-    })
-
-    it('checks and saves a new key, and shows the provider error when it fails', async () => {
-        spies.push(
-            spyOn(byokAPI, 'list').mockImplementation(async () => ({
-                providers: PROVIDERS,
-                credentials: [],
-            }))
-        )
-        const saveSpy = spyOn(byokAPI, 'save').mockImplementation(async () => {
-            throw new Error('Groq rejected this key. Check that you copied the whole key.')
-        })
-        spies.push(saveSpy)
-
-        renderWithClient(<ProfileModelKeysSettings />)
-        fireEvent.click(await screen.findByRole('button', { name: /Add key/i }))
-        fireEvent.click(await screen.findByRole('button', { name: /^Groq$/ }))
-
-        expect(screen.getByRole('link', { name: /Get a Groq key/i })).toBeDefined()
-        const keyInput = screen.getByLabelText('API key') as HTMLInputElement
-        typeInto(keyInput, 'gsk_bad_key')
-        // the page and the dialog both have an "Add key" button, so take the dialog's submit
-        const saveButton = keyInput
-            .closest('form')!
-            .querySelector('button[type="submit"]') as HTMLButtonElement
-        await waitFor(() => expect(saveButton.disabled).toBe(false))
-        // happy-dom does not submit a form on a button click
-        fireEvent.submit(keyInput.closest('form')!)
-
-        expect(await screen.findByRole('alert')).toBeDefined()
-        expect(screen.getByRole('alert').textContent).toContain('Groq rejected this key')
-        expect(saveSpy).toHaveBeenCalledWith('groq', 'gsk_bad_key')
-    })
-
-    it('shows the model source, on December credits by default', async () => {
-        spies.push(
-            spyOn(byokAPI, 'list').mockImplementation(async () => ({
-                providers: PROVIDERS,
-                credentials: [],
-            }))
-        )
-        renderWithClient(<ProfileModelKeysSettings />)
-
-        expect(await screen.findByText('Model source')).toBeDefined()
-        const credits = await screen.findByRole('radio', { name: 'December credits' })
-        await waitFor(() => expect(credits.getAttribute('aria-checked')).toBe('true'))
-        // no key saved: "Your keys" cannot be picked
-        const yourKeys = screen.getByRole('radio', { name: 'Your keys' }) as HTMLButtonElement
-        expect(yourKeys.getAttribute('aria-checked')).toBe('false')
-        expect(yourKeys.disabled).toBe(true)
-    })
-
-    it('switches the model source to your keys when a key is saved, and back', async () => {
-        let source: 'CREDITS' | 'OWN_KEY' = 'CREDITS'
-        spies.pop()!.mockRestore()
-        spies.push(
-            spyOn(profileAPI, 'getProfile').mockImplementation(
-                async () => ({ id: 'u1', defaultModelSource: source }) as any
-            ),
-            spyOn(byokAPI, 'list').mockImplementation(async () => ({
-                providers: PROVIDERS,
-                credentials: [GROQ],
-            }))
-        )
-        const updateSpy = spyOn(profileAPI, 'updateModelSource').mockImplementation(
-            async (next) => {
-                source = next
-                return { defaultModelSource: next }
-            }
-        )
-        spies.push(updateSpy)
-        renderWithClient(<ProfileModelKeysSettings />)
-
-        const yourKeys = (await screen.findByRole('radio', {
-            name: 'Your keys',
-        })) as HTMLButtonElement
-        await waitFor(() => expect(yourKeys.disabled).toBe(false))
-        fireEvent.click(yourKeys)
-        await waitFor(() => expect(updateSpy).toHaveBeenCalledWith('OWN_KEY'))
-        await waitFor(() =>
-            expect(
-                screen.getByRole('radio', { name: 'Your keys' }).getAttribute('aria-checked')
-            ).toBe('true')
-        )
-
-        fireEvent.click(screen.getByRole('radio', { name: 'December credits' }))
-        await waitFor(() => expect(updateSpy).toHaveBeenCalledWith('CREDITS'))
-        await waitFor(() =>
-            expect(
-                screen.getByRole('radio', { name: 'December credits' }).getAttribute('aria-checked')
-            ).toBe('true')
-        )
-    })
-
-    it('shows the error of a model source change under the row', async () => {
-        spies.push(
-            spyOn(byokAPI, 'list').mockImplementation(async () => ({
-                providers: PROVIDERS,
-                credentials: [GROQ],
-            })),
-            spyOn(profileAPI, 'updateModelSource').mockImplementation(async () => {
-                throw new Error('add an API key before you switch to your keys')
-            })
-        )
-        renderWithClient(<ProfileModelKeysSettings />)
-
-        const yourKeys = (await screen.findByRole('radio', {
-            name: 'Your keys',
-        })) as HTMLButtonElement
-        await waitFor(() => expect(yourKeys.disabled).toBe(false))
-        fireEvent.click(yourKeys)
-        expect(
-            await screen.findByText('add an API key before you switch to your keys')
-        ).toBeDefined()
-        expect(
-            screen.getByRole('radio', { name: 'December credits' }).getAttribute('aria-checked')
-        ).toBe('true')
-    })
-
-    it('explains the watsonx key format', async () => {
-        spies.push(
-            spyOn(byokAPI, 'list').mockImplementation(async () => ({
-                providers: PROVIDERS,
-                credentials: [],
-            }))
-        )
-        renderWithClient(<ProfileModelKeysSettings />)
-        fireEvent.click(await screen.findByRole('button', { name: /Add key/i }))
-        fireEvent.click(await screen.findByRole('button', { name: /watsonx.ai/ }))
-        expect(screen.getAllByText('Enter it as API_KEY:PROJECT_ID').length).toBeGreaterThan(0)
     })
 })
 

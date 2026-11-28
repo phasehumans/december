@@ -37,6 +37,17 @@ export interface HarnessConfig extends Omit<AgentConfig, 'systemPrompt'> {
     homeDir?: string
     rootBoundary?: string
     userRules?: string
+    /**
+     * Rule files read by the caller. A cloud run reads AGENTS.md / CLAUDE.md from the
+     * repository in the sandbox and passes them here: the harness does not look on the disk.
+     */
+    projectRules?: DiscoveredRuleFile[]
+    /**
+     * false: do not read skills or rules from this machine's disk (the workspace and the
+     * home folder). A cloud run sets it, because the worker's disk is not the user's
+     * repository and its home folder must never reach a user's run.
+     */
+    localDiscovery?: boolean
     availableSecrets?: string[]
     lean?: boolean
 }
@@ -50,16 +61,20 @@ export class AgentHarness {
 
     constructor(config: HarnessConfig) {
         this.config = config
+        const localDiscovery = config.localDiscovery !== false
 
         // 1. discover structured skills
-        const skillEngine = new SkillDiscoveryEngine({
-            workspaceDir: config.workspaceDir,
-            homeDir: config.homeDir,
-        })
-        this.skills = skillEngine.discoverAllSkills()
+        this.skills = localDiscovery
+            ? new SkillDiscoveryEngine({
+                  workspaceDir: config.workspaceDir,
+                  homeDir: config.homeDir,
+              }).discoverAllSkills()
+            : []
 
-        // 2. discover project rules climbing from workspace directory to root
-        this.rules = discoverProjectRules(config.workspaceDir, config.rootBoundary)
+        // 2. project rules: the ones the caller read, or climb from the workspace to the root
+        this.rules =
+            config.projectRules ??
+            (localDiscovery ? discoverProjectRules(config.workspaceDir, config.rootBoundary) : [])
 
         this.effectiveTools = [...config.tools]
         if (this.skills.length > 0 && !this.effectiveTools.some((t) => t.name === 'run_skill')) {

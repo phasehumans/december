@@ -133,11 +133,19 @@ export type ImportPreviewMcp = {
     note?: string
 }
 
+/** a rule file at the root of the repository; it becomes the account rule `name` */
+export type ImportPreviewRule = {
+    path: string
+    name: string
+    exists: boolean
+    importable: boolean
+    reason?: string
+}
+
 export type ImportPreview = ImportRepo & {
     skills: ImportPreviewSkill[]
     mcps: ImportPreviewMcp[]
-    /** listed only: rules are not imported yet */
-    rules: { path: string }[]
+    rules: ImportPreviewRule[]
     truncated: boolean
 }
 
@@ -145,13 +153,15 @@ export type ImportSetupInput = ImportRepo & {
     /** the ticked names. the server reads the repository again for their content */
     skills: string[]
     mcps: string[]
-    /** replace the saved skill or server of the same name */
+    /** the ticked rule files, by path */
+    rules: string[]
+    /** replace the saved skill, server or rule of the same name */
     overwrite: boolean
 }
 
 export type ImportResult = {
-    imported: { skills: string[]; mcps: string[] }
-    skipped: { kind: 'skill' | 'mcp'; name: string; reason: string }[]
+    imported: { skills: string[]; mcps: string[]; rules: string[] }
+    skipped: { kind: 'skill' | 'mcp' | 'rule'; name: string; reason: string }[]
 }
 
 const previewImport = (repo: ImportRepo) =>

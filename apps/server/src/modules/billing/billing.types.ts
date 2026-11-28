@@ -86,10 +86,34 @@ export type UsageHour = {
     ownKeyTokens: number
 }
 
-export type AddCredits = {
+export type ListTransactions = {
     userId: string
+    limit: number
+    offset: number
+}
+
+/** one row of the payments list as the database gives it */
+export type TransactionRow = {
+    id: string
+    createdAt: Date
     amountInCents: number
-    paymentMethod: string
+    status: string
+    // a PaymentProvider, or CODE for a redeem code claim
+    provider: string
+    code: string | null
+}
+
+/** one row of the payments list on Billing */
+export type TransactionItem = {
+    id: string
+    createdAt: Date
+    amountInCents: number
+    status: 'SUCCESS' | 'FAILED'
+    kind: 'payment' | 'grant' | 'adjustment' | 'referral' | 'code'
+    // the redeem code, for a code row
+    code: string | null
+    // a payment that went through has a receipt pdf
+    hasReceipt: boolean
 }
 
 export type RequestFreeCredits = {

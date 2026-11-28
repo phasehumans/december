@@ -207,8 +207,8 @@ December Cloud has slash commands too. Type `/` in the prompt box to see them. S
 | `/skills`                          | List your skills. Pick one to add it to the prompt.                                 |
 | `/learn [lesson]`                  | Save a lesson from the conversation. Session only.                                  |
 | `/permissions [rule]`              | Show the tools that you blocked. With a rule, block a tool. Session only.           |
-| `/mcp`, `/github`                  | Open the page in **Settings > Connections**.                                        |
-| `/plugin`, `/hooks`, `/memory`     | Open the page in **Settings > Connections**. These pages are not ready yet.         |
+| `/mcp`, `/github`, `/memory`       | Open the page in **Settings > Connections**.                                        |
+| `/plugin`, `/hooks`                | Open the page in **Settings > Connections**. These pages are not ready yet.         |
 | `/settings`                        | Open the settings.                                                                  |
 | `/login`                           | Open **Settings > API keys**, where you add your own keys.                          |
 | `/keybindings`                     | Show the keyboard shortcuts.                                                        |
@@ -279,13 +279,13 @@ If you stop a run, the queued messages stay. Select **Send** on a message to sen
 
 A new session starts on **Fast**, on December credits, and with no repository. You can change each value in the prompt box before you send the prompt.
 
-| Value               | How to change it                                                                                                       |
-| :------------------ | :--------------------------------------------------------------------------------------------------------------------- |
-| Speed               | Select **Fast** or **Deep** in the prompt box.                                                                         |
-| Model source        | Select December credits or your keys in the prompt box. To start on your keys, open **Settings > API keys** and set **Model source**. Runs from GitHub also use this value. |
-| Plan first          | Turn it on in the prompt box menu. December writes a plan and waits for your approval before it changes files.         |
-| Open a pull request | Turn it off in the prompt box menu to get a branch and commits only.                                                   |
-| Repository          | Type `@repo` in the prompt box and select a repository. December starts from the default branch of the repository.     |
+| Value               | How to change it                                                                                                                           |
+| :------------------ | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| Speed               | Select **Fast** or **Deep** in the prompt box.                                                                                             |
+| Model source        | Select December credits or your keys in the prompt box. If you have no credits left and you saved a key, a new session starts on your key. |
+| Plan first          | Turn it on in the prompt box menu. December writes a plan and waits for your approval before it changes files.                             |
+| Open a pull request | Turn it off in the prompt box menu to get a branch and commits only.                                                                       |
+| Repository          | Type `@repo` in the prompt box and select a repository. December starts from the default branch of the repository.                         |
 
 To keep **Plan first** and **Open a pull request** for new sessions, select **Set as default** in the prompt box menu.
 

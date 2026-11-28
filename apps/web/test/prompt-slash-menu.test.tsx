@@ -53,6 +53,20 @@ const savedKeys = {
 /** what GET /connections/prompt-box answers for an account with no skills or MCP servers */
 const noConnections = { skills: [], plugins: [], mcps: [] }
 
+/** the skills of an account as GET /connections/prompt-box answers them */
+const savedSkills = {
+    skills: [
+        { name: 'write-tests', description: 'Write unit tests for changed files', plugin: null },
+        { name: 'pr-summary', description: 'Summarize the branch', plugin: null },
+        { name: 'release-notes', description: 'Write release notes', plugin: 'release-kit' },
+    ],
+    plugins: [],
+    mcps: [],
+}
+
+/** what the prompt box lists in the next render; a test sets it before wrap() */
+let promptBoxSeed: typeof noConnections | typeof savedSkills = noConnections
+
 const wrap = (ui: React.ReactNode, options: { keys?: boolean; connections?: 'api' } = {}) => {
     // the cache answers the saved-keys request, so nothing goes to the network
     const client = new QueryClient({
@@ -61,7 +75,7 @@ const wrap = (ui: React.ReactNode, options: { keys?: boolean; connections?: 'api
     client.setQueryData(['byok'], options.keys ? savedKeys : { providers: [], credentials: [] })
     // 'api': the test answers the request itself, at promptBoxConnectionsAPI
     if (options.connections !== 'api') {
-        client.setQueryData(['connections', 'prompt-box'], noConnections)
+        client.setQueryData(['connections', 'prompt-box'], promptBoxSeed)
     }
     return render(
         <QueryClientProvider client={client}>
@@ -557,7 +571,10 @@ describe('skills and MCP servers from the server', () => {
                 { name: 'ship-notes', description: 'Write the release notes', plugin: null },
                 { name: 'write-tests', description: 'Add tests for changed files', plugin: null },
             ],
-            plugins: [],
+            plugins: [
+                { name: 'release-kit', enabled: true },
+                { name: 'old-plugin', enabled: false },
+            ],
             mcps: [
                 { name: 'linear', enabled: true, status: 'connected', lastError: null },
                 { name: 'sentry', enabled: true, status: 'error', lastError: 'HTTP 401' },
@@ -584,15 +601,14 @@ describe('skills and MCP servers from the server', () => {
         expect(screen.getByLabelText('Remove /ship-notes')).not.toBeNull()
     })
 
-    test('the + menu lists the skills and MCP servers of the account, and Plugins stays Soon', async () => {
+    test('the + menu lists the skills, plugins and MCP servers of the account', async () => {
         answer()
         wrap(<HomeBox />, { connections: 'api' })
         fireEvent.click(screen.getByLabelText('Add'))
-        // installing plugins is not built, so only that row waits
-        expect(screen.getAllByText('Soon')).toHaveLength(1)
+        expect(screen.queryByText('Soon')).toBeNull()
         expect(
             screen.getByRole('menuitem', { name: /Plugins/ }).getAttribute('aria-disabled')
-        ).toBe('true')
+        ).toBeNull()
         expect(screen.queryByText('Demo')).toBeNull()
 
         fireEvent.click(screen.getByRole('menuitem', { name: 'Skills' }))
@@ -609,6 +625,14 @@ describe('skills and MCP servers from the server', () => {
 
         fireEvent.click(linear)
         expect(usePromptConfig.getState().mcpsOff).toEqual(['linear'])
+
+        // installed plugins that are on, each with a switch for this session
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Plugins' }))
+        const kit = await screen.findByLabelText('Use release-kit in this session')
+        expect(kit.getAttribute('aria-checked')).toBe('true')
+        expect(screen.queryByText('old-plugin')).toBeNull()
+        fireEvent.click(kit)
+        expect(usePromptConfig.getState().pluginsOff).toEqual(['release-kit'])
     })
 
     test('a skill chip and an MCP server switched off go out with the first prompt', async () => {
@@ -719,8 +743,14 @@ describe('skills and MCP servers from the server', () => {
     })
 })
 
-describe('slash menu in demo mode', () => {
-    beforeEach(() => setConnectionsDemo(true))
+// the skills come from the server (GET /connections/prompt-box), with the preview on or off
+describe('slash menu with saved skills', () => {
+    beforeEach(() => {
+        promptBoxSeed = savedSkills
+    })
+    afterEach(() => {
+        promptBoxSeed = noConnections
+    })
 
     test('skills follow the commands under small labels', () => {
         wrap(<HomeBox />)
@@ -1044,20 +1074,21 @@ describe('prompt footer menus', () => {
             />
         )
 
-    test('the + menu has Skills, Plugins and MCPs, and only Plugins is marked Soon', () => {
+    test('the + menu has Skills, Plugins and MCPs, and no row is marked Soon', () => {
         footer()
         fireEvent.click(screen.getByLabelText('Add'))
 
         expect(screen.getByText('Skills')).not.toBeNull()
         expect(screen.getByText('Plugins')).not.toBeNull()
         expect(screen.getByText('MCPs')).not.toBeNull()
-        expect(screen.getAllByText('Soon')).toHaveLength(1)
+        expect(screen.queryByText('Soon')).toBeNull()
         expect(screen.queryByText('Manage connections')).toBeNull()
 
-        // a Soon row does nothing
+        // with no plugin installed, the list links to the plugins page
         fireEvent.click(screen.getByText('Plugins'))
-        expect(screen.queryByRole('switch')).toBeNull()
-        expect(screen.getByText('Upload attachment')).not.toBeNull()
+        expect(screen.getByText('No plugins installed.')).not.toBeNull()
+        fireEvent.click(screen.getByText('Browse plugins'))
+        expect(screen.getByTestId('location').textContent).toBe('/settings/connections/plugins')
     })
 
     test('a row with a pick handler opens its list beside the menu', () => {
@@ -1095,28 +1126,8 @@ describe('prompt footer menus', () => {
         expect(screen.queryByText('Upload attachment')).toBeNull()
     })
 
-    test('demo mode: Plugins opens a list with a switch for this session', () => {
-        setConnectionsDemo(true)
-        footer()
-        fireEvent.click(screen.getByLabelText('Add'))
-        expect(screen.queryByText('Soon')).toBeNull()
-        // each row whose list holds sample values says Demo, and no other row
-        expect(screen.getAllByText('Demo')).toHaveLength(3)
-        for (const name of [/Plugins/, /Skills/, /MCPs/]) {
-            expect(within(screen.getByRole('menuitem', { name })).getByText('Demo')).not.toBeNull()
-        }
-
-        fireEvent.click(screen.getByText('Plugins'))
-        const toggle = screen.getByLabelText('Use playwright in this session')
-        expect(toggle.getAttribute('aria-checked')).toBe('true')
-        fireEvent.click(toggle)
-        expect(usePromptConfig.getState().pluginsOff).toEqual(['playwright'])
-        // the list stays open while switches are flipped
-        expect(screen.getByLabelText('Use release-kit in this session')).not.toBeNull()
-    })
-
-    test('demo mode: a skill picked from the + menu becomes a chip', () => {
-        setConnectionsDemo(true)
+    test('a saved skill picked from the + menu becomes a chip', () => {
+        promptBoxSeed = savedSkills
         wrap(<HomeBox />)
         fireEvent.click(screen.getByLabelText('Add'))
         fireEvent.click(screen.getByText('Skills'))

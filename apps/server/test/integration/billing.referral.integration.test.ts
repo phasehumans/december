@@ -735,43 +735,40 @@ describe('referral payout', () => {
         const { inviter, invitee } = await newReferral('history')
         await topUp(invitee.token, 1000)
 
-        const inviterHistory = await get(inviter.token, '/billing/overview')
-        const inviteeHistory = await get(invitee.token, '/billing/overview')
+        const inviterHistory = await get(inviter.token, '/billing/transactions')
+        const inviteeHistory = await get(invitee.token, '/billing/transactions')
 
         expect(inviterHistory.status).toBe(200)
         expect(
-            inviterHistory.body.data.transactions.map((row: any) => ({
-                provider: row.provider,
+            inviterHistory.body.data.items.map((row: any) => ({
+                kind: row.kind,
                 status: row.status,
                 amountInCents: row.amountInCents,
-                currency: row.currency,
+                hasReceipt: row.hasReceipt,
             }))
-        ).toEqual([
-            { provider: 'REFERRAL', status: 'SUCCESS', amountInCents: 500, currency: 'USD' },
-        ])
-        expect(inviterHistory.body.data.creditBalance).toBe(500)
+        ).toEqual([{ kind: 'referral', status: 'SUCCESS', amountInCents: 500, hasReceipt: false }])
+        expect((await get(inviter.token, '/billing/overview')).body.data.creditBalance).toBe(500)
 
-        const inviteeRows = inviteeHistory.body.data.transactions.map((row: any) => ({
-            provider: row.provider,
+        const inviteeRows = inviteeHistory.body.data.items.map((row: any) => ({
+            kind: row.kind,
             amountInCents: row.amountInCents,
         }))
         expect(inviteeRows).toHaveLength(2)
-        expect(inviteeRows).toContainEqual({ provider: 'REFERRAL', amountInCents: 500 })
-        expect(inviteeRows).toContainEqual({ provider: 'RAZORPAY', amountInCents: 1000 })
-        expect(inviteeHistory.body.data.creditBalance).toBe(1500)
+        expect(inviteeRows).toContainEqual({ kind: 'referral', amountInCents: 500 })
+        expect(inviteeRows).toContainEqual({ kind: 'payment', amountInCents: 1000 })
+        expect((await get(invitee.token, '/billing/overview')).body.data.creditBalance).toBe(1500)
 
         // a referral credit is not a payment: no receipt. the payment has one
         for (const [history, token] of [
             [inviterHistory, inviter.token],
             [inviteeHistory, invitee.token],
         ] as const) {
-            const row = history.body.data.transactions.find((tx: any) => tx.provider === 'REFERRAL')
+            const row = history.body.data.items.find((tx: any) => tx.kind === 'referral')
             const receipt = await get(token, `/billing/transactions/${row.id}/receipt`)
             expect(receipt.status).toBe(404)
         }
-        const paid = inviteeHistory.body.data.transactions.find(
-            (tx: any) => tx.provider === 'RAZORPAY'
-        )
+        const paid = inviteeHistory.body.data.items.find((tx: any) => tx.kind === 'payment')
+        expect(paid.hasReceipt).toBe(true)
         const receipt = await get(invitee.token, `/billing/transactions/${paid.id}/receipt`)
         expect(receipt.status).toBe(200)
         expect(receipt.headers['content-type']).toContain('application/pdf')

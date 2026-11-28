@@ -25,7 +25,9 @@ import {
     isAuthorizedGithubSender,
     isDecemberBotLogin,
     listFailedCheckRuns,
+    minRunStartBalanceInCents,
     parseBotCommand,
+    pickRunnableOwnKey,
     sessionLink,
     shouldAutoReview,
     toGithubRunTitle,
@@ -453,26 +455,17 @@ const getUserInstallationStatus = async (
     }
 }
 
-// the model a github run uses: the installer's default source, and on own keys the key they
-// used last with its default model. own key runs never fall back to credits.
+// the model a github run uses: December credits. when the installer has no credits left and
+// a saved key can run, the run uses that key (the one used last first) with its default
+// model. with neither, the run starts on credits and the session start says "add credits".
 const resolveRunModel = async (data: ResolveRunModel): Promise<RunModelChoice> => {
-    const { userId, defaultModelSource } = data
-    if (defaultModelSource !== 'OWN_KEY') {
-        return { ok: true, billingSource: 'CREDITS' }
+    const { userId, creditBalance } = data
+    if (creditBalance >= minRunStartBalanceInCents()) {
+        return { billingSource: 'CREDITS' }
     }
-    const key = await githubAppRepository.findLatestOwnKey(userId)
-    if (!key) {
-        return {
-            ok: false,
-            message: `Your December account runs on your own key, but no key is saved. Add one or switch to credits: ${(env.APP_URL || 'https://app.trydecember.com').replace(/\/+$/, '')}/settings`,
-        }
-    }
-    return {
-        ok: true,
-        billingSource: 'OWN_KEY',
-        provider: key.provider,
-        model: key.defaultModel,
-    }
+    const key = pickRunnableOwnKey(await githubAppRepository.findOwnKeys(userId))
+    if (!key) return { billingSource: 'CREDITS' }
+    return { billingSource: 'OWN_KEY', provider: key.provider, model: key.model }
 }
 
 const replyOnGithub = async (data: { token: string; run: GithubRun; body: string }) => {
@@ -501,14 +494,7 @@ const startGithubRun = async (data: StartGithubRun): Promise<StartGithubRunResul
     const owner = await githubAppRepository.findRunOwner(userId)
     if (!owner) return { started: false, reason: 'no_owner' }
 
-    const choice = await resolveRunModel({
-        userId,
-        defaultModelSource: owner.defaultModelSource,
-    })
-    if (!choice.ok) {
-        if (announce) await replyOnGithub({ token, run, body: choice.message })
-        return { started: false, reason: 'no_own_key' }
-    }
+    const choice = await resolveRunModel({ userId, creditBalance: owner.creditBalance })
 
     const prompt = buildGithubRunPrompt({ run, body, instruction, context })
     // review runs start on the base branch; the worker checks out the pull request head

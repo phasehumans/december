@@ -606,6 +606,7 @@ export function initSocket(httpServer: any) {
                         effort: turn.effort,
                         skills: runParts.skills,
                         disabledMcps: turn.disabledMcps,
+                        disabledPlugins: turn.disabledPlugins,
                         ...(userMessageSequence ? { userMessageSequence } : {}),
                         ...(runParts.attachments.length > 0
                             ? { attachments: runParts.attachments }

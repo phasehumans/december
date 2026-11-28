@@ -8,7 +8,6 @@ import { cleanupTestUser, createSignedInUser, getRandomIP } from '../helpers'
 const GROQ_MODELS = ['llama-3.3-70b-versatile', 'qwen-qwq-32b']
 
 const FRESH_DEFAULTS = {
-    defaultModelSource: 'CREDITS' as const,
     defaultPlanFirst: false,
     defaultOpenPullRequest: true,
 }
@@ -41,9 +40,9 @@ const addGroqKey = (userId: string) =>
     })
 
 // the defaults that are left after the Defaults page was removed: "save as default" in the
-// prompt box (PATCH /setting/defaults: plan first and open pull request) and the model source
-// on the API keys page (PATCH /setting/model-source)
-describe('session defaults and model source api', () => {
+// prompt box (PATCH /setting/defaults: plan first and open pull request). the model source
+// setting on the API keys page is gone too: the prompt box picks credits or a key
+describe('session defaults api', () => {
     const stamp = Date.now()
     const userIds: string[] = []
     let user: { userId: string; token: string }
@@ -72,7 +71,7 @@ describe('session defaults and model source api', () => {
 
     const profileOf = async (token: string) => (await authed(token).get('/setting')).body.data
 
-    it('a new account starts on december credits, no plan first, and a pull request', async () => {
+    it('a new account starts with no plan first, and a pull request', async () => {
         const profile = await profileOf(user.token)
         for (const [key, value] of Object.entries(FRESH_DEFAULTS)) {
             expect({ key, value: profile[key] }).toEqual({ key, value })
@@ -83,6 +82,7 @@ describe('session defaults and model source api', () => {
         const profile = await profileOf(user.token)
         for (const key of [
             'defaultEffort',
+            'defaultModelSource',
             'defaultOwnKeyProvider',
             'defaultOwnKeyModel',
             'defaultRepository',
@@ -99,14 +99,20 @@ describe('session defaults and model source api', () => {
         expect(res.status).toBe(404)
     })
 
-    it('both endpoints need a sign-in', async () => {
-        for (const path of ['/setting/defaults', '/setting/model-source']) {
-            const res = await request(app)
-                .patch(`/api/v1${path}`)
-                .set('x-forwarded-for', getRandomIP())
-                .send({ defaultPlanFirst: true, defaultModelSource: 'CREDITS' })
-            expect({ path, status: res.status }).toEqual({ path, status: 401 })
-        }
+    it('the endpoint needs a sign-in', async () => {
+        const res = await request(app)
+            .patch('/api/v1/setting/defaults')
+            .set('x-forwarded-for', getRandomIP())
+            .send({ defaultPlanFirst: true })
+        expect(res.status).toBe(401)
+    })
+
+    it('the model source endpoint is gone', async () => {
+        await addGroqKey(user.userId)
+        const res = await authed(user.token).patch('/setting/model-source', {
+            defaultModelSource: 'OWN_KEY',
+        })
+        expect(res.status).toBe(404)
     })
 
     describe('PATCH /setting/defaults', () => {
@@ -192,7 +198,6 @@ describe('session defaults and model source api', () => {
             const saved = await prisma.user.findUnique({ where: { id: user.userId } })
             expect(saved?.defaultPlanFirst).toBe(false)
             expect(saved?.defaultOpenPullRequest).toBe(true)
-            expect(saved?.defaultModelSource).toBe('CREDITS')
             expect(saved?.creditBalance).toBe(0)
             expect(saved?.isDeleted).toBe(false)
         })
@@ -205,57 +210,6 @@ describe('session defaults and model source api', () => {
             const profile = await profileOf(other.token)
             expect(profile.defaultPlanFirst).toBe(false)
             expect(profile.defaultOpenPullRequest).toBe(true)
-        })
-    })
-
-    describe('PATCH /setting/model-source', () => {
-        it('switches to your keys only when a key is saved', async () => {
-            let res = await authed(user.token).patch('/setting/model-source', {
-                defaultModelSource: 'OWN_KEY',
-            })
-            expect(res.status).toBe(400)
-            expect((await profileOf(user.token)).defaultModelSource).toBe('CREDITS')
-
-            await addGroqKey(user.userId)
-            res = await authed(user.token).patch('/setting/model-source', {
-                defaultModelSource: 'OWN_KEY',
-            })
-            expect(res.status).toBe(200)
-            expect(res.body.data.defaultModelSource).toBe('OWN_KEY')
-            expect((await profileOf(user.token)).defaultModelSource).toBe('OWN_KEY')
-        })
-
-        it('switches back to credits at any time', async () => {
-            await addGroqKey(user.userId)
-            await authed(user.token).patch('/setting/model-source', {
-                defaultModelSource: 'OWN_KEY',
-            })
-            const res = await authed(user.token).patch('/setting/model-source', {
-                defaultModelSource: 'CREDITS',
-            })
-            expect(res.status).toBe(200)
-            expect((await profileOf(user.token)).defaultModelSource).toBe('CREDITS')
-        })
-
-        it("another user's key does not count", async () => {
-            await addGroqKey(other.userId)
-            const res = await authed(user.token).patch('/setting/model-source', {
-                defaultModelSource: 'OWN_KEY',
-            })
-            expect(res.status).toBe(400)
-        })
-
-        it('refuses a bad source', async () => {
-            for (const body of [
-                {},
-                { defaultModelSource: 'own_key' },
-                { defaultModelSource: 'FREE' },
-                { defaultModelSource: null },
-                { defaultModelSource: 1 },
-            ]) {
-                const res = await authed(user.token).patch('/setting/model-source', body)
-                expect({ body, status: res.status }).toEqual({ body, status: 400 })
-            }
         })
     })
 })

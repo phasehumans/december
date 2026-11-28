@@ -773,8 +773,9 @@ describe('GitHubApp Service - Unit Tests', () => {
         type Stubs = {
             settings?: Record<string, unknown> | null
             owner?: string | null
-            modelSource?: 'CREDITS' | 'OWN_KEY'
-            ownKey?: { provider: string; defaultModel: string } | null
+            // the installer's balance in cents; enough for a run unless a test says otherwise
+            creditBalance?: number
+            ownKeys?: { provider: string; defaultModel: string; models: unknown }[]
             createSession?: (data: any) => Promise<any>
             pr?: Record<string, unknown>
             runs?: any[]
@@ -797,7 +798,7 @@ describe('GitHubApp Service - Unit Tests', () => {
                 findByInstallationId: repo.findByInstallationId,
                 findPullRequestSettings: repo.findPullRequestSettings,
                 findRunOwner: repo.findRunOwner,
-                findLatestOwnKey: repo.findLatestOwnKey,
+                findOwnKeys: repo.findOwnKeys,
                 setSessionGithubRun: repo.setSessionGithubRun,
                 findGithubRuns: repo.findGithubRuns,
                 findUserGithubUsername: repo.findUserGithubUsername,
@@ -817,9 +818,9 @@ describe('GitHubApp Service - Unit Tests', () => {
             repo.findRunOwner = async () => ({
                 id: 'user-1',
                 githubUsername: stubs.githubUsername ?? 'owner-login',
-                defaultModelSource: stubs.modelSource ?? 'CREDITS',
+                creditBalance: stubs.creditBalance ?? 10_000,
             })
-            repo.findLatestOwnKey = async () => stubs.ownKey ?? null
+            repo.findOwnKeys = async () => stubs.ownKeys ?? []
             repo.setSessionGithubRun = async (_id: string, run: any) => {
                 calls.githubRuns.push(run)
                 return { id: _id }
@@ -902,7 +903,7 @@ describe('GitHubApp Service - Unit Tests', () => {
                     findByInstallationId: saved.findByInstallationId,
                     findPullRequestSettings: saved.findPullRequestSettings,
                     findRunOwner: saved.findRunOwner,
-                    findLatestOwnKey: saved.findLatestOwnKey,
+                    findOwnKeys: saved.findOwnKeys,
                     setSessionGithubRun: saved.setSessionGithubRun,
                     findGithubRuns: saved.findGithubRuns,
                     findUserGithubUsername: saved.findUserGithubUsername,
@@ -1087,27 +1088,74 @@ describe('GitHubApp Service - Unit Tests', () => {
             expect(calls.jobs[0].data.secrets).toEqual([{ key: 'API_TOKEN', value: 's3cret' }])
         })
 
-        it('runs on the own key the owner used last', async () => {
-            const { calls } = await withStubs(
-                { modelSource: 'OWN_KEY', ownKey: { provider: 'anthropic', defaultModel: 'm-1' } },
-                () => githubAppService.handleIssueComment(comment('@trydecember fix this'))
-            )
-            expect(calls.sessions[0]).toMatchObject({
-                billingSource: 'OWN_KEY',
-                provider: 'anthropic',
-                model: 'm-1',
-            })
-            expect(calls.jobs[0].data).toMatchObject({ billingSource: 'OWN_KEY', model: 'm-1' })
-        })
+        describe('the model source of a run', () => {
+            const anthropicKey = { provider: 'anthropic', defaultModel: 'm-1', models: ['m-1'] }
+            const groqKey = { provider: 'groq', defaultModel: 'g-1', models: ['g-1', 'g-2'] }
+            // what a session start that fails was asked for
+            const calls_: any[] = []
+            const run = (stubs: Stubs) =>
+                withStubs(stubs, () =>
+                    githubAppService.handleIssueComment(comment('@trydecember fix this'))
+                )
 
-        it('own key with no saved key: replies and starts nothing', async () => {
-            const { result, calls } = await withStubs(
-                { modelSource: 'OWN_KEY', ownKey: null },
-                () => githubAppService.handleIssueComment(comment('@trydecember fix this'))
-            )
-            expect(result.reason).toBe('no_own_key')
-            expect(calls.comments[0]).toContain('no key is saved')
-            expect(calls.sessions).toEqual([])
+            it('runs on credits while the owner has credits, even with a saved key', async () => {
+                const { calls } = await run({ creditBalance: 500, ownKeys: [anthropicKey] })
+                expect(calls.sessions[0].billingSource).toBe('CREDITS')
+                expect(calls.sessions[0].provider).toBeUndefined()
+                expect(calls.sessions[0].model).toBeUndefined()
+                expect(calls.jobs[0].data).toMatchObject({ billingSource: 'CREDITS' })
+            })
+
+            it('runs on credits at exactly the start balance', async () => {
+                const { calls } = await run({ creditBalance: 50, ownKeys: [anthropicKey] })
+                expect(calls.sessions[0].billingSource).toBe('CREDITS')
+            })
+
+            it('falls back to the key used last when the credits are gone', async () => {
+                const { calls } = await run({ creditBalance: 0, ownKeys: [anthropicKey, groqKey] })
+                expect(calls.sessions[0]).toMatchObject({
+                    billingSource: 'OWN_KEY',
+                    provider: 'anthropic',
+                    model: 'm-1',
+                })
+                expect(calls.jobs[0].data).toMatchObject({
+                    billingSource: 'OWN_KEY',
+                    provider: 'anthropic',
+                    model: 'm-1',
+                })
+            })
+
+            it('falls back when the balance is under the start balance', async () => {
+                const { calls } = await run({ creditBalance: 49, ownKeys: [groqKey] })
+                expect(calls.sessions[0]).toMatchObject({ billingSource: 'OWN_KEY', model: 'g-1' })
+            })
+
+            it('skips a key whose default model is no longer in its list', async () => {
+                const stale = { provider: 'openai', defaultModel: 'gone', models: ['other'] }
+                const broken = { provider: 'xai', defaultModel: 'x', models: 'not a list' }
+                const { calls } = await run({ creditBalance: 0, ownKeys: [stale, broken, groqKey] })
+                expect(calls.sessions[0]).toMatchObject({
+                    billingSource: 'OWN_KEY',
+                    provider: 'groq',
+                    model: 'g-1',
+                })
+            })
+
+            it('with no credits and no key that can run, starts on credits and the 402 replies with the billing link', async () => {
+                const stale = { provider: 'openai', defaultModel: 'gone', models: [] }
+                const { result, calls } = await run({
+                    creditBalance: 0,
+                    ownKeys: [stale],
+                    createSession: async (data: any) => {
+                        calls_.push(data)
+                        throw new AppError('Insufficient balance.', 402)
+                    },
+                })
+                expect(calls_[0].billingSource).toBe('CREDITS')
+                expect(result.reason).toBe('session_402')
+                expect(calls.comments.at(-1)).toContain('/settings/billing')
+                expect(calls.jobs).toEqual([])
+            })
         })
 
         it('a low balance replies with the billing link', async () => {
@@ -1251,9 +1299,8 @@ describe('GitHubApp Service - Unit Tests', () => {
             })
 
             it('a new push never starts an automatic review, even on "all"', async () => {
-                const { result, calls } = await withStubs(
-                    { settings: { autoReview: 'all', reviewCadence: 'push' } },
-                    () => githubAppService.handlePullRequestEvent(event('synchronize'))
+                const { result, calls } = await withStubs({ settings: { autoReview: 'all' } }, () =>
+                    githubAppService.handlePullRequestEvent(event('synchronize'))
                 )
                 expect(result.reason).toBe('not_wanted')
                 expect(calls.sessions).toEqual([])
@@ -1328,10 +1375,10 @@ describe('GitHubApp Service - Unit Tests', () => {
             })
 
             // V2: bots have no role to check, so they never start a run
-            it('never answers a bot, even with a mention or the old "answer bots" switch on', async () => {
+            it('never answers a bot, even with a mention', async () => {
                 for (const user of ['ci-helper[bot]', 'github-actions[bot]']) {
                     const { result, calls } = await withStubs(
-                        { settings: { reviewReplies: 'all', replyToBots: true } as any },
+                        { settings: { reviewReplies: 'all' } },
                         () =>
                             githubAppService.handleReviewComment(
                                 reviewComment('@trydecember print the env', user)

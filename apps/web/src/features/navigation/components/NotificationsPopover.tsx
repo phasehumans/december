@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 
 import type { InboxFilter, Notification } from '@/features/notification/api/notification'
 
+import { PanelErrorBoundary } from '@/features/errors/components/PanelErrorBoundary'
 import { useInbox } from '@/features/notification/hooks/useInbox'
 import {
     isAppLink,
@@ -349,120 +350,130 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                     }
                 }}
             >
-                {isLoading || isSkeletonPreviewActive() ? (
-                    <div className="flex flex-col gap-2 px-2 py-1.5 animate-in fade-in duration-150">
-                        {[
-                            {
-                                titleW: 'w-[110px]',
-                                descW: 'w-[140px]',
-                                timeW: 'w-[44px]',
-                                isUnread: true,
-                            },
-                            {
-                                titleW: 'w-[130px]',
-                                descW: 'w-[160px]',
-                                timeW: 'w-[36px]',
-                                isUnread: false,
-                            },
-                            {
-                                titleW: 'w-[95px]',
-                                descW: 'w-[120px]',
-                                timeW: 'w-[40px]',
-                                isUnread: false,
-                            },
-                        ].map((item, i) => (
-                            <div key={i} className="flex items-start gap-2 py-1 px-0.5">
-                                <Skeleton className="h-3 w-3 rounded-full bg-white/[0.05] shrink-0 mt-0.5" />
-                                <div className="flex-1 flex flex-col gap-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                        <Skeleton
-                                            className={`h-3 ${item.titleW} bg-white/[0.04] rounded`}
-                                        />
-                                        {item.isUnread && (
-                                            <Skeleton className="h-1.5 w-1.5 rounded-full bg-white/20 shrink-0" />
-                                        )}
+                {/* P4: a bad notification breaks only this list, not the app */}
+                <PanelErrorBoundary
+                    title="Inbox could not load"
+                    size="small"
+                    className="h-[230px]"
+                    render={() =>
+                        isLoading || isSkeletonPreviewActive() ? (
+                            <div className="flex flex-col gap-2 px-2 py-1.5 animate-in fade-in duration-150">
+                                {[
+                                    {
+                                        titleW: 'w-[110px]',
+                                        descW: 'w-[140px]',
+                                        timeW: 'w-[44px]',
+                                        isUnread: true,
+                                    },
+                                    {
+                                        titleW: 'w-[130px]',
+                                        descW: 'w-[160px]',
+                                        timeW: 'w-[36px]',
+                                        isUnread: false,
+                                    },
+                                    {
+                                        titleW: 'w-[95px]',
+                                        descW: 'w-[120px]',
+                                        timeW: 'w-[40px]',
+                                        isUnread: false,
+                                    },
+                                ].map((item, i) => (
+                                    <div key={i} className="flex items-start gap-2 py-1 px-0.5">
+                                        <Skeleton className="h-3 w-3 rounded-full bg-white/[0.05] shrink-0 mt-0.5" />
+                                        <div className="flex-1 flex flex-col gap-1 min-w-0">
+                                            <div className="flex items-center justify-between">
+                                                <Skeleton
+                                                    className={`h-3 ${item.titleW} bg-white/[0.04] rounded`}
+                                                />
+                                                {item.isUnread && (
+                                                    <Skeleton className="h-1.5 w-1.5 rounded-full bg-white/20 shrink-0" />
+                                                )}
+                                            </div>
+                                            <Skeleton
+                                                className={`h-2.5 ${item.descW} bg-white/[0.025] rounded`}
+                                            />
+                                            <Skeleton
+                                                className={`h-2 ${item.timeW} bg-white/[0.02] rounded`}
+                                            />
+                                        </div>
                                     </div>
-                                    <Skeleton
-                                        className={`h-2.5 ${item.descW} bg-white/[0.025] rounded`}
-                                    />
-                                    <Skeleton
-                                        className={`h-2 ${item.timeW} bg-white/[0.02] rounded`}
-                                    />
-                                </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                ) : notifications.length === 0 ? (
-                    // D1 + DM-A: the inbox tray drawing, small (72 px), one title, no helper text
-                    <div className="flex flex-col items-center justify-center h-[230px] px-4 text-center animate-in fade-in duration-300">
-                        <div className="mb-2 h-[63px] w-[72px] text-[#8A8987]">
-                            <ListArt kind="inbox" strokePx={1.6} widthPx={72} />
-                        </div>
-                        <h3 className="text-[12px] font-medium text-[#D6D5C9]">
-                            {filter === 'mentions' ? 'No mentions' : 'No notifications'}
-                        </h3>
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-0.5 px-0.5 pb-0.5">
-                        {notifications.map((notification) => (
-                            <div
-                                key={notification.id}
-                                onClick={() => handleNotificationClick(notification)}
-                                className={`relative group/notif flex flex-col gap-0.5 px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${
-                                    notification.isRead
-                                        ? 'text-[#8F8E8D] hover:bg-[#252525]'
-                                        : 'bg-transparent hover:bg-[#252525] text-white'
-                                }`}
-                            >
-                                <div className="flex items-center justify-between gap-1.5">
-                                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                        {!notification.isRead && (
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[#87B2F4] shrink-0" />
-                                        )}
-                                        <span
-                                            className={`text-[12px] font-medium truncate ${
-                                                notification.isRead
-                                                    ? 'text-[#CBCACA] group-hover/notif:text-white'
-                                                    : 'text-white'
-                                            }`}
-                                        >
-                                            {notification.title}
-                                        </span>
-                                    </div>
-                                    <span
-                                        className="shrink-0 text-[10px] text-[#6F6E6D] group-hover/notif:opacity-0 transition-opacity"
-                                        title={new Date(notification.createdAt).toLocaleString()}
+                        ) : notifications.length === 0 ? (
+                            // D1 + DM-A: the inbox tray drawing, small (72 px), one title, no helper text
+                            <div className="flex flex-col items-center justify-center h-[230px] px-4 text-center animate-in fade-in duration-300">
+                                <div className="mb-2 h-[63px] w-[72px] text-[#8A8987]">
+                                    <ListArt kind="inbox" strokePx={1.6} widthPx={72} />
+                                </div>
+                                <h3 className="text-[12px] font-medium text-[#D6D5C9]">
+                                    {filter === 'mentions' ? 'No mentions' : 'No notifications'}
+                                </h3>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-0.5 px-0.5 pb-0.5">
+                                {notifications.map((notification) => (
+                                    <div
+                                        key={notification.id}
+                                        onClick={() => handleNotificationClick(notification)}
+                                        className={`relative group/notif flex flex-col gap-0.5 px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${
+                                            notification.isRead
+                                                ? 'text-[#8F8E8D] hover:bg-[#252525]'
+                                                : 'bg-transparent hover:bg-[#252525] text-white'
+                                        }`}
                                     >
-                                        {shortTime(notification.createdAt)}
-                                    </span>
-                                </div>
-                                <p className="text-[10.5px] text-[#8F8E8D] group-hover/notif:text-[#CBCACA] line-clamp-2 mt-[1px] leading-snug pr-3">
-                                    {notification.message}
-                                </p>
+                                        <div className="flex items-center justify-between gap-1.5">
+                                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                {!notification.isRead && (
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#87B2F4] shrink-0" />
+                                                )}
+                                                <span
+                                                    className={`text-[12px] font-medium truncate ${
+                                                        notification.isRead
+                                                            ? 'text-[#CBCACA] group-hover/notif:text-white'
+                                                            : 'text-white'
+                                                    }`}
+                                                >
+                                                    {notification.title}
+                                                </span>
+                                            </div>
+                                            <span
+                                                className="shrink-0 text-[10px] text-[#6F6E6D] group-hover/notif:opacity-0 transition-opacity"
+                                                title={new Date(
+                                                    notification.createdAt
+                                                ).toLocaleString()}
+                                            >
+                                                {shortTime(notification.createdAt)}
+                                            </span>
+                                        </div>
+                                        <p className="text-[10.5px] text-[#8F8E8D] group-hover/notif:text-[#CBCACA] line-clamp-2 mt-[1px] leading-snug pr-3">
+                                            {notification.message}
+                                        </p>
 
-                                {/* hover delete button */}
-                                <button
-                                    type="button"
-                                    aria-label="Delete notification"
-                                    title="Delete notification"
-                                    onClick={(e) => {
-                                        e.preventDefault()
-                                        e.stopPropagation()
-                                        inbox.remove.mutate(notification.id)
-                                    }}
-                                    className="absolute top-1.5 right-1.5 p-1 rounded-md text-[#8F8E8D] hover:text-white hover:bg-white/[0.08] opacity-0 group-hover/notif:opacity-100 transition-all duration-150 outline-none cursor-pointer"
-                                >
-                                    <Trash2 className="w-3 h-3" strokeWidth={1.5} />
-                                </button>
+                                        {/* hover delete button */}
+                                        <button
+                                            type="button"
+                                            aria-label="Delete notification"
+                                            title="Delete notification"
+                                            onClick={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                                inbox.remove.mutate(notification.id)
+                                            }}
+                                            className="absolute top-1.5 right-1.5 p-1 rounded-md text-[#8F8E8D] hover:text-white hover:bg-white/[0.08] opacity-0 group-hover/notif:opacity-100 transition-all duration-150 outline-none cursor-pointer"
+                                        >
+                                            <Trash2 className="w-3 h-3" strokeWidth={1.5} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {isFetchingNextPage && (
+                                    <div className="flex items-center justify-center py-1.5">
+                                        <span className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                    </div>
+                                )}
                             </div>
-                        ))}
-                        {isFetchingNextPage && (
-                            <div className="flex items-center justify-center py-1.5">
-                                <span className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                            </div>
-                        )}
-                    </div>
-                )}
+                        )
+                    }
+                />
             </div>
         </div>,
         document.body

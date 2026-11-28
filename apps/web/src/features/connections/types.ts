@@ -34,20 +34,6 @@ export type BrandKey =
     | 'railway'
     | 'discord'
 
-export type PluginItemType = 'skill' | 'mcp' | 'hook' | 'rule'
-
-export interface ConnectionsPlugin {
-    name: string
-    version: string
-    source: string
-    commit: string
-    brand?: BrandKey
-    installed: boolean
-    enabled: boolean
-    updateTo?: string
-    contents: { type: PluginItemType; name: string }[]
-}
-
 export type SkillRunner = 'agent' | 'user'
 
 export interface ConnectionsSkill {
@@ -56,13 +42,12 @@ export interface ConnectionsSkill {
     runs: SkillRunner
     body: string
     enabled: boolean
-    plugin?: string
 }
 
 export type McpTransport = 'http' | 'sse'
-export type McpAuth = 'none' | 'header' | 'oauth'
+export type McpAuth = 'none' | 'header'
 /** `unknown`: no session has used the server yet, so nothing is known about it */
-export type McpStatus = 'connected' | 'needs-signin' | 'error' | 'unknown'
+export type McpStatus = 'connected' | 'error' | 'unknown'
 
 export interface ConnectionsMcp {
     name: string
@@ -73,10 +58,8 @@ export interface ConnectionsMcp {
     status: McpStatus
     enabled: boolean
     tools: { name: string; enabled: boolean }[]
-    account?: string
     lastError?: string
     brand?: BrandKey
-    plugin?: string
 }
 
 export const HOOK_EVENTS = [
@@ -100,34 +83,3 @@ export const HOOK_EVENT_LABELS: Record<HookEvent, string> = {
 }
 
 export const TOOL_HOOK_EVENTS: HookEvent[] = ['PreToolUse', 'PostToolUse']
-
-export interface ConnectionsHook {
-    id: string
-    event: HookEvent
-    matcher: string
-    command: string
-    timeout: number
-    enabled: boolean
-    plugin?: string
-}
-
-export type RuleTrigger = 'always' | 'manual'
-
-export interface ConnectionsRule {
-    name: string
-    when: RuleTrigger
-    body: string
-    enabled: boolean
-    plugin?: string
-}
-
-export interface ConnectionsMemory {
-    id: string
-    title: string
-    body: string
-    session: string
-    savedAt: string
-}
-
-/** max size of one rule that sessions read, in bytes */
-export const RULE_SIZE_LIMIT = 16 * 1024

@@ -6,6 +6,7 @@ import { useConnectionsNav } from '../hooks/useConnectionsNav'
 
 import {
     BackLink,
+    ConfirmModal,
     DetailHeader,
     EmptyRow,
     FactsBox,
@@ -17,7 +18,6 @@ import {
     Pill,
     SearchInput,
     SecondaryButton,
-    SoonPill,
     Spinner,
     matchesQuery,
 } from './ConnectionsUi'
@@ -32,19 +32,18 @@ import {
 } from '@/features/profile/hooks/useGitlabConnection'
 import { useProfileSettingsController } from '@/features/profile/hooks/useProfileSettingsController'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
+import { apiErrorMessage } from '@/shared/lib/apiErrorMessage'
 
 interface AppEntry {
-    id: string
+    id: 'github' | 'gitlab'
     name: string
     brand: BrandKey
-    available: boolean
 }
 
+/** the apps December can connect today. gitlab shows once the server has its app (#645) */
 const APPS: AppEntry[] = [
-    { id: 'github', name: 'GitHub', brand: 'github', available: true },
-    { id: 'gitlab', name: 'GitLab', brand: 'gitlab', available: false },
-    { id: 'slack', name: 'Slack', brand: 'slack', available: false },
-    { id: 'linear', name: 'Linear', brand: 'linear', available: false },
+    { id: 'github', name: 'GitHub', brand: 'github' },
+    { id: 'gitlab', name: 'GitLab', brand: 'gitlab' },
 ]
 
 const GITHUB_INSTALLATIONS_URL = 'https://github.com/settings/installations'
@@ -62,6 +61,7 @@ const AppsSkeleton: React.FC = () => (
 
 export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
     const { toItem } = useConnectionsNav()
+    const queryClient = useQueryClient()
     const { profile, isProfileLoading, profileError, isGithubConnected, connectGithub } =
         useProfileSettingsController()
     const gitlab = useGitlabConnection()
@@ -104,19 +104,15 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
         )
     }
 
-    // the apps that can connect sit first; gitlab is live once the server has its app (#645)
-    const apps = APPS.map((app) =>
-        app.id === 'gitlab' ? { ...app, available: gitlab.isAvailable } : app
-    ).filter((app) => matchesQuery(query, app.name))
+    const apps = APPS.filter((app) => app.id !== 'gitlab' || gitlab.isAvailable).filter((app) =>
+        matchesQuery(query, app.name)
+    )
 
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
                 <SearchInput value={query} onChange={setQuery} placeholder="Search apps" />
             </div>
-            {profileError && !profile && (
-                <p className="text-[12.5px] text-red-500 font-medium">Could not load apps</p>
-            )}
             {githubConnectError && (
                 <p role="alert" className="text-[12.5px] text-red-500 font-medium">
                     {githubConnectError}
@@ -135,6 +131,20 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
                 </ListHeader>
                 {isProfileLoading && !profile ? (
                     <AppsSkeleton />
+                ) : profileError && !profile ? (
+                    <EmptyRow
+                        action={
+                            <SecondaryButton
+                                onClick={() =>
+                                    void queryClient.invalidateQueries({ queryKey: ['profile'] })
+                                }
+                            >
+                                Try again
+                            </SecondaryButton>
+                        }
+                    >
+                        Could not load apps
+                    </EmptyRow>
                 ) : apps.length === 0 ? (
                     <EmptyRow>No results for "{query.trim()}"</EmptyRow>
                 ) : (
@@ -148,13 +158,7 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
                             const connecting =
                                 app.id === 'gitlab' ? isConnectingGitlab : isConnecting
                             return (
-                                <ListRow
-                                    key={app.id}
-                                    dim={!app.available}
-                                    onClick={
-                                        app.available ? () => toItem('apps', app.id) : undefined
-                                    }
-                                >
+                                <ListRow key={app.id} onClick={() => toItem('apps', app.id)}>
                                     <LogoTile brand={app.brand} name={app.name} />
                                     <span className="flex-1 min-w-0 truncate text-[#D6D5C9]">
                                         {app.name}
@@ -163,9 +167,7 @@ export const AppsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
                                         {connected ? account || '' : ''}
                                     </span>
                                     <span className="md:w-[96px] flex justify-end">
-                                        {!app.available ? (
-                                            <SoonPill />
-                                        ) : connected ? (
+                                        {connected ? (
                                             <Pill tone="ok">Connected</Pill>
                                         ) : (
                                             <SecondaryButton
@@ -262,6 +264,7 @@ const GitlabAppPage: React.FC<{
 }> = ({ username, connectError, isConnected, isConnecting, onConnect }) => {
     const { toTab } = useConnectionsNav()
     const queryClient = useQueryClient()
+    const [isConfirming, setIsConfirming] = React.useState(false)
     const disconnect = useMutation({
         mutationFn: profileAPI.disconnectGitlab,
         onSuccess: async () => {
@@ -278,7 +281,7 @@ const GitlabAppPage: React.FC<{
                 <span className="flex-1" />
                 {isConnected ? (
                     <SecondaryButton
-                        onClick={() => disconnect.mutate()}
+                        onClick={() => setIsConfirming(true)}
                         disabled={disconnect.isPending}
                     >
                         {disconnect.isPending ? (
@@ -315,8 +318,21 @@ const GitlabAppPage: React.FC<{
                 </p>
             )}
             {disconnect.isError && (
-                <p className="mt-3 text-[12.5px] text-red-500 font-medium">Could not disconnect</p>
+                <p role="alert" className="mt-3 text-[12.5px] text-red-500 font-medium">
+                    {apiErrorMessage(disconnect.error, 'Could not disconnect')}
+                </p>
             )}
+            <ConfirmModal
+                isOpen={isConfirming}
+                title="Disconnect GitLab?"
+                body="Sessions can no longer clone or push to your GitLab repositories."
+                confirmLabel="Disconnect"
+                onClose={() => setIsConfirming(false)}
+                onConfirm={() => {
+                    setIsConfirming(false)
+                    disconnect.mutate()
+                }}
+            />
         </div>
     )
 }

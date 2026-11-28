@@ -1,5 +1,9 @@
 import { prisma } from '@december/database'
-import { DEFAULT_IDLE_STOP_MINUTES, IDLE_STOP_MINUTES } from '@december/shared'
+import {
+    DEFAULT_IDLE_STOP_MINUTES,
+    IDLE_STOP_MINUTES,
+    STALE_SANDBOX_START_MS,
+} from '@december/shared'
 
 // #624 part 4: running sandboxes are counted per user in the database (Session.sandboxStatus),
 // so the limit holds with any number of workers. paused sandboxes do not count.
@@ -14,8 +18,6 @@ const EXTEND_IDLE_FROM_MS = E2B_SANDBOX_TIMEOUT_MS / 2
 // a sandbox with activity in this window is in use
 const ACTIVE_WINDOW_MS = 2 * 60 * 1000
 
-// a sandbox that has been starting this long is left over from a crashed worker
-const STALE_STARTING_MS = 15 * 60 * 1000
 // an agent run with no event for this long is treated as gone, so its sandbox can be paused
 const STALE_AGENT_RUN_MS = 60 * 60 * 1000
 // one activity write per session per interval is enough for a 10 minute idle window
@@ -55,7 +57,7 @@ export const reserveSandboxSlot = async (
                     { sandboxStatus: 'RUNNING' },
                     {
                         sandboxStatus: 'STARTING',
-                        updatedAt: { gt: new Date(Date.now() - STALE_STARTING_MS) },
+                        updatedAt: { gt: new Date(Date.now() - STALE_SANDBOX_START_MS) },
                     },
                 ],
             },

@@ -49,15 +49,7 @@ describe('new session start values', () => {
         await prisma.providerCredential.deleteMany({ where: { userId } })
         await prisma.user.update({
             where: { id: userId },
-            data: {
-                defaultPlanFirst: false,
-                defaultEffort: 'deep',
-                defaultOpenPullRequest: true,
-                defaultOwnKeyProvider: null,
-                defaultOwnKeyModel: null,
-                defaultRepository: 'last-used',
-                defaultBaseBranch: 'default',
-            },
+            data: { defaultPlanFirst: false, defaultOpenPullRequest: true },
         })
     })
 
@@ -113,33 +105,10 @@ describe('new session start values', () => {
             const res = await startOwnKey({ provider: 'groq', model: 'gpt-5' })
             expect(res.status).toBe(400)
         })
-
-        it('ignores an own-key model saved on the old Defaults page', async () => {
-            await call('put', '/byok/groq').send({ apiKey: 'gsk_defaults_key_1234' })
-            await prisma.user.update({
-                where: { id: userId },
-                data: { defaultOwnKeyProvider: 'groq', defaultOwnKeyModel: GROQ_MODELS[1] },
-            })
-
-            // no provider: the request must still name one
-            expect((await startOwnKey()).status).toBe(400)
-            const res = await startOwnKey({ provider: 'groq' })
-            expect(res.status).toBe(201)
-            expect(res.body.data.session.config.model).toBeUndefined()
-        })
     })
 
     describe('POST /session on december credits', () => {
-        it('starts on fast with no repository, even with old saved defaults', async () => {
-            await prisma.user.update({
-                where: { id: userId },
-                data: {
-                    defaultEffort: 'deep',
-                    defaultRepository: 'acme/web',
-                    defaultBaseBranch: 'develop',
-                },
-            })
-
+        it('starts on fast with no repository', async () => {
             const res = await call('post', '/session').send({ prompt: 'x' })
             expect(res.status).toBe(201)
             expect(res.body.data.session.config.effort).toBe('fast')

@@ -62,7 +62,6 @@ export interface AdminUserDetails {
         securityAlerts: boolean
     }
     defaults: {
-        modelSource: 'CREDITS' | 'OWN_KEY'
         planFirst: boolean
         openPullRequest: boolean
         idleStopMinutes: number

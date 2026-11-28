@@ -7,21 +7,15 @@ import { notificationService } from '../notification/notification.service'
 import { sessionService } from '../session/session.service'
 
 import { settingRepository } from './setting.repository'
-import {
-    toOnboardingStep,
-    toPreferences,
-    toSandboxSettings,
-    cleanSetupCommands,
-} from './setting.utils'
+import { toOnboardingStep, toPreferences, toSandboxSettings } from './setting.utils'
 
-export const settingSelect = {
+const settingSelect = {
     id: true,
     name: true,
     email: true,
     createdAt: true,
     updatedAt: true,
     emailVerified: true,
-    googleId: true,
     githubConnected: true,
     githubAppInstall: true,
     githubUsername: true,
@@ -32,9 +26,7 @@ export const settingSelect = {
     timezone: true,
 
     creditBalance: true,
-    isDeleted: true,
     onboardingCompletedAt: true,
-    defaultModelSource: true,
     defaultPlanFirst: true,
     defaultOpenPullRequest: true,
     preferences: true,
@@ -50,7 +42,6 @@ import type {
     UpdateOnboarding,
     CompleteOnboarding,
     OnboardingState,
-    UpdateModelSource,
     UpdateSessionDefaults,
     GetToolDenyRules,
     UpdateToolDenyRules,
@@ -60,7 +51,6 @@ import type {
     UpdatePreferences,
     GetSandboxSettings,
     UpdateSandboxSettings,
-    UpdateSetupCommands,
     ArchiveInactiveSessions,
 } from './setting.types'
 
@@ -148,28 +138,6 @@ const updateName = async (data: UpdateName) => {
     }
 
     const updatedUser = await settingRepository.updateUserName(userId, name)
-    await invalidateUserSettingCache(userId)
-
-    return updatedUser
-}
-
-const updateModelSource = async (data: UpdateModelSource) => {
-    const { userId, defaultModelSource } = data
-
-    const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
-    if (!existingUser) {
-        throw new AppError('user not found', 404)
-    }
-
-    // the same rule as the page: "your keys" needs a saved key
-    if (
-        defaultModelSource === 'OWN_KEY' &&
-        (await settingRepository.countProviderCredentials(userId)) === 0
-    ) {
-        throw new AppError('add an API key before you switch to your keys', 400)
-    }
-
-    const updatedUser = await settingRepository.updateModelSource(userId, defaultModelSource)
     await invalidateUserSettingCache(userId)
 
     return updatedUser
@@ -369,20 +337,6 @@ const updateSandboxSettings = async (data: UpdateSandboxSettings) => {
     return getSandboxSettings({ userId })
 }
 
-/** the setup commands of one repository (#637). an empty text removes the row */
-const updateSetupCommands = async (data: UpdateSetupCommands) => {
-    const { userId, repoFullName, commands } = data
-    // lower case, so the worker finds the row for any spelling of the repository
-    const repo = repoFullName.toLowerCase()
-    const text = cleanSetupCommands(commands)
-    if (text) {
-        await settingRepository.upsertSetupCommands(userId, repo, text)
-    } else {
-        await settingRepository.deleteSetupCommands(userId, repo)
-    }
-    return getSandboxSettings({ userId })
-}
-
 /**
  * The daily archive job (#637): archives the sessions of users with archiveAfterDays set
  * that were not updated for that many days. Pinned sessions and sessions with a running
@@ -403,7 +357,6 @@ export const settingService = {
     getProfile,
     updateName,
     updateNotifications,
-    updateModelSource,
     updateSessionDefaults,
     getToolDenyRules,
     updateToolDenyRules,
@@ -416,6 +369,5 @@ export const settingService = {
     updatePullRequestSettings,
     getSandboxSettings,
     updateSandboxSettings,
-    updateSetupCommands,
     archiveInactiveSessions,
 }

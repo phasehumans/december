@@ -26,11 +26,6 @@ export type UpdateNotifications = {
     settings: NotificationSettings
 }
 
-export type UpdateModelSource = {
-    userId: string
-    defaultModelSource: 'CREDITS' | 'OWN_KEY'
-}
-
 // "save as default" in the prompt box: plan first and open pull request
 export type UpdateSessionDefaults = {
     userId: string
@@ -109,18 +104,11 @@ export type UpdatePreferences = {
     preferences: Partial<Preferences>
 }
 
-/** the setup commands of one repository: they run after the clone in a new sandbox (#637) */
-export type RepositorySetupCommands = {
-    repoFullName: string
-    commands: string
-}
-
 /** the sandbox settings of a user (#637) */
 export type SandboxSettings = {
     idleStopMinutes: 10 | 30 | 60
     // null: never archive
     archiveAfterDays: 7 | 30 | null
-    setupCommands: RepositorySetupCommands[]
 }
 
 export type GetSandboxSettings = {
@@ -133,12 +121,6 @@ export type UpdateSandboxSettings = {
         idleStopMinutes?: 10 | 30 | 60
         archiveAfterDays?: 7 | 30 | null
     }
-}
-
-export type UpdateSetupCommands = {
-    userId: string
-    repoFullName: string
-    commands: string
 }
 
 export type ArchiveInactiveSessions = {

@@ -84,7 +84,6 @@ beforeEach(() => {
             securityAlerts: true,
         },
         defaults: {
-            modelSource: 'CREDITS',
             planFirst: false,
             openPullRequest: true,
             idleStopMinutes: 10,

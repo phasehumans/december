@@ -1,5 +1,4 @@
 import { razorpay } from '../../config/razorpay'
-import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 import { buildPdf } from '../../shared/pdf'
 import { getAdminPath } from '../admin/admin.utils'
@@ -20,10 +19,13 @@ import {
     referralConfig,
     referralLink,
     toUsageDays,
+    toPaise,
+    toTransactionItem,
     toUsageHours,
     usageDayBuckets,
     usageHourBuckets,
     usageTimezone,
+    usdToInrRate,
     verifyRazorpayOrderPayment,
     verifyRazorpayWebhookSignature,
 } from './billing.utils'
@@ -33,7 +35,7 @@ import type {
     CreateRazorpayOrder,
     VerifyRazorpayPayment,
     CreditsHistory,
-    AddCredits,
+    ListTransactions,
     HandleRazorpayWebhook,
     RequestFreeCredits,
     GetFreeCreditRequest,
@@ -68,57 +70,30 @@ const getOverview = async (data: GetOverview) => {
         throw new AppError('user not found', 404)
     }
 
-    const periodStart = user.createdAt
-    const periodEnd = new Date()
-    const aggregate = await billingRepository.aggregateUsage(userId, periodStart, periodEnd)
-    const usedInCents = aggregate._sum.costInCents ?? 0
-    const claims = ((user as any).redeemClaims || []).map((claim: any) => ({
-        id: claim.id,
-        createdAt: claim.redeemedAt,
-        amountInCents: claim.redeemCode.creditAmount,
-        code: (claim.redeemCode.metadata as any)?.code || 'GIFT',
-    }))
-
-    const giftedCredits =
-        typeof billingRepository.findGiftedCreditsSum === 'function'
-            ? await billingRepository.findGiftedCreditsSum(userId)
-            : claims.reduce((sum: number, claim: any) => sum + claim.amountInCents, 0)
-    const USD_TO_INR_RATE = process.env.USD_TO_INR_RATE
-        ? Number(process.env.USD_TO_INR_RATE)
-        : (env.USD_TO_INR_RATE ?? 92.68)
-
     return {
         creditBalance: user.creditBalance,
-        giftedCredits,
         createdAt: user.createdAt,
-        usdToInrRate: USD_TO_INR_RATE,
-        usage: {
-            inputTokens: aggregate._sum.inputTokens ?? 0,
-            outputTokens: aggregate._sum.outputTokens ?? 0,
-            totalTokens: aggregate._sum.totalTokens ?? 0,
-            costInCents: usedInCents,
-        },
-        claims,
-        transactions: ((user as any).walletTransactions || []).map((tx: any) => ({
-            id: tx.id,
-            createdAt: tx.createdAt,
-            amountInCents: tx.amountInCents,
-            currency: tx.currency,
-            provider: tx.provider,
-            status: tx.status,
-        })),
+        usdToInrRate: usdToInrRate(),
     }
+}
+
+/** one page of the payments list on Billing, newest first */
+const listTransactions = async (data: ListTransactions) => {
+    const { userId, limit, offset } = data
+    const [rows, total] = await Promise.all([
+        billingRepository.listTransactions({ userId, limit, offset }),
+        billingRepository.countTransactions(userId),
+    ])
+    return { items: rows.map(toTransactionItem), total, limit, offset }
 }
 
 const createRazorpayOrder = async (data: CreateRazorpayOrder) => {
     const { userId, amountInCents } = data
 
-    // razorpay requires inr to enable upi and domestic payment options.
-    // convert usd cents to inr paise using configurable USD_TO_INR_RATE.
-    const USD_TO_INR_RATE = process.env.USD_TO_INR_RATE
-        ? Number(process.env.USD_TO_INR_RATE)
-        : (env.USD_TO_INR_RATE ?? 92.68)
-    const amountInPaise = Math.round(amountInCents * USD_TO_INR_RATE)
+    // razorpay requires inr to enable upi and domestic payment options. the order is in
+    // paise worked out here: the amount the client sent is only the usd cents to credit
+    const rate = usdToInrRate()
+    const amountInPaise = toPaise(amountInCents, rate)
     const keyId = getRazorpayKeyId()
 
     let order: any
@@ -160,7 +135,7 @@ const createRazorpayOrder = async (data: CreateRazorpayOrder) => {
         providerOrderId: order.id,
         metadata: {
             amountInPaise,
-            usdToInrRate: USD_TO_INR_RATE,
+            usdToInrRate: rate,
         },
     })
 
@@ -169,7 +144,7 @@ const createRazorpayOrder = async (data: CreateRazorpayOrder) => {
         orderId: order.id,
         amount: order.amount,
         currency: order.currency,
-        usdToInrRate: USD_TO_INR_RATE,
+        usdToInrRate: rate,
     }
 }
 
@@ -326,32 +301,11 @@ const getCreditsHistory = async (data: CreditsHistory) => {
         ),
     ])
 
-    const periods = new Map<string, { periodStart: Date; periodEnd: Date; costInCents: number }>()
-
-    for (const event of events) {
-        const start = event.periodStart ? new Date(event.periodStart) : new Date()
-        const end = event.periodEnd ? new Date(event.periodEnd) : new Date()
-        const key = start.toISOString()
-        const period = periods.get(key) ?? {
-            periodStart: start,
-            periodEnd: end,
-            costInCents: 0,
-        }
-
-        // own-key runs stay in the list, but december credits did not pay for them
-        if (event.billingSource !== 'OWN_KEY') {
-            period.costInCents += event.costInCents
-        }
-        periods.set(key, period)
-    }
-
     return {
         events,
         total,
         limit,
         offset,
-        // periods has the events of this page only. it stays for old clients: read totals
-        periods: Array.from(periods.values()),
         totals,
         days: toUsageDays(dayBuckets, daySums),
         ...(hourBuckets ? { hours: toUsageHours(hourBuckets, hourSums) } : {}),
@@ -386,35 +340,6 @@ const getReceipt = async (data: GetReceipt) => {
     return {
         fileName: receiptFileName({ id: transaction.id, paidAt: transaction.createdAt, timezone }),
         body: buildPdf(lines),
-    }
-}
-
-const addCredits = async (data: AddCredits) => {
-    const { userId, amountInCents } = data
-
-    const user = await billingRepository.findUserByIdForCredits(userId)
-
-    if (!user) {
-        throw new AppError('user not found', 404)
-    }
-
-    const updatedUser = await billingRepository.addCredits(userId, amountInCents)
-
-    try {
-        await notificationService.sendNotificationToUser({
-            userId,
-            title: 'Credits added',
-            message: `$${(amountInCents / 100).toFixed(2)} is in your wallet.`,
-            type: 'SUCCESS',
-            link: '/settings/billing',
-        })
-    } catch (err) {
-        console.error('Failed to send purchase notification:', err)
-    }
-
-    return {
-        amountInCents,
-        newBalance: updatedUser.creditBalance,
     }
 }
 
@@ -475,12 +400,14 @@ const handleRazorpayWebhook = async (data: HandleRazorpayWebhook) => {
 
         if (orderId) {
             const transaction = await billingRepository.findWalletTransactionByOrderId(orderId)
-            if (transaction && transaction.status === 'PENDING') {
-                await billingRepository.updateWalletTransaction(transaction.id, {
-                    status: 'FAILED',
-                    providerPaymentId: paymentId,
-                    metadata: { error: errorDescription },
-                })
+            // only a pending row changes, in one statement: a row paid in the meantime stays paid
+            if (
+                transaction &&
+                (await billingRepository.markWalletTransactionFailed(transaction.id, {
+                    providerPaymentId: typeof paymentId === 'string' ? paymentId : undefined,
+                    error: String(errorDescription).slice(0, 500),
+                }))
+            ) {
                 return { received: true, status: 'failed_recorded' }
             }
         }
@@ -527,11 +454,16 @@ const requestFreeCredits = async (data: RequestFreeCredits) => {
     }
 
     // the admins see it in their December inbox (no email), with a link to the Credits tab
-    await notificationService.sendNotificationToAdmins({
-        title: 'New free credit request',
-        message: `${user.email} asked for free credits. What they will build: ${buildPlan.slice(0, 200)}. How they heard about December: ${heardFrom.slice(0, 100)}`,
-        link: `${getAdminPath()}#users/asked`,
-    })
+    try {
+        await notificationService.sendNotificationToAdmins({
+            title: 'New free credit request',
+            message: `${user.email} asked for free credits. What they will build: ${buildPlan.slice(0, 200)}. How they heard about December: ${heardFrom.slice(0, 100)}`,
+            link: `${getAdminPath()}#users/asked`,
+        })
+    } catch (err) {
+        // the request is saved: a failed notice must not answer an error, or a retry gets a 409
+        console.error('[billing] admin credit request notice failed:', err)
+    }
 
     return toCreditRequestView(created)
 }
@@ -710,7 +642,7 @@ export const billingService = {
     createRazorpayOrder,
     verifyRazorpayPayment,
     getCreditsHistory,
+    listTransactions,
     getReceipt,
-    addCredits,
     handleRazorpayWebhook,
 }

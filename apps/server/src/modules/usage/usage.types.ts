@@ -40,10 +40,6 @@ export type CalculateGenerationCost = {
     outputTokens: number
 }
 
-export type CanRunSelfCorrection = {
-    userId: string
-}
-
 export type UsageUser = {
     id: string
     isDeleted: boolean

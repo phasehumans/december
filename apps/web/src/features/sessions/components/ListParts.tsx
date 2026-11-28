@@ -155,6 +155,13 @@ export type ListArtKind =
     | 'inbox'
     | 'usage'
     | 'repositories'
+    | 'notFound'
+    | 'sessionNotFound'
+    | 'crash'
+    | 'secrets'
+    | 'keys'
+    | 'sandbox'
+    | 'payments'
 
 const circlePath = (cx: number, cy: number, r: number) =>
     `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`
@@ -233,6 +240,58 @@ const LIST_ART: Record<ListArtKind, ListArtShapes> = {
         lines: ['M14 12V96H118', 'M28 80H104'],
         dashed: ['M28 66L50 48 70 56 104 20'],
         dots: [circlePath(104, 80, 3.6)],
+    },
+    // page not found (N5): a paper plane that flew off on a dashed loop
+    notFound: {
+        lines: ['M118 14L62 36 84 46Z', 'M118 14L96 64 84 46'],
+        dashed: ['M8 98C28 106 48 94 40 78C34 66 18 74 26 86C34 98 62 84 74 52'],
+    },
+    // session not found (S2): the two chat bubbles of "No sessions yet", dashed, as if gone
+    sessionNotFound: {
+        lines: [],
+        dashed: [
+            'M20 12H72a10 10 0 0 1 10 10V40a10 10 0 0 1-10 10H38L22 64l2-14H20A10 10 0 0 1 10 40V22A10 10 0 0 1 20 12Z',
+            'M58 56h50a10 10 0 0 1 10 10v20a10 10 0 0 1-10 10h-2l2 12-16-12H58a10 10 0 0 1-10-10V66a10 10 0 0 1 10-10Z',
+        ],
+    },
+    // the app or a part of it crashed (E4): a pencil snapped in two
+    crash: {
+        lines: [
+            'M8.6 79.9L52.3 55.6L54 62L57 60L59.1 67.8L15.4 92.1Z',
+            'M17.3 75L24.1 87.2',
+            'M61 50.7L99.5 29.4L120.4 25.7L106.3 41.6L67.8 62.9L63 56L65 53Z',
+            'M99.5 29.4L106.3 41.6',
+            'M56 76l3 6',
+            'M66 72l6 2',
+        ],
+    },
+    // settings, no secrets yet: a padlock
+    secrets: {
+        lines: [
+            roundRectPath(28, 50, 72, 52, 10),
+            'M44 50V36a20 20 0 0 1 40 0V50',
+            circlePath(64, 72, 6),
+            'M64 78v10',
+        ],
+    },
+    // settings, no API keys yet: a key lying flat
+    keys: {
+        lines: [circlePath(36, 56, 20), 'M56 56H116', 'M100 56v16', 'M86 56v11'],
+        dots: [circlePath(36, 56, 4.5)],
+    },
+    // settings, no sandbox runs now: a closed box
+    sandbox: {
+        lines: ['M24 40L64 22 104 40V82L64 100 24 82Z', 'M24 40L64 58 104 40', 'M64 58V100'],
+        dashed: ['M44 31L84 49'],
+    },
+    // settings, no payments yet: a receipt with a torn edge
+    payments: {
+        lines: [
+            'M32 10H96V102L85 94 74 102 64 94 54 102 43 94 32 102Z',
+            'M46 32H82',
+            'M46 48H82',
+            'M46 64H66',
+        ],
     },
     // the list could not load: a cloud with a line through it
     loadError: {

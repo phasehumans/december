@@ -11,8 +11,6 @@ export type Profile = {
     createdAt: string
     updatedAt: string
     emailVerified: boolean
-    receiveNotification: boolean
-    googleId: string | null
     githubConnected: boolean
     githubAppInstall?: boolean
     githubUsername?: string
@@ -24,8 +22,6 @@ export type Profile = {
     timezone?: string
     creditBalance?: number
     onboardingCompletedAt?: string | null
-    canvasWaitlist?: boolean
-    defaultModelSource?: 'CREDITS' | 'OWN_KEY'
     // "save as default" in the prompt box (#632)
     defaultPlanFirst?: boolean
     defaultOpenPullRequest?: boolean
@@ -50,12 +46,6 @@ export type SignedInSession = {
 }
 
 type BackendProfile = Profile
-type BackendProject = { id: string; name: string; [key: string]: any }
-
-export type QuickInfo = {
-    fullName: string
-    githubConnected: boolean
-}
 
 type BackendQuickInfo = {
     fullName: string
@@ -95,13 +85,6 @@ const updateName = (data: UpdateNameInput) => {
     return apiRequest<BackendProfile>('/setting/name', {
         method: 'PATCH',
         body: JSON.stringify(data),
-    })
-}
-
-const updateModelSource = (defaultModelSource: 'CREDITS' | 'OWN_KEY') => {
-    return apiRequest<{ defaultModelSource: 'CREDITS' | 'OWN_KEY' }>('/setting/model-source', {
-        method: 'PATCH',
-        body: JSON.stringify({ defaultModelSource }),
     })
 }
 
@@ -321,28 +304,10 @@ const submitFeedback = (data: { rating: 'sad' | 'neutral' | 'happy' | null; feed
     })
 }
 
-const createGithubRepo = (
-    projectId: string,
-    data: { name: string; private: boolean; description?: string }
-) => {
-    return apiRequest<BackendProject>(`/platform/projects/${projectId}/github/repository`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-    })
-}
-
-const syncGithubRepo = (projectId: string, data: { commitMessage?: string }) => {
-    return apiRequest<BackendProject>(`/platform/projects/${projectId}/github/sync`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-    })
-}
-
 export const profileAPI = {
     getProfile,
     updateName,
     updateNotifications,
-    updateModelSource,
     updateSessionDefaults,
     getToolDenyRules,
     updateToolDenyRules,
@@ -366,6 +331,4 @@ export const profileAPI = {
     disconnectGitlab,
     getGitlabConnectUrl,
     submitFeedback,
-    createGithubRepo,
-    syncGithubRepo,
 }

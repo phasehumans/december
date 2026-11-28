@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test'
 
-import { usageCheckQuerySchema, recordUsageEventSchema } from '../../src/modules/usage/usage.schema'
+import { usageCheckQuerySchema } from '../../src/modules/usage/usage.schema'
 
 describe('Usage Schema - Unit Tests', () => {
     describe('usageCheckQuerySchema', () => {
@@ -26,53 +26,21 @@ describe('Usage Schema - Unit Tests', () => {
         })
     })
 
-    describe('recordUsageEventSchema', () => {
-        it('should pass and compute totalTokens when totalTokens is omitted', () => {
-            const valid = {
-                model: 'openai/gpt-4o',
-                inputTokens: 100,
-                outputTokens: 50,
-            }
-            const res = recordUsageEventSchema.safeParse(valid)
-            expect(res.success).toBe(true)
-            if (res.success) {
-                expect(res.data.totalTokens).toBe(150)
-                expect(res.data.costInCents).toBe(0)
-            }
+    describe('usageCheckQuerySchema: bounds', () => {
+        it('refuses an estimate over $10,000, part cents and an unknown field', () => {
+            expect(
+                usageCheckQuerySchema.safeParse({ estimatedCostInCents: '1000001' }).success
+            ).toBe(false)
+            expect(usageCheckQuerySchema.safeParse({ estimatedCostInCents: '2.5' }).success).toBe(
+                false
+            )
+            expect(usageCheckQuerySchema.safeParse({ userId: 'other' }).success).toBe(false)
         })
 
-        it('should preserve explicit totalTokens if provided', () => {
-            const valid = {
-                model: 'gemini-2.5-pro',
-                inputTokens: 100,
-                outputTokens: 50,
-                totalTokens: 200,
-                costInCents: 5,
-            }
-            const res = recordUsageEventSchema.safeParse(valid)
-            expect(res.success).toBe(true)
-            if (res.success) {
-                expect(res.data.totalTokens).toBe(200)
-                expect(res.data.costInCents).toBe(5)
-            }
-        })
-
-        it('should fail with empty model or negative token counts', () => {
+        it('takes the top edge', () => {
             expect(
-                recordUsageEventSchema.safeParse({
-                    model: '',
-                    inputTokens: 10,
-                    outputTokens: 10,
-                }).success
-            ).toBe(false)
-
-            expect(
-                recordUsageEventSchema.safeParse({
-                    model: 'gpt-4',
-                    inputTokens: -1,
-                    outputTokens: 10,
-                }).success
-            ).toBe(false)
+                usageCheckQuerySchema.safeParse({ estimatedCostInCents: '1000000' }).success
+            ).toBe(true)
         })
     })
 })

@@ -323,7 +323,6 @@ const getUser = async (data: GetUser) => {
             securityAlerts: user.notifySecurityAlerts,
         },
         defaults: {
-            modelSource: user.defaultModelSource,
             planFirst: user.defaultPlanFirst,
             openPullRequest: user.defaultOpenPullRequest,
             idleStopMinutes: user.idleStopMinutes,

@@ -19,8 +19,6 @@ import type { SlashCommand } from '@/features/home/slash/commands'
 import type { GithubRepo } from '@/features/profile/api/profile'
 import type { BackendSession } from '@/features/sessions/api/session'
 
-import { DemoPill } from '@/features/connections/components/ConnectionsUi'
-import { isConnectionsDemoActive } from '@/features/connections/lib/connectionsDemo'
 import { CascadeMenu, type CascadeItem } from '@/features/home/components/CascadeMenu'
 import {
     ModelConfigRow,
@@ -133,8 +131,6 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
     const [configMenuPosition, setConfigMenuPosition] = useState<'top' | 'bottom'>('bottom')
     /** phones: the level of the Configuration sheet. the model list is the level under it */
     const [configLevel, setConfigLevel] = useState<'root' | 'models'>('root')
-    // installing plugins is not built yet. the preview shows sample plugins
-    const [demo] = useState(isConnectionsDemoActive)
     const isConfigChanged = usePromptConfig(isPromptConfigChanged)
     const isPhone = useIsPhone()
     const isPhoneRef = useRef(isPhone)
@@ -287,8 +283,6 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             id: 'skills',
             label: 'Skills',
             icon: <Shapes className={plusIconClass} />,
-            // with the preview on the list holds sample skills
-            tag: demo ? <DemoPill /> : undefined,
             side:
                 onPickSkill &&
                 sideWhenSignedIn(
@@ -303,23 +297,17 @@ export const PromptFooter: React.FC<PromptFooterProps> = ({
             id: 'plugins',
             label: 'Plugins',
             icon: <Puzzle className={plusIconClass} />,
-            soon: !demo,
-            tag: demo ? <DemoPill /> : undefined,
-            side:
-                demo &&
-                sideWhenSignedIn(
-                    <PluginSessionList
-                        onBrowse={() => openConnections('/settings/connections/plugins')}
-                    />
-                ),
+            side: sideWhenSignedIn(
+                <PluginSessionList
+                    onBrowse={() => openConnections('/settings/connections/plugins')}
+                />
+            ),
             onPick: run(() => undefined),
         },
         {
             id: 'mcps',
             label: 'MCPs',
             icon: <Icons.Mcp className={plusIconClass} />,
-            // with the preview on the list holds sample servers
-            tag: demo ? <DemoPill /> : undefined,
             side: sideWhenSignedIn(
                 <McpSessionList onManage={() => openConnections('/settings/connections/mcps')} />
             ),

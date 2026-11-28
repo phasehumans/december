@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { billingAPI } from '../api/billing'
 
-import type { CreditsHistoryParams } from '../api/billing'
+import type { CreditsHistoryParams, TransactionsParams } from '../api/billing'
 
 export const billingQueryKeys = {
     overview: ['billing-overview'] as const,
@@ -10,6 +10,8 @@ export const billingQueryKeys = {
     limits: ['billing-limits'] as const,
     referral: ['billing-referral'] as const,
     history: (params: CreditsHistoryParams = {}) => ['credits-history', params] as const,
+    // every page of the payments list starts with this key, so one invalidate reaches them all
+    transactions: ['billing-transactions'] as const,
 }
 
 export const useBillingOverview = (enabled: boolean = true) => {
@@ -31,21 +33,13 @@ export const useCreditsHistory = (params: CreditsHistoryParams = {}) => {
     })
 }
 
-export const useCreateRazorpayOrder = () => {
-    return useMutation({
-        mutationFn: billingAPI.createRazorpayOrder,
-    })
-}
-
-export const useVerifyRazorpayPayment = () => {
-    const queryClient = useQueryClient()
-
-    return useMutation({
-        mutationFn: billingAPI.verifyRazorpayPayment,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: billingQueryKeys.overview })
-            queryClient.invalidateQueries({ queryKey: ['profile'] })
-        },
+/** one page of the payments list on Billing */
+export const useBillingTransactions = (params: TransactionsParams) => {
+    return useQuery({
+        queryKey: [...billingQueryKeys.transactions, params] as const,
+        queryFn: () => billingAPI.listTransactions(params),
+        staleTime: 30 * 1000,
+        placeholderData: keepPreviousData,
     })
 }
 

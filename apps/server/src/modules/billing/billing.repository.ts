@@ -4,6 +4,7 @@ import { AppError } from '../../shared/appError'
 
 import type {
     PayReferral,
+    TransactionRow,
     ReferralPayout,
     UsageBucketSum,
     UsageFilter,
@@ -28,84 +29,49 @@ const usageConditions = (filter: UsageFilter) => {
 }
 
 export const billingRepository = {
+    /** what the balance strip, the sidebar and the CLI read: the payments list has its own route */
     async findUserForOverview(id: string) {
         return prisma.user.findUnique({
             where: { id },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                createdAt: true,
-                creditBalance: true,
-                redeemClaims: {
-                    include: {
-                        redeemCode: true,
-                    },
-                    orderBy: {
-                        redeemedAt: 'desc',
-                    },
-                    take: 10,
-                },
-                walletTransactions: {
-                    orderBy: {
-                        createdAt: 'desc',
-                    },
-                    take: 10,
-                },
-            },
+            select: { id: true, createdAt: true, creditBalance: true },
         })
     },
 
-    async aggregateUsage(userId: string, periodStart: Date, periodEnd: Date) {
-        return prisma.usageEvent.aggregate({
-            where: {
-                userId,
-                // own-key runs are paid by the user's provider, not december credits
-                billingSource: 'CREDITS',
-                createdAt: {
-                    gte: periodStart,
-                    lt: periodEnd,
-                },
-            },
-            _sum: {
-                costInCents: true,
-                inputTokens: true,
-                outputTokens: true,
-                totalTokens: true,
-            },
-        })
+    /**
+     * One page of the payments list: wallet transactions that are not pending (an opened
+     * checkout that was not paid is pending), and redeem code claims, newest first.
+     */
+    async listTransactions(data: {
+        userId: string
+        limit: number
+        offset: number
+    }): Promise<TransactionRow[]> {
+        const { userId, limit, offset } = data
+        return prisma.$queryRaw<TransactionRow[]>`
+            SELECT * FROM (
+                SELECT "id", "createdAt", "amountInCents", "status"::text AS "status",
+                       "provider"::text AS "provider", NULL::text AS "code"
+                FROM "WalletTransaction"
+                WHERE "userId" = ${userId} AND "status" <> 'PENDING'
+                UNION ALL
+                SELECT c."id", c."redeemedAt" AS "createdAt", r."creditAmount" AS "amountInCents",
+                       'SUCCESS' AS "status", 'CODE' AS "provider", r."metadata"->>'code' AS "code"
+                FROM "RedeemCodeClaim" c
+                JOIN "RedeemCode" r ON r."id" = c."redeemCodeId"
+                WHERE c."userId" = ${userId}
+            ) AS "rows"
+            ORDER BY "createdAt" DESC, "id" DESC
+            LIMIT ${limit} OFFSET ${offset}
+        `
     },
 
-    async findRedeemCodeClaims(userId: string) {
-        return prisma.redeemCodeClaim.findMany({
-            where: { userId },
-            include: {
-                redeemCode: true,
-            },
-        })
-    },
-
-    async findGiftedCreditsSum(userId: string) {
-        const claims = await prisma.redeemCodeClaim.findMany({
-            where: { userId },
-            select: {
-                redeemCode: {
-                    select: {
-                        creditAmount: true,
-                    },
-                },
-            },
-        })
-        const redeemed = claims.reduce(
-            (sum, claim) => sum + (claim.redeemCode?.creditAmount || 0),
-            0
-        )
-        // approved free credit requests count as gifted credits too
-        const grants = await prisma.walletTransaction.aggregate({
-            where: { userId, provider: 'GRANT', status: 'SUCCESS' },
-            _sum: { amountInCents: true },
-        })
-        return redeemed + (grants._sum.amountInCents ?? 0)
+    /** how many rows the payments list has in all */
+    async countTransactions(userId: string): Promise<number> {
+        const [transactions, claims] = await Promise.all([
+            prisma.walletTransaction.count({ where: { userId, status: { not: 'PENDING' } } }),
+            prisma.redeemCodeClaim.count({ where: { userId } }),
+        ])
+        return transactions + claims
     },
 
     async createWalletTransaction(data: {
@@ -146,18 +112,27 @@ export const billingRepository = {
         })
     },
 
-    async updateWalletTransaction(
+    /**
+     * A failed payment of an order that is still pending. A row that verify or the webhook
+     * marked paid in the meantime stays paid: a late "failed" event must not turn it back,
+     * or a second "captured" event would add the credit again.
+     */
+    async markWalletTransactionFailed(
         id: string,
-        data: {
-            status: 'PENDING' | 'SUCCESS' | 'FAILED'
-            providerPaymentId?: string
-            metadata?: any
-        }
+        data: { providerPaymentId?: string; error: string }
     ) {
-        return prisma.walletTransaction.update({
-            where: { id },
-            data,
-        })
+        const { providerPaymentId, error } = data
+        // the error is added to the metadata: the INR amount of the order stays for a receipt
+        // of a later attempt on the same order that goes through
+        const count = await prisma.$executeRaw`
+            UPDATE "WalletTransaction"
+            SET "status" = 'FAILED',
+                "providerPaymentId" = ${providerPaymentId ?? null},
+                "metadata" = COALESCE("metadata", '{}'::jsonb) || jsonb_build_object('error', ${error}::text),
+                "updatedAt" = NOW()
+            WHERE "id" = ${id} AND "status" = 'PENDING'
+        `
+        return count > 0
     },
 
     async verifyAndUpdateWalletTransaction(
@@ -337,17 +312,6 @@ export const billingRepository = {
     async findUserByIdForCredits(id: string) {
         return prisma.user.findUnique({
             where: { id },
-        })
-    },
-
-    async addCredits(userId: string, amountInCents: number) {
-        return prisma.user.update({
-            where: { id: userId },
-            data: {
-                creditBalance: {
-                    increment: amountInCents,
-                },
-            },
         })
     },
 

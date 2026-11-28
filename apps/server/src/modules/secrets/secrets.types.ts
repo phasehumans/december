@@ -30,7 +30,8 @@ export type CreateSecret = {
     userId: string
     name: string
     value: string
-    note?: string
+    /** '' or null clears the note on an update; no field keeps it */
+    note?: string | null
     /** `owner/name`. null, '' or no field: all repositories */
     repoFullName?: string | null
 }
@@ -38,7 +39,7 @@ export type CreateSecret = {
 export type BulkCreateSecretItem = {
     name: string
     value: string
-    note?: string
+    note?: string | null
     repoFullName?: string | null
 }
 
@@ -52,7 +53,7 @@ export type BulkCreateSecrets = {
 export type BulkUpsertSecretItem = {
     name: string
     encryptedValue: string
-    note?: string
+    note?: string | null
     /** as the database keeps it: lower case, '' for all repositories */
     repoFullName?: string
 }
@@ -65,6 +66,8 @@ export type GetSecretValue = {
     userId: string
     name: string
     repoFullName?: string | null
+    /** the address of the request, for the audit log */
+    ip?: string | null
 }
 
 export type DeleteSecret = {

@@ -296,18 +296,6 @@ describe('Pull request opening settings (#637)', () => {
             expect(row?.updatedAt.toISOString()).toBe(session.updatedAt.toISOString())
         })
 
-        it('archives it even with a value saved by the old switch', async () => {
-            // the switch was removed: a session is always archived when its pull request merges
-            await prisma.pullRequestSettings.create({ data: { userId, archiveOnMerge: false } })
-            const session = await makePrSession({ pinnedAt: new Date() })
-
-            await sendMerged(session.prNumber as number)
-
-            const row = await rowOf(session.id)
-            expect(row?.prState).toBe('merged')
-            expect(row?.isArchived).toBe(true)
-        })
-
         it('does not archive a closed pull request that was not merged', async () => {
             const session = await makePrSession()
             const body = JSON.stringify({

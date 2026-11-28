@@ -140,6 +140,8 @@ async function deleteAccount(userId: string) {
         prisma.providerCredential.deleteMany({ where: { userId } }),
         prisma.secret.deleteMany({ where: { userId } }),
         prisma.userMcpServer.deleteMany({ where: { userId } }),
+        // what the agent remembered about the user goes too
+        prisma.userMemory.deleteMany({ where: { userId } }),
         // git hosts are let go, so a new account can connect the same github or gitlab
         prisma.gitConnection.deleteMany({ where: { userId } }),
         prisma.githubAppInstallation.updateMany({ where: { userId }, data: { userId: null } }),

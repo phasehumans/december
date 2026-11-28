@@ -212,15 +212,15 @@ const findPullRequestSettings = async (userId: string) => {
 const findRunOwner = async (userId: string) => {
     return prisma.user.findFirst({
         where: { id: userId, isDeleted: false, deletedAt: null },
-        select: { id: true, githubUsername: true, defaultModelSource: true },
+        select: { id: true, githubUsername: true, creditBalance: true },
     })
 }
 
-// the own key a github run uses: the one the user used last
-const findLatestOwnKey = async (userId: string) => {
-    return prisma.providerCredential.findFirst({
+// the saved keys a github run can fall back to, the one the user used last first
+const findOwnKeys = async (userId: string) => {
+    return prisma.providerCredential.findMany({
         where: { userId },
-        select: { provider: true, defaultModel: true },
+        select: { provider: true, defaultModel: true, models: true },
         orderBy: [{ lastUsedAt: { sort: 'desc', nulls: 'last' } }, { updatedAt: 'desc' }],
     })
 }
@@ -271,7 +271,7 @@ export const githubAppRepository = {
     hasUnreadNotification,
     findPullRequestSettings,
     findRunOwner,
-    findLatestOwnKey,
+    findOwnKeys,
     setSessionGithubRun,
     findGithubRuns,
 }

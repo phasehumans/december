@@ -67,7 +67,7 @@ export const OnboardingModelsStep: React.FC<OnboardingModelsStepProps> = ({
     const { data: byok } = useByokList(
         openOption === 'key' || state.ownKey !== null || isChangingKey
     )
-    const { saveKey, updateModelSource } = useByokMutations()
+    const { saveKey } = useByokMutations()
     const { startCheckout, isProcessing, error: paymentError } = useRazorpayCheckout()
     const { data: overview } = useBillingOverview(openOption === 'credits')
     const usdToInr = overview?.usdToInrRate ?? FALLBACK_USD_TO_INR
@@ -115,9 +115,8 @@ export const OnboardingModelsStep: React.FC<OnboardingModelsStepProps> = ({
         if (!provider || !apiKey.trim()) return
         setKeyError(null)
         try {
+            // with no credits, the prompt box and runs from GitHub start on this key
             await saveKey.mutateAsync({ provider, apiKey: apiKey.trim() })
-            // a user who brings a key should run on it, not on an empty wallet
-            await updateModelSource.mutateAsync('OWN_KEY')
             setApiKey('')
             setIsChangingKey(false)
             await queryClient.invalidateQueries({ queryKey: onboardingQueryKey })

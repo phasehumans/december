@@ -37,28 +37,34 @@ const json = (data: unknown, status = 200) =>
 
 const overview = {
     creditBalance: 1500,
-    giftedCredits: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
-    usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, costInCents: 0 },
-    claims: [],
-    transactions: [
+    usdToInrRate: 92.68,
+}
+
+const transactions = {
+    items: [
         {
             id: 'tx-referral-0001',
             createdAt: '2026-03-11T12:00:00.000Z',
             amountInCents: 500,
-            currency: 'USD',
-            provider: 'REFERRAL',
             status: 'SUCCESS',
+            kind: 'referral',
+            code: null,
+            hasReceipt: false,
         },
         {
             id: 'tx-paid-0001',
             createdAt: '2026-03-10T12:00:00.000Z',
             amountInCents: 1000,
-            currency: 'USD',
-            provider: 'RAZORPAY',
             status: 'SUCCESS',
+            kind: 'payment',
+            code: null,
+            hasReceipt: true,
         },
     ],
+    total: 2,
+    limit: 10,
+    offset: 0,
 }
 
 const fakeServer = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -70,6 +76,7 @@ const fakeServer = (async (input: RequestInfo | URL, init?: RequestInit) => {
     })
     if (url.pathname.endsWith('/billing/referral')) return referralReply()
     if (url.pathname.endsWith('/billing/overview')) return json(overview)
+    if (url.pathname.endsWith('/billing/transactions')) return json(transactions)
     if (url.pathname.includes('/auth/')) return json({ isNewUser: true })
     return json(null)
 }) as typeof fetch
@@ -142,11 +149,12 @@ describe('the invite a friend row on billing', () => {
     test('a normal user sees the link and the amount from the server', async () => {
         const view = renderBilling()
 
-        await waitFor(() => expect(view.getByText('Invite a friend')).toBeTruthy())
+        await waitFor(() =>
+            expect(
+                view.getByText('Invite a friend. You both get $5 when they first add $10 or more.')
+            ).toBeTruthy()
+        )
         await waitFor(() => expect(view.getByText('app.trydecember.com/r/k7m2p9xq')).toBeTruthy())
-        expect(
-            view.getByText('You both get $5 after their first payment of $10 or more')
-        ).toBeTruthy()
         expect(calls.some((call) => call.path.endsWith('/billing/referral'))).toBe(true)
     })
 
@@ -165,7 +173,9 @@ describe('the invite a friend row on billing', () => {
 
         await waitFor(() =>
             expect(
-                view.getByText('You both get $2.50 after their first payment of $20 or more')
+                view.getByText(
+                    'Invite a friend. You both get $2.50 when they first add $20 or more.'
+                )
             ).toBeTruthy()
         )
     })
@@ -186,14 +196,14 @@ describe('the invite a friend row on billing', () => {
         const view = renderBilling()
 
         await waitFor(() => expect(view.getByText('Balance')).toBeTruthy())
-        await waitFor(() => expect(view.queryByText('Invite a friend')).toBeNull())
+        await waitFor(() => expect(view.queryByText(/Invite a friend/)).toBeNull())
     })
 
     test('a referral credit in the history has the type Referral', async () => {
         const view = renderBilling()
 
         await waitFor(() => expect(view.getAllByText('Referral').length).toBeGreaterThan(0))
-        expect(view.getAllByText('Card/UPI (Razorpay)').length).toBeGreaterThan(0)
+        expect(view.getAllByText('Card or UPI').length).toBeGreaterThan(0)
     })
 })
 

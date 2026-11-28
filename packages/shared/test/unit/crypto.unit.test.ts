@@ -45,6 +45,20 @@ describe('crypto', () => {
         expect(() => decryptText({ encryptedText: flipped, keyHex: KEY })).toThrow()
     })
 
+    it('rejects a short auth tag or iv, so a forged short tag never passes', () => {
+        const encrypted = encryptText({ text: 'secret', keyHex: KEY })
+        const [iv, tag, body] = encrypted.split(':')
+        for (const changed of [
+            `${iv}:${tag!.slice(0, 8)}:${body}`,
+            `${iv}:${tag!.slice(0, 24)}:${body}`,
+            `${iv!.slice(0, 16)}:${tag}:${body}`,
+        ]) {
+            expect(() => decryptText({ encryptedText: changed, keyHex: KEY })).toThrow(
+                EncryptedTextError
+            )
+        }
+    })
+
     it('rejects a key that is not 32 bytes', () => {
         expect(() => encryptText({ text: 'x', keyHex: 'abcd' })).toThrow(
             'encryption key must be 32 bytes'

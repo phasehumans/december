@@ -3,11 +3,6 @@ import { detectGitProvider, getGitProvider } from '@december/shared/git'
 
 import type { SecretRepoRow, SessionRepoRow } from './secrets.types'
 
-export function maskSecretValue(value: string): string {
-    if (value.length <= 4) return '****'
-    return value.slice(0, 2) + '****' + value.slice(-2)
-}
-
 /** the value of `repoFullName` on a secret that is used in all repositories */
 export const ALL_REPOSITORIES = ''
 

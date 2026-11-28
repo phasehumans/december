@@ -4,12 +4,6 @@ import { preferencesSchema } from './setting.schema'
 
 import type { OnboardingStep, Preferences, SandboxSettings } from './setting.types'
 
-export const sanitizeMarkdown = (str: string): string => {
-    return str
-        .replace(/[\r\n]+/g, ' ') // replace newlines with spaces to prevent log/section breakout
-        .replace(/([\\`*_{}[\]()#+\-.!])/g, '\\$1') // escape all markdown special characters
-}
-
 const ONBOARDING_STEPS: OnboardingStep[] = ['github', 'start', 'models']
 
 /** a saved step name, or null for anything that is not a current step */
@@ -36,19 +30,10 @@ const ARCHIVE_AFTER_DAYS = [7, 30] as const
 export const toSandboxSettings = (data: {
     idleStopMinutes: number
     archiveAfterDays: number | null
-    repositorySettings: Array<{ repoFullName: string; setupCommands: string }>
 }): SandboxSettings => ({
     // the choices are the same as in the worker's idle sweep (packages/shared, run-contract.ts)
     idleStopMinutes:
         IDLE_STOP_MINUTES.find((value) => value === data.idleStopMinutes) ??
         DEFAULT_IDLE_STOP_MINUTES,
     archiveAfterDays: ARCHIVE_AFTER_DAYS.find((value) => value === data.archiveAfterDays) ?? null,
-    setupCommands: data.repositorySettings.map((row) => ({
-        repoFullName: row.repoFullName,
-        commands: row.setupCommands,
-    })),
 })
-
-/** setup commands as they are saved: unix line ends, no empty lines around the text */
-export const cleanSetupCommands = (commands: string): string =>
-    commands.replace(/\r\n?/g, '\n').trim()

@@ -10,6 +10,9 @@ import { createGuardedMcpFetch, MCP_REFUSAL_REASONS } from '@december/tools'
 
 import { resolveSecretsEncKey } from './llm-source'
 
+import type { PluginRow } from './plugins'
+import type { HookRow } from './user-hooks'
+
 export type SkillRow = {
     name: string
     description: string
@@ -361,7 +364,12 @@ export const connectUserMcpServers = async (data: {
     )
 }
 
-const NO_CONNECTIONS = { skills: [] as SkillRow[], mcpServers: [] as McpServerRow[] }
+const NO_CONNECTIONS = {
+    skills: [] as SkillRow[],
+    mcpServers: [] as McpServerRow[],
+    plugins: [] as PluginRow[],
+    hooks: [] as HookRow[],
+}
 
 /**
  * The user's saved skills and mcp servers that are on. A run with no user, or a read
@@ -391,11 +399,48 @@ export const loadUserConnections = async (userId: string | undefined) => {
                 },
             }),
         ])
-        return { skills, mcpServers }
+        // plugins without their files (a run reads those only to write them), and hooks
+        const [plugins, hooks] = await Promise.all([
+            prisma.userPlugin.findMany({
+                where: { userId, enabled: true },
+                orderBy: { name: 'asc' },
+                select: {
+                    id: true,
+                    name: true,
+                    enabled: true,
+                    skills: true,
+                    mcpServers: true,
+                    commitSha: true,
+                    updatedAt: true,
+                },
+            }),
+            prisma.userHook.findMany({
+                where: { userId, enabled: true },
+                orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+                select: {
+                    event: true,
+                    matcher: true,
+                    command: true,
+                    timeoutSeconds: true,
+                    enabled: true,
+                },
+            }),
+        ])
+        return { skills, mcpServers, plugins, hooks }
     } catch (error) {
         console.warn('[WORKER] could not load the saved skills and mcp servers:', error)
         return NO_CONNECTIONS
     }
+}
+
+/** the saved files of one plugin of the user; only the owner's row is read */
+export const loadPluginFiles = async (data: { userId: string; id: string }) => {
+    const { userId, id } = data
+    const row = await prisma.userPlugin.findFirst({
+        where: { id, userId },
+        select: { files: true },
+    })
+    return row?.files ?? null
 }
 
 /** the saved headers of a server; throws when they cannot be read */

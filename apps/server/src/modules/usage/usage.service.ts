@@ -26,7 +26,6 @@ import type {
     RecordUsageEvent,
     RecordDailyUsage,
     CalculateGenerationCost,
-    CanRunSelfCorrection,
     UsageUser,
     MarkNewLowBalanceDrop,
 } from './usage.types'
@@ -385,20 +384,6 @@ const recordUsageEvent = async (data: RecordUsageEvent) => {
     }
 }
 
-const canRunSelfCorrection = async (data: CanRunSelfCorrection): Promise<boolean> => {
-    const { userId } = data
-    try {
-        const user = await usageRepository.findUserCredits({ userId })
-        if (!user) return false
-
-        const threshold = parseInt(process.env.SELF_CORRECTION_CREDIT_THRESHOLD || '5', 10) // default 5 cents
-        return user.creditBalance >= threshold
-    } catch {
-        // Intentionally swallowed: fallback to false if user not found or error occurred
-        return false
-    }
-}
-
 /**
  * Charges a small, frequent call (like AI search filters) and adds it to one usage
  * event per user per UTC day, so the Usage page shows a daily total, not every call.
@@ -487,5 +472,4 @@ export const usageService = {
     recordUsageEvent,
     recordDailyUsage,
     calculateGenerationCost,
-    canRunSelfCorrection,
 }

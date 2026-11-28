@@ -84,7 +84,6 @@ describe('admin api', () => {
         await prisma.githubAppInstallation.deleteMany({
             where: { installationId: `inst-${stamp}` },
         })
-        await prisma.announcement.deleteMany({ where: { createdBy: admin.userId } })
         await prisma.session.deleteMany({ where: { userId: { in: ids } } })
         for (const id of ids) {
             await cleanupTestUser({ id })
@@ -613,6 +612,8 @@ describe('admin api', () => {
                 feedback: { total: 1 },
             })
             expect(card.usage.daily).toHaveLength(1)
+            // nobody can change the model source any more, so the card does not show it
+            expect(card.defaults).not.toHaveProperty('modelSource')
             expect(card.adminHistory[0]).toMatchObject({
                 action: 'credits.adjust',
                 amountInCents: 100,

@@ -2,7 +2,7 @@ import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
-import { providerParamSchema, saveCredentialSchema } from './byok.schema'
+import { providerParamSchema, refreshCredentialSchema, saveCredentialSchema } from './byok.schema'
 import { byokService } from './byok.service'
 
 import type { Request, Response } from 'express'
@@ -30,6 +30,7 @@ const saveCredential = asyncHandler(async (req: Request, res: Response) => {
 const refreshCredential = asyncHandler(async (req: Request, res: Response) => {
     const userId = requireUserId(req)
     const { provider } = providerParamSchema.parse(req.params)
+    refreshCredentialSchema.parse(req.body ?? {})
     const credential = await byokService.refreshCredential({ userId, provider })
     return sendSuccess(res, 'provider key checked successfully', { credential })
 })

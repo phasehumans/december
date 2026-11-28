@@ -12,8 +12,6 @@ const { render, screen, fireEvent, cleanup, waitFor, within } =
     await import('@testing-library/react')
 const { MemoryRouter, useLocation } = await import('react-router-dom')
 const { ConnectionsPage } = await import('../src/features/connections/components/ConnectionsPage')
-const { useConnectionsStore } =
-    await import('../src/features/connections/hooks/useConnectionsStore')
 const { setConnectionsDemo } = await import('../src/features/connections/lib/connectionsDemo')
 
 // the Skills and MCPs tabs on the real api (#632 section 2). only fetch is replaced: the
@@ -44,7 +42,6 @@ type Mcp = {
 
 type Call = { method: string; path: string; body: any }
 
-const initialStore = useConnectionsStore.getState()
 const originalFetch = globalThis.fetch
 
 let calls: Call[] = []
@@ -56,6 +53,8 @@ let failNext: { match: string; status: number; payload: Record<string, unknown> 
 let hold: Promise<void> | null = null
 /** while set, the server holds its answer to every list read until this resolves */
 let holdReads: Promise<void> | null = null
+/** while true, every list read fails */
+let failReads = false
 
 const reply = (status: number, payload: Record<string, unknown>) =>
     new Response(JSON.stringify({ success: status < 400, ...payload }), {
@@ -77,6 +76,8 @@ const fakeServer = (async (input: RequestInfo | URL, init?: RequestInit) => {
         failNext = null
         return reply(status, payload)
     }
+
+    if (method === 'GET' && failReads) return reply(400, { message: 'down' })
 
     const [, , kind, rawName] = path.split('/')
     const name = rawName ? decodeURIComponent(rawName) : ''
@@ -236,7 +237,6 @@ const paused: Mcp = { ...linear, name: 'api-paused', enabled: false }
 
 beforeEach(() => {
     cleanup()
-    useConnectionsStore.setState(initialStore, true)
     setConnectionsDemo(false)
     calls = []
     skills = [writeTests, reviewPr]
@@ -244,6 +244,7 @@ beforeEach(() => {
     failNext = null
     hold = null
     holdReads = null
+    failReads = false
     globalThis.fetch = fakeServer
 })
 
@@ -853,61 +854,84 @@ describe('the prompt box and late reads', () => {
 describe('with the preview on', () => {
     beforeEach(() => setConnectionsDemo(true))
 
-    test('each tab on sample values carries the demo pill, import setup does not', () => {
+    test('the live tabs carry no demo pill, and import setup is not marked', () => {
         renderAt('/settings/connections/apps')
         const tab = (name: string) =>
             within(screen.getByRole('radiogroup', { name: 'Connections sections' }))
                 .getAllByRole('radio')
                 .find((radio) => radio.textContent?.startsWith(name)) as HTMLElement
-        // with the preview on, Skills and MCPs list sample values too
-        for (const name of ['Plugins', 'Hooks', 'Rules', 'Memory', 'Skills', 'MCPs']) {
-            expect(within(tab(name)).getByText('Demo')).toBeDefined()
+        for (const name of ['Apps', 'Skills', 'MCPs', 'Rules', 'Memory']) {
+            expect(within(tab(name)).queryByText('Demo') === null).toBe(true)
         }
-        // Apps reads and writes the server, so it is not marked
-        expect(within(tab('Apps')).queryByText('Demo') === null).toBe(true)
-        // import setup has a server behind it (#637), so the button is not marked
         const importSetup = screen.getByRole('button', { name: /Import setup/ })
         expect(within(importSetup).queryByText('Demo') === null).toBe(true)
     })
 
-    test('the sample tabs open, and the skills and mcps stay sample values', () => {
-        renderAt('/settings/connections/plugins')
-        expect(shows('Plugins are coming soon')).toBe(false)
-        cleanup()
+    test('skills and mcps read the api, not sample values', async () => {
         renderAt('/settings/connections/skills')
-        expect(shows('write-tests')).toBe(true)
+        expect(await screen.findByText('api-write-tests')).toBeDefined()
+        expect(shows('write-tests')).toBe(false)
         cleanup()
         renderAt('/settings/connections/mcps')
-        expect(shows('sentry')).toBe(true)
-        fireEvent.click(screen.getByRole('switch', { name: 'Turn sentry on or off' }))
-        // nothing goes to the server
-        expect(calls.filter((call) => call.path.startsWith('/connections'))).toEqual([])
+        expect(await screen.findByText('api-linear')).toBeDefined()
+        expect(shows('sentry')).toBe(false)
     })
 
-    test('the sample mcp form keeps oauth and test', () => {
+    test('the mcp form has no oauth and no fake test', () => {
         renderAt('/settings/connections/mcps?add=1')
-        expect(screen.getByRole('radio', { name: 'OAuth' })).toBeDefined()
-        expect(screen.getByRole('button', { name: 'Test' })).toBeDefined()
+        expect(screen.queryByRole('radio', { name: 'OAuth' })).toBeNull()
+        expect(screen.queryByRole('button', { name: 'Test' })).toBeNull()
     })
 })
 
-describe('tabs with no server yet', () => {
-    test('plugins, hooks, rules and memory stay soon for normal users', () => {
-        const soon = [
-            ['plugins', 'Plugins are coming soon'],
-            ['hooks', 'Hooks are coming soon'],
-            ['rules', 'Rules are coming soon'],
-            ['memory', 'Memory is coming soon'],
-        ]
-        for (const [tab, text] of soon) {
-            renderAt(`/settings/connections/${tab}`)
-            expect(screen.getByText(text)).toBeDefined()
-            expect(shows('Demo')).toBe(false)
-            // import setup is for every user (#637). it reads nothing until it opens
-            expect(screen.getByRole('button', { name: 'Import setup' })).toBeDefined()
-            cleanup()
-        }
-        // nothing is asked of the server for these tabs
-        expect(calls).toEqual([])
+describe('the audit of 2026-11-28', () => {
+    test('a server imported with capitals and underscores can be edited and saved', async () => {
+        mcps = [{ ...fresh, name: 'My_Server' }]
+        renderAt('/settings/connections/mcps/My_Server')
+        fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
+        fireEvent.click(screen.getByText('Save', { selector: 'button[type="submit"]' }))
+        await waitFor(() => expect(writes().length).toBe(1))
+        expect(writes()[0]).toMatchObject({ method: 'PUT', path: '/connections/mcps/My_Server' })
+        expect(shows('Use letters, numbers, dashes and underscores')).toBe(false)
+    })
+
+    test('a name with a space or a dot is refused before anything is sent', async () => {
+        renderAt('/settings/connections/mcps?add=1')
+        typeInto(await screen.findByLabelText('Name'), 'my server')
+        expect(shows('Use letters, numbers, dashes and underscores')).toBe(true)
+    })
+
+    test('a url over 500 characters is refused in the form', async () => {
+        renderAt('/settings/connections/mcps?add=1')
+        typeInto(await screen.findByLabelText('Server URL'), `https://a.dev/${'x'.repeat(500)}`)
+        expect(shows('A URL is at most 500 characters')).toBe(true)
+    })
+
+    test('a skill list that cannot load offers Try again', async () => {
+        failReads = true
+        renderAt('/settings/connections/skills')
+        expect(await screen.findByText('Could not load skills')).toBeDefined()
+        failReads = false
+        fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+        expect(await screen.findByText('api-write-tests')).toBeDefined()
+    })
+
+    test('an mcp list that cannot load offers Try again', async () => {
+        failReads = true
+        renderAt('/settings/connections/mcps')
+        expect(await screen.findByText('Could not load MCPs')).toBeDefined()
+        failReads = false
+        fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+        expect(await screen.findByText('api-linear')).toBeDefined()
+    })
+
+    test('a skill description over 300 characters cannot be saved', async () => {
+        renderAt('/settings/connections/skills/new')
+        typeInto(await screen.findByLabelText('Name'), 'long')
+        typeInto(screen.getByLabelText('Description'), 'x'.repeat(301))
+        typeInto(screen.getByLabelText('Instructions'), 'steps')
+        expect(shows('At most 300 characters')).toBe(true)
+        const save = screen.getByRole('button', { name: 'Save skill' }) as HTMLButtonElement
+        expect(save.disabled).toBe(true)
     })
 })

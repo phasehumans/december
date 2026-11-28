@@ -115,13 +115,16 @@ const previewImport = asyncHandler(async (req: Request, res: Response) => {
 
 const importSetup = asyncHandler(async (req: Request, res: Response) => {
     const userId = requireUser(req)
-    const { repoFullName, provider, skills, mcps, overwrite } = importSetupSchema.parse(req.body)
+    const { repoFullName, provider, skills, mcps, rules, overwrite } = importSetupSchema.parse(
+        req.body
+    )
     const result = await connectionService.importSetup({
         userId,
         repoFullName,
         provider,
         skills,
         mcps,
+        rules,
         overwrite,
     })
     return sendSuccess(res, 'setup imported', result)

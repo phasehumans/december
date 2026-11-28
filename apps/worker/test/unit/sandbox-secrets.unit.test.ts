@@ -32,6 +32,20 @@ describe('sandbox secrets', () => {
             ).toEqual({ GOOD: 'yes' })
         })
 
+        it('drops a system name of the sandbox, so a secret never changes PATH or the loader', () => {
+            expect(
+                toSecretEnvs([
+                    { key: 'PATH', value: '/tmp/evil' },
+                    { key: 'LD_PRELOAD', value: '/tmp/evil.so' },
+                    { key: 'BASH_ENV', value: '/tmp/x' },
+                    { key: 'DECEMBER_RUN', value: 'x' },
+                    { key: 'E2B_API_KEY', value: 'x' },
+                    { key: 'GIT_SSH_COMMAND', value: 'x' },
+                    { key: 'GITHUB_TOKEN', value: 'ghp_ok' },
+                ])
+            ).toEqual({ GITHUB_TOKEN: 'ghp_ok' })
+        })
+
         it('gives nothing for no secrets', () => {
             expect(toSecretEnvs(undefined)).toEqual({})
             expect(toSecretEnvs([])).toEqual({})

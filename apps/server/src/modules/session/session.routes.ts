@@ -13,6 +13,14 @@ const smartSearchLimiter = createRateLimiter({
     prefix: 'rl:smart-search:',
 })
 
+// each stop sends an interrupt and can queue a sandbox pause; cap it per user
+const stopLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    limit: 30,
+    message: 'Too many stops. Try again in a minute.',
+    prefix: 'rl:session-stop:',
+})
+
 const sessionRouter = Router()
 
 sessionRouter.use(authMiddleware)
@@ -45,7 +53,7 @@ sessionRouter.get('/:id/plan', sessionController.getSessionPlan)
 sessionRouter.get('/:id/tests', sessionController.getSessionTests)
 sessionRouter.get('/:id/preview-port', sessionController.getSessionPreviewPort)
 sessionRouter.post('/:id/preview-activity', sessionController.recordPreviewActivity)
-sessionRouter.post('/:id/stop', sessionController.stopSession)
+sessionRouter.post('/:id/stop', stopLimiter, sessionController.stopSession)
 sessionRouter.get('/:id/desktop-viewport', sessionController.getSessionDesktopViewport)
 sessionRouter.post('/:id/question-answer', sessionController.submitQuestionAnswer)
 sessionRouter.get('/:id/pending-question', sessionController.getPendingQuestion)

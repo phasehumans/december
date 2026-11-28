@@ -12,8 +12,6 @@ const { render, screen, fireEvent, cleanup, waitFor, within } =
     await import('@testing-library/react')
 const { MemoryRouter } = await import('react-router-dom')
 const { ConnectionsPage } = await import('../src/features/connections/components/ConnectionsPage')
-const { useConnectionsStore } =
-    await import('../src/features/connections/hooks/useConnectionsStore')
 const { setConnectionsDemo } = await import('../src/features/connections/lib/connectionsDemo')
 
 // import setup on the real routes (#637 section 6). only fetch is replaced: the tests read
@@ -21,7 +19,6 @@ const { setConnectionsDemo } = await import('../src/features/connections/lib/con
 
 type Call = { method: string; path: string; body: any }
 
-const initialStore = useConnectionsStore.getState()
 const originalFetch = globalThis.fetch
 
 const repo = (fullName: string, id: number, provider: 'GITHUB' | 'GITLAB' = 'GITHUB') => ({
@@ -94,7 +91,16 @@ const webPreview = {
             reason: 'It runs a command. Only a server with a url can be imported.',
         },
     ],
-    rules: [{ path: 'AGENTS.md' }],
+    rules: [
+        { path: 'AGENTS.md', name: 'web-agents', exists: false, importable: true },
+        {
+            path: 'CLAUDE.md',
+            name: 'web-claude',
+            exists: false,
+            importable: false,
+            reason: 'The file is larger than 16 KiB.',
+        },
+    ],
     truncated: false,
 }
 
@@ -130,6 +136,7 @@ const fakeServer = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (path === '/connections/import') return reply(importReply.status, importReply.payload)
     if (path === '/connections/skills') return reply(200, { data: { skills: [] } })
     if (path === '/connections/mcps') return reply(200, { data: { mcps: [] } })
+    if (path === '/connections/rules') return reply(200, { data: { rules: [] } })
     return reply(404, { message: 'not found' })
 }) as typeof fetch
 
@@ -165,7 +172,6 @@ const openWebPreview = async () => {
 
 beforeEach(() => {
     cleanup()
-    useConnectionsStore.setState(initialStore, true)
     setConnectionsDemo(false)
     calls = []
     previewReply = { status: 200, payload: { data: webPreview } }
@@ -209,9 +215,10 @@ describe('import setup', () => {
         expect(view.getByText('https://mcp.linear.app/mcp')).toBeDefined()
         expect(view.getByText('Add the header values after the import.')).toBeDefined()
         expect(view.getByText('docs')).toBeDefined()
-        // rules are listed only
+        // rule files, with the account rule each one becomes
         expect(view.getByText('AGENTS.md')).toBeDefined()
-        expect(view.getByText('Not imported yet')).toBeDefined()
+        expect(view.getByText('Saved as web-agents')).toBeDefined()
+        expect(view.getByText('The file is larger than 16 KiB.')).toBeDefined()
     })
 
     test('saved rows start unticked, new rows start ticked', async () => {
@@ -254,6 +261,7 @@ describe('import setup', () => {
             provider: 'GITHUB',
             skills: ['deploy'],
             mcps: [],
+            rules: [],
             overwrite: false,
         })
         // the dialog closes, and the three lists of connections are read again
@@ -275,6 +283,7 @@ describe('import setup', () => {
             provider: 'GITHUB',
             skills: ['deploy', 'release-notes'],
             mcps: ['linear'],
+            rules: [],
             overwrite: true,
         })
     })
@@ -294,7 +303,7 @@ describe('import setup', () => {
             status: 200,
             payload: {
                 data: {
-                    imported: { skills: [], mcps: ['linear'] },
+                    imported: { skills: [], mcps: ['linear'], rules: [] },
                     skipped: [
                         { kind: 'skill', name: 'deploy', reason: 'You can save up to 100 skills.' },
                     ],
@@ -334,15 +343,34 @@ describe('import setup', () => {
         expect(await within(dialog()).findByText('Nothing to import here.')).toBeDefined()
     })
 
-    test('with the preview on, the dialog keeps its sample values and sends nothing', async () => {
-        setConnectionsDemo(true)
-        renderPage()
-        fireEvent.click(screen.getByRole('button', { name: 'Import setup' }))
+    test('rule files start unticked, a ticked one is sent by path, and the rules read again', async () => {
+        await openWebPreview()
+        client.setQueryData(['connections', 'rules'], [])
 
-        expect(screen.getByText('6 found')).toBeDefined()
-        fireEvent.click(screen.getByRole('button', { name: 'Import' }))
-        await waitFor(() => expect(screen.queryByText('6 found') === null).toBe(true))
-        expect(calls.filter((call) => call.path.startsWith('/connections/import'))).toEqual([])
-        expect(gets('/platform/github/repos')).toEqual([])
+        expect(box('Import rule AGENTS.md').checked).toBe(false)
+        expect(box('Import rule CLAUDE.md').disabled).toBe(true)
+        fireEvent.click(box('Import skill deploy'))
+        fireEvent.click(box('Import MCP linear'))
+        fireEvent.click(box('Import rule AGENTS.md'))
+        fireEvent.click(within(dialog()).getByRole('button', { name: 'Import' }))
+
+        await waitFor(() => expect(posts('/connections/import').length).toBe(1))
+        expect(posts('/connections/import')[0]?.body).toEqual({
+            repoFullName: 'acme/web',
+            provider: 'GITHUB',
+            skills: [],
+            mcps: [],
+            rules: ['AGENTS.md'],
+            overwrite: false,
+        })
+        await waitFor(() => expect(isClosed()).toBe(true))
+        expect(client.getQueryState(['connections', 'rules'])?.isInvalidated).toBe(true)
+    })
+
+    test('with the preview on, the dialog still reads the real repositories', async () => {
+        setConnectionsDemo(true)
+        await openWebPreview()
+        expect(posts('/connections/import/preview').length).toBe(1)
+        expect(screen.queryByText('6 found')).toBeNull()
     })
 })

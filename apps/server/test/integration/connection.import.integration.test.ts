@@ -112,6 +112,7 @@ describe('Connections: import setup from a repository (#637)', () => {
         const userId = { in: [ownerId, otherId] }
         await prisma.userSkill.deleteMany({ where: { userId } })
         await prisma.userMcpServer.deleteMany({ where: { userId } })
+        await prisma.userRule.deleteMany({ where: { userId } })
         githubCalls = []
         repos = {
             'acme/app': {
@@ -209,7 +210,10 @@ describe('Connections: import setup from a repository (#637)', () => {
                 exists: false,
                 importable: true,
             })
-            expect(res.body.data.rules).toEqual([{ path: 'AGENTS.md' }, { path: 'CLAUDE.md' }])
+            expect(res.body.data.rules).toEqual([
+                { path: 'AGENTS.md', name: 'app-agents', exists: false, importable: true },
+                { path: 'CLAUDE.md', name: 'app-claude', exists: false, importable: true },
+            ])
             expect(res.body.data.truncated).toBe(false)
         })
 
@@ -409,7 +413,7 @@ describe('Connections: import setup from a repository (#637)', () => {
 
             expect(res.status).toBe(200)
             expect(res.body.data).toEqual({
-                imported: { skills: ['deploy'], mcps: ['linear'] },
+                imported: { skills: ['deploy'], mcps: ['linear'], rules: [] },
                 skipped: [],
             })
             expect(await skillNames(ownerId)).toEqual(['deploy'])
@@ -473,12 +477,21 @@ describe('Connections: import setup from a repository (#637)', () => {
             expect(res.status).toBe(400)
             expect(await skillNames(ownerId)).toEqual([])
 
-            const ok = await importSetup(ownerToken, {
+            // a field the route does not know is refused (strict body)
+            const extra = await importSetup(ownerToken, {
                 repoFullName: 'acme/app',
                 skills: ['deploy'],
                 mcps: ['linear'],
                 url: 'https://evil.example.com/mcp',
                 body: 'run rm -rf',
+            })
+            expect(extra.status).toBe(400)
+            expect(await skillNames(ownerId)).toEqual([])
+
+            const ok = await importSetup(ownerToken, {
+                repoFullName: 'acme/app',
+                skills: ['deploy'],
+                mcps: ['linear'],
             })
             expect(ok.status).toBe(200)
             const skill = await prisma.userSkill.findFirst({ where: { userId: ownerId } })
@@ -503,7 +516,7 @@ describe('Connections: import setup from a repository (#637)', () => {
 
             expect(res.status).toBe(200)
             expect(res.body.data).toEqual({
-                imported: { skills: ['release-notes'], mcps: ['docs'] },
+                imported: { skills: ['release-notes'], mcps: ['docs'], rules: [] },
                 skipped: [
                     {
                         kind: 'skill',
@@ -559,7 +572,7 @@ describe('Connections: import setup from a repository (#637)', () => {
             })
 
             expect(res.body.data).toEqual({
-                imported: { skills: ['deploy'], mcps: ['linear'] },
+                imported: { skills: ['deploy'], mcps: ['linear'], rules: [] },
                 skipped: [],
             })
             const skill = await prisma.userSkill.findUnique({
@@ -603,7 +616,7 @@ describe('Connections: import setup from a repository (#637)', () => {
 
             expect(res.status).toBe(200)
             expect(res.body.data).toEqual({
-                imported: { skills: [], mcps: [] },
+                imported: { skills: [], mcps: [], rules: [] },
                 skipped: [
                     { kind: 'skill', name: 'huge', reason: 'The file is larger than 64 KB.' },
                     { kind: 'skill', name: 'not-there', reason: 'It is not in the repository.' },
@@ -640,7 +653,7 @@ describe('Connections: import setup from a repository (#637)', () => {
             })
 
             expect(res.body.data).toEqual({
-                imported: { skills: ['deploy'], mcps: [] },
+                imported: { skills: ['deploy'], mcps: [], rules: [] },
                 skipped: [
                     {
                         kind: 'skill',
@@ -668,7 +681,7 @@ describe('Connections: import setup from a repository (#637)', () => {
             })
 
             expect(res.body.data).toEqual({
-                imported: { skills: [], mcps: ['linear'] },
+                imported: { skills: [], mcps: ['linear'], rules: [] },
                 skipped: [
                     { kind: 'mcp', name: 'docs', reason: 'You can save up to 20 mcp servers.' },
                 ],
@@ -764,7 +777,7 @@ describe('Connections: import setup from a repository (#637)', () => {
 
             expect(res.status).toBe(200)
             expect(res.body.data).toEqual({
-                imported: { skills: ['deploy'], mcps: [] },
+                imported: { skills: ['deploy'], mcps: [], rules: [] },
                 skipped: [],
             })
             const skill = await prisma.userSkill.findFirst({ where: { userId: ownerId } })
@@ -775,5 +788,155 @@ describe('Connections: import setup from a repository (#637)', () => {
             globalThis.fetch = fakeGithub
             await prisma.gitConnection.deleteMany({ where: { userId: ownerId } })
         }
+    })
+
+    // rule files at the root become account rules (connections, rules tab)
+    describe('rule files', () => {
+        const ruleRows = async (userId: string) =>
+            prisma.userRule.findMany({ where: { userId }, orderBy: { name: 'asc' } })
+
+        it('imports a ticked rule file as an account rule named after the repository', async () => {
+            const res = await importSetup(ownerToken, {
+                repoFullName: 'acme/app',
+                rules: ['AGENTS.md'],
+            })
+            expect(res.status).toBe(200)
+            expect(res.body.data).toEqual({
+                imported: { skills: [], mcps: [], rules: ['app-agents'] },
+                skipped: [],
+            })
+            const rows = await ruleRows(ownerId)
+            expect(rows.map((row) => [row.name, row.body, row.enabled])).toEqual([
+                ['app-agents', 'use bun', true],
+            ])
+            // the preview now says the rule is saved
+            const again = await preview(ownerToken, 'acme/app')
+            expect(again.body.data.rules[0]).toMatchObject({ name: 'app-agents', exists: true })
+        })
+
+        it('skips a saved rule unless overwrite is set, then replaces its text', async () => {
+            await prisma.userRule.create({
+                data: { userId: ownerId, name: 'app-agents', body: 'mine', enabled: false },
+            })
+            const skipped = await importSetup(ownerToken, {
+                repoFullName: 'acme/app',
+                rules: ['AGENTS.md'],
+            })
+            expect(skipped.body.data.skipped).toEqual([
+                {
+                    kind: 'rule',
+                    name: 'app-agents',
+                    reason: 'A rule with this name exists already.',
+                },
+            ])
+            expect((await ruleRows(ownerId))[0]?.body).toBe('mine')
+
+            const replaced = await importSetup(ownerToken, {
+                repoFullName: 'acme/app',
+                rules: ['AGENTS.md'],
+                overwrite: true,
+            })
+            expect(replaced.body.data.imported.rules).toEqual(['app-agents'])
+            const row = (await ruleRows(ownerId))[0]
+            // the text changes, the switch the user set stays
+            expect(row).toMatchObject({ body: 'use bun', enabled: false })
+        })
+
+        it('refuses a path that is not a rule file, and skips one the repository does not have', async () => {
+            const bad = await importSetup(ownerToken, {
+                repoFullName: 'acme/app',
+                rules: ['.env'],
+            })
+            expect(bad.status).toBe(400)
+
+            delete repos['acme/app']?.files['CLAUDE.md']
+            const missing = await importSetup(ownerToken, {
+                repoFullName: 'acme/app',
+                rules: ['CLAUDE.md'],
+            })
+            expect(missing.status).toBe(200)
+            expect(missing.body.data.skipped).toEqual([
+                { kind: 'rule', name: 'CLAUDE.md', reason: 'It is not in the repository.' },
+            ])
+            expect(await ruleRows(ownerId)).toEqual([])
+        })
+
+        it('skips a rule file over 16 KiB and an empty one', async () => {
+            const files = repos['acme/app']?.files as Record<string, string>
+            files['AGENTS.md'] = 'x'.repeat(16 * 1024 + 1)
+            files['CLAUDE.md'] = '   \n'
+            const found = await preview(ownerToken, 'acme/app')
+            expect(found.body.data.rules).toEqual([
+                {
+                    path: 'AGENTS.md',
+                    name: 'app-agents',
+                    exists: false,
+                    importable: false,
+                    reason: 'The file is larger than 16 KiB.',
+                },
+                {
+                    path: 'CLAUDE.md',
+                    name: 'app-claude',
+                    exists: false,
+                    importable: false,
+                    reason: 'The file is empty.',
+                },
+            ])
+            const res = await importSetup(ownerToken, {
+                repoFullName: 'acme/app',
+                rules: ['AGENTS.md', 'CLAUDE.md'],
+            })
+            expect(res.body.data.imported.rules).toEqual([])
+            expect(res.body.data.skipped.map((row: any) => row.reason)).toEqual([
+                'The file is larger than 16 KiB.',
+                'The file is empty.',
+            ])
+        })
+
+        it('keeps the 32 KiB limit of all rules together', async () => {
+            await prisma.userRule.createMany({
+                data: [
+                    { userId: ownerId, name: 'big-1', body: 'a'.repeat(16 * 1024) },
+                    { userId: ownerId, name: 'big-2', body: 'b'.repeat(16 * 1024 - 3) },
+                ],
+            })
+            const res = await importSetup(ownerToken, {
+                repoFullName: 'acme/app',
+                rules: ['AGENTS.md'],
+            })
+            expect(res.body.data.skipped).toEqual([
+                {
+                    kind: 'rule',
+                    name: 'app-agents',
+                    reason: 'All rules together can be up to 32 KiB.',
+                },
+            ])
+        })
+
+        it('keeps the limit of 20 rules', async () => {
+            await prisma.userRule.createMany({
+                data: Array.from({ length: 20 }, (_, i) => ({
+                    userId: ownerId,
+                    name: `rule-${i}`,
+                    body: 'x',
+                })),
+            })
+            const res = await importSetup(ownerToken, {
+                repoFullName: 'acme/app',
+                rules: ['AGENTS.md'],
+            })
+            expect(res.body.data.skipped).toEqual([
+                { kind: 'rule', name: 'app-agents', reason: 'You can save up to 20 rules.' },
+            ])
+        })
+
+        it("never reads another user's repository", async () => {
+            const res = await importSetup(otherToken, {
+                repoFullName: 'acme/app',
+                rules: ['AGENTS.md'],
+            })
+            expect(res.status).toBe(404)
+            expect(await ruleRows(otherId)).toEqual([])
+        })
     })
 })

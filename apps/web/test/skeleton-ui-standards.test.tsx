@@ -116,8 +116,9 @@ describe('Skeleton UI Standards & Preview Mode', () => {
 
         // Real table header
         expect(container.textContent).toContain('Name')
+        expect(container.textContent).toContain('Use in')
         expect(container.textContent).toContain('Note')
-        expect(container.textContent).toContain('Updated at')
+        expect(container.textContent).toContain('Updated')
 
         // Skeletons only for secret rows
         const desktopRows = container.querySelectorAll('.hidden.md\\:grid.grid-cols-12')
@@ -176,7 +177,7 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         expect(container.textContent).toContain('Amount')
 
         // Skeletons for transaction history rows
-        const historyRows = container.querySelectorAll('.grid-cols-12')
+        const historyRows = container.querySelectorAll('[class*="grid-cols-[120px"]')
         expect(historyRows.length).toBeGreaterThanOrEqual(1)
     })
 
@@ -290,7 +291,7 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         expect(container.textContent).toContain('Status')
         expect(container.textContent).toContain('Amount')
 
-        const historyRows = container.querySelectorAll('.grid-cols-12')
+        const historyRows = container.querySelectorAll('[class*="grid-cols-[120px"]')
         expect(historyRows.length).toBeGreaterThanOrEqual(1)
     })
 
@@ -314,8 +315,9 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         expect(container.textContent).toContain('Bulk add')
         expect(container.textContent).toContain('Add secret')
         expect(container.textContent).toContain('Name')
+        expect(container.textContent).toContain('Use in')
         expect(container.textContent).toContain('Note')
-        expect(container.textContent).toContain('Updated at')
+        expect(container.textContent).toContain('Updated')
 
         const desktopRows = container.querySelectorAll('.hidden.md\\:grid.grid-cols-12')
         expect(desktopRows.length).toBeGreaterThanOrEqual(4)

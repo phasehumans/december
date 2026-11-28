@@ -10,7 +10,6 @@ export const isAppLink = (link: string) => link.startsWith('/')
 export const openLabelForLink = (link: string) => {
     if (!isAppLink(link)) {
         if (/^https:\/\/github\.com\//.test(link)) return 'Open on GitHub'
-        if (link.includes('/data-export/')) return 'Download'
         return 'Open'
     }
     if (link.startsWith('/pull-requests')) return 'View pull requests'

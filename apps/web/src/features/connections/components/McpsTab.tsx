@@ -3,14 +3,12 @@ import React from 'react'
 
 import { connectionErrorMessage, useMcps } from '../hooks/useConnectionsData'
 import { useConnectionsNav } from '../hooks/useConnectionsNav'
-import { isPluginOff } from '../hooks/useConnectionsStore'
 
 import {
     BackLink,
     ChoiceGroup,
     ConfirmModal,
     DetailHeader,
-    DoneHint,
     EmptyRow,
     FactsBox,
     FormError,
@@ -27,7 +25,6 @@ import {
     SearchInput,
     SecondaryButton,
     SectionTitle,
-    Spinner,
     Switch,
     fieldLabelClass,
     inputClass,
@@ -40,38 +37,17 @@ import type { ConnectionsMcp, McpAuth, McpTransport } from '../types'
 import { Modal } from '@/shared/components/ui/Modal'
 import { cn } from '@/shared/lib/utils'
 
-const NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/
+// the same rule as the server: an imported server can have capitals and underscores
+const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/
+const URL_MAX = 500
 
-const statusPill = (mcp: ConnectionsMcp, locked: boolean): { tone: PillTone; label: string } => {
-    if (!mcp.enabled || locked) return { tone: 'muted', label: 'Off' }
-    if (mcp.status === 'needs-signin') return { tone: 'warn', label: 'Needs sign-in' }
+const statusPill = (mcp: ConnectionsMcp): { tone: PillTone; label: string } => {
+    if (!mcp.enabled) return { tone: 'muted', label: 'Off' }
     if (mcp.status === 'error') return { tone: 'err', label: 'Error' }
     // the status comes from a session: a server that no session used has none
     if (mcp.status === 'unknown') return { tone: 'muted', label: 'Not used yet' }
     return { tone: 'ok', label: 'Connected' }
 }
-
-type TestResult = { ok: true; tools: number } | { ok: false; message: string } | null
-
-/** demo only: there is no backend, so "Test" checks the form and pretends to connect */
-const fakeTest = (url: string, auth: McpAuth, headers: { key: string; value: string }[]) =>
-    new Promise<TestResult>((resolve) => {
-        setTimeout(() => {
-            if (!/^https:\/\//.test(url)) {
-                resolve({ ok: false, message: 'Could not reach the server' })
-            } else if (auth === 'header' && !headers.some((h) => h.key.trim() && h.value.trim())) {
-                resolve({ ok: false, message: '401 Unauthorized. Check the header.' })
-            } else {
-                resolve({ ok: true, tools: 8 })
-            }
-        }, 900)
-    })
-
-const demoTools = (name: string) =>
-    ['list', 'get', 'search', 'create', 'update', 'delete', 'run', 'describe'].map((verb) => ({
-        name: `${verb}_${name.replace(/-/g, '_')}`,
-        enabled: verb !== 'delete',
-    }))
 
 export const McpsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
     const { addParam, closeAdd } = useConnectionsNav()
@@ -85,13 +61,11 @@ export const McpsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
 
 const McpsList: React.FC = () => {
     const { toItem, openAdd } = useConnectionsNav()
-    const { mcps, plugins, isLoading, loadFailed, setMcpEnabled, setMcpStatus } = useMcps()
+    const { mcps, isLoading, loadFailed, retry, setMcpEnabled } = useMcps()
     const [query, setQuery] = React.useState('')
     const [actionError, setActionError] = React.useState<string | null>(null)
 
-    const visible = mcps.filter(
-        (mcp) => !mcp.plugin || plugins.some((p) => p.name === mcp.plugin && p.installed)
-    )
+    const visible = mcps
     const filtered = visible.filter((mcp) => matchesQuery(query, mcp.name, mcp.url))
 
     return (
@@ -116,7 +90,13 @@ const McpsList: React.FC = () => {
                 {isLoading ? (
                     <ListSkeleton />
                 ) : loadFailed ? (
-                    <EmptyRow>Could not load MCPs</EmptyRow>
+                    <EmptyRow
+                        action={
+                            <SecondaryButton onClick={() => retry()}>Try again</SecondaryButton>
+                        }
+                    >
+                        Could not load MCPs
+                    </EmptyRow>
                 ) : visible.length === 0 ? (
                     <EmptyRow
                         action={
@@ -130,9 +110,8 @@ const McpsList: React.FC = () => {
                 ) : (
                     <ListRows>
                         {filtered.map((mcp) => {
-                            const locked = isPluginOff(plugins, mcp.plugin)
-                            const pill = statusPill(mcp, locked)
-                            const off = !mcp.enabled || locked
+                            const pill = statusPill(mcp)
+                            const off = !mcp.enabled
                             return (
                                 <ListRow key={mcp.name} onClick={() => toItem('mcps', mcp.name)}>
                                     <span className={cn(off && 'opacity-50')}>
@@ -148,11 +127,11 @@ const McpsList: React.FC = () => {
                                             {mcp.name}
                                         </span>
                                         <span className="md:hidden text-[12px] text-[#7B7A79] truncate">
-                                            {mcp.plugin ? `${mcp.plugin} plugin` : 'You'}
+                                            You
                                         </span>
                                     </span>
                                     <span className="hidden md:block w-[130px] truncate text-[12.5px] text-[#7B7A79]">
-                                        {mcp.plugin ? `${mcp.plugin} plugin` : 'You'}
+                                        You
                                     </span>
                                     <span className="hidden md:block w-[60px] text-[12.5px] text-[#7B7A79]">
                                         {mcp.tools.length || ''}
@@ -166,40 +145,21 @@ const McpsList: React.FC = () => {
                                                 <Pill tone={pill.tone}>{pill.label}</Pill>
                                             )}
                                         </span>
-                                        {mcp.status === 'needs-signin' && !off ? (
-                                            <SecondaryButton
-                                                small
-                                                onClick={() =>
-                                                    setMcpStatus(mcp.name, {
-                                                        status: 'connected',
-                                                        account: 'phasehumans',
-                                                        tools: mcp.tools.length
-                                                            ? mcp.tools
-                                                            : demoTools(mcp.name),
-                                                    })
-                                                }
-                                            >
-                                                Sign in
-                                            </SecondaryButton>
-                                        ) : (
-                                            <Switch
-                                                checked={!off}
-                                                disabled={locked}
-                                                disabledReason="Plugin is off"
-                                                label={`Turn ${mcp.name} on or off`}
-                                                onChange={(on) => {
-                                                    setActionError(null)
-                                                    setMcpEnabled(mcp.name, on).catch((error) =>
-                                                        setActionError(
-                                                            connectionErrorMessage(
-                                                                error,
-                                                                'Could not update the MCP'
-                                                            )
+                                        <Switch
+                                            checked={!off}
+                                            label={`Turn ${mcp.name} on or off`}
+                                            onChange={(on) => {
+                                                setActionError(null)
+                                                setMcpEnabled(mcp.name, on).catch((error) =>
+                                                    setActionError(
+                                                        connectionErrorMessage(
+                                                            error,
+                                                            'Could not update the MCP'
                                                         )
                                                     )
-                                                }}
-                                            />
-                                        )}
+                                                )
+                                            }}
+                                        />
                                     </span>
                                 </ListRow>
                             )
@@ -213,20 +173,9 @@ const McpsList: React.FC = () => {
 
 const McpPage: React.FC<{ itemId: string }> = ({ itemId }) => {
     const { toTab, toItem } = useConnectionsNav()
-    const {
-        isDemo,
-        mcps,
-        plugins,
-        isLoading,
-        loadFailed,
-        setMcpEnabled,
-        setMcpToolEnabled,
-        setMcpStatus,
-        removeMcp,
-    } = useMcps()
+    const { mcps, isLoading, loadFailed, setMcpEnabled, setMcpToolEnabled, removeMcp } = useMcps()
     const [isEditing, setIsEditing] = React.useState(false)
     const [isRemoving, setIsRemoving] = React.useState(false)
-    const [isTesting, setIsTesting] = React.useState(false)
     const [toolQuery, setToolQuery] = React.useState('')
     const [actionError, setActionError] = React.useState<string | null>(null)
 
@@ -256,35 +205,11 @@ const McpPage: React.FC<{ itemId: string }> = ({ itemId }) => {
         }
     }
 
-    const locked = isPluginOff(plugins, mcp.plugin)
-    const pill = statusPill(mcp, locked)
-    const fromPlugin = Boolean(mcp.plugin)
+    const pill = statusPill(mcp)
     const tools = mcp.tools.filter((t) => matchesQuery(toolQuery, t.name))
 
-    const runTest = async () => {
-        setIsTesting(true)
-        const result = await fakeTest(mcp.url, mcp.auth, mcp.headers)
-        setIsTesting(false)
-        if (!result) return
-        if (result.ok) {
-            setMcpStatus(mcp.name, {
-                status: 'connected',
-                lastError: undefined,
-                tools: mcp.tools.length ? mcp.tools : demoTools(mcp.name),
-            })
-        } else if ('message' in result) {
-            setMcpStatus(mcp.name, { status: 'error', lastError: result.message })
-        }
-    }
-
     const authLabel =
-        mcp.auth === 'oauth'
-            ? mcp.status === 'needs-signin'
-                ? 'OAuth, not signed in'
-                : `OAuth, signed in as ${mcp.account ?? 'you'}`
-            : mcp.auth === 'header'
-              ? `Header: ${mcp.headers.map((h) => h.key).join(', ')}`
-              : 'None'
+        mcp.auth === 'header' ? `Header: ${mcp.headers.map((h) => h.key).join(', ')}` : 'None'
 
     return (
         <div className="flex flex-col">
@@ -295,75 +220,29 @@ const McpPage: React.FC<{ itemId: string }> = ({ itemId }) => {
             >
                 <Pill tone={pill.tone}>{pill.label}</Pill>
                 <Switch
-                    checked={mcp.enabled && !locked}
-                    disabled={locked}
-                    disabledReason="Plugin is off"
+                    checked={mcp.enabled}
                     label="Turn this MCP on or off"
                     onChange={(on) =>
                         run(() => setMcpEnabled(mcp.name, on), 'Could not update the MCP')
                     }
                 />
                 <span className="flex-1" />
-                {fromPlugin ? (
-                    <SecondaryButton onClick={() => toItem('plugins', mcp.plugin ?? '')}>
-                        Open plugin
-                    </SecondaryButton>
-                ) : (
-                    <>
-                        {mcp.status === 'needs-signin' ? (
-                            <SecondaryButton
-                                onClick={() =>
-                                    setMcpStatus(mcp.name, {
-                                        status: 'connected',
-                                        account: 'phasehumans',
-                                        tools: mcp.tools.length ? mcp.tools : demoTools(mcp.name),
-                                    })
-                                }
-                            >
-                                Sign in
-                            </SecondaryButton>
-                        ) : (
-                            // sample values only: the api has no test, a session sets the status
-                            isDemo && (
-                                <SecondaryButton onClick={runTest} disabled={isTesting}>
-                                    {isTesting ? (
-                                        <>
-                                            <Spinner />
-                                            Testing
-                                        </>
-                                    ) : (
-                                        'Test'
-                                    )}
-                                </SecondaryButton>
-                            )
-                        )}
-                        <SecondaryButton onClick={() => setIsEditing(true)}>Edit</SecondaryButton>
-                        <MoreMenu
-                            label="MCP options"
-                            items={[
-                                {
-                                    label: 'Sign out',
-                                    hidden: mcp.auth !== 'oauth' || mcp.status === 'needs-signin',
-                                    onClick: () =>
-                                        setMcpStatus(mcp.name, {
-                                            status: 'needs-signin',
-                                            account: undefined,
-                                        }),
-                                },
-                                {
-                                    label: 'Remove MCP',
-                                    danger: true,
-                                    onClick: () => setIsRemoving(true),
-                                },
-                            ]}
-                        />
-                    </>
-                )}
+                <SecondaryButton onClick={() => setIsEditing(true)}>Edit</SecondaryButton>
+                <MoreMenu
+                    label="MCP options"
+                    items={[
+                        {
+                            label: 'Remove MCP',
+                            danger: true,
+                            onClick: () => setIsRemoving(true),
+                        },
+                    ]}
+                />
             </DetailHeader>
 
             {mcp.status === 'error' && mcp.lastError && (
                 <p className="-mt-2 mb-4 text-[12.5px] text-red-500 font-medium">
-                    {isDemo ? 'Last test' : 'Last session'}: {mcp.lastError}
+                    Last session: {mcp.lastError}
                 </p>
             )}
             {actionError && (
@@ -380,7 +259,7 @@ const McpPage: React.FC<{ itemId: string }> = ({ itemId }) => {
                             value: <span className="font-mono text-[12.5px]">{mcp.url}</span>,
                         },
                         { label: 'Transport', value: mcp.transport.toUpperCase() },
-                        { label: 'Auth', value: fromPlugin ? 'Set by plugin' : authLabel },
+                        { label: 'Auth', value: authLabel },
                     ]}
                 />
             </div>
@@ -399,13 +278,7 @@ const McpPage: React.FC<{ itemId: string }> = ({ itemId }) => {
             <ListBox>
                 {mcp.tools.length === 0 ? (
                     <EmptyRow>
-                        {mcp.status === 'needs-signin'
-                            ? 'Sign in to see tools'
-                            : isDemo
-                              ? 'Run Test to see tools'
-                              : mcp.status === 'unknown'
-                                ? 'No session has used this MCP yet'
-                                : 'No tools'}
+                        {mcp.status === 'unknown' ? 'No session has used this MCP yet' : 'No tools'}
                     </EmptyRow>
                 ) : tools.length === 0 ? (
                     <EmptyRow>No results for "{toolQuery.trim()}"</EmptyRow>
@@ -469,7 +342,7 @@ const McpForm: React.FC<{ existing?: ConnectionsMcp; onClose: () => void }> = ({
     onClose,
 }) => {
     const { toItem } = useConnectionsNav()
-    const { isDemo, mcps, saveMcp } = useMcps()
+    const { mcps, saveMcp } = useMcps()
 
     const [name, setName] = React.useState(existing?.name ?? '')
     const [url, setUrl] = React.useState(existing?.url ?? '')
@@ -480,8 +353,6 @@ const McpForm: React.FC<{ existing?: ConnectionsMcp; onClose: () => void }> = ({
     )
     const [shownHeaders, setShownHeaders] = React.useState<Record<number, boolean>>({})
     const [touched, setTouched] = React.useState(false)
-    const [isTesting, setIsTesting] = React.useState(false)
-    const [testResult, setTestResult] = React.useState<TestResult>(null)
     const [isSaving, setIsSaving] = React.useState(false)
     const [saveError, setSaveError] = React.useState<string | null>(null)
 
@@ -490,7 +361,7 @@ const McpForm: React.FC<{ existing?: ConnectionsMcp; onClose: () => void }> = ({
             ? 'Add a name'
             : null
         : !NAME_PATTERN.test(name)
-          ? 'Use lowercase letters, numbers and hyphens'
+          ? 'Use letters, numbers, dashes and underscores'
           : mcps.some((m) => m.name === name && m.name !== existing?.name)
             ? 'You already have an MCP with this name'
             : null
@@ -500,37 +371,26 @@ const McpForm: React.FC<{ existing?: ConnectionsMcp; onClose: () => void }> = ({
             : null
         : !/^https:\/\/\S+$/.test(url)
           ? 'Enter a full URL starting with https://'
-          : null
+          : url.length > URL_MAX
+            ? `A URL is at most ${URL_MAX} characters`
+            : null
 
     // the api never returns a header value. a header sent empty keeps its saved value,
     // so only a header that is not saved yet needs one
-    const savedHeaderKeys =
-        !isDemo && existing?.auth === 'header' ? existing.headers.map((h) => h.key) : []
+    const savedHeaderKeys = existing?.auth === 'header' ? existing.headers.map((h) => h.key) : []
     const namedHeaders = headers
         .map((h) => ({ key: h.key.trim(), value: h.value }))
         .filter((h) => h.key)
     const headersReady =
-        isDemo ||
         auth !== 'header' ||
         (namedHeaders.length > 0 &&
             namedHeaders.every((h) => h.value || savedHeaderKeys.includes(h.key)))
     const headerError = touched && !headersReady ? 'Add the header name and value' : null
     const isValid = Boolean(name && url && !nameError && !urlError && headersReady)
 
-    const runTest = async () => {
-        setTouched(true)
-        if (!isValid) return
-        setIsTesting(true)
-        setTestResult(null)
-        const result = await fakeTest(url, auth, headers)
-        setIsTesting(false)
-        setTestResult(result)
-    }
-
     const handleSubmit = async () => {
         setTouched(true)
         if (!isValid || isSaving) return
-        const failed = testResult && 'message' in testResult ? testResult.message : undefined
         const draft: ConnectionsMcp = {
             name,
             url,
@@ -538,21 +398,9 @@ const McpForm: React.FC<{ existing?: ConnectionsMcp; onClose: () => void }> = ({
             auth,
             headers: auth === 'header' ? namedHeaders : [],
             enabled: existing?.enabled ?? true,
-            ...(isDemo
-                ? {
-                      status: auth === 'oauth' ? 'needs-signin' : failed ? 'error' : 'connected',
-                      lastError: failed,
-                      tools:
-                          existing?.tools.length && existing.url === url
-                              ? existing.tools
-                              : auth === 'oauth'
-                                ? []
-                                : demoTools(name),
-                      account: undefined,
-                      brand: existing?.brand,
-                  }
-                : // a session sets the status and the tools. the server keeps what it has
-                  { status: existing?.status ?? 'unknown', tools: existing?.tools ?? [] }),
+            // a session sets the status and the tools. the server keeps what it has
+            status: existing?.status ?? 'unknown',
+            tools: existing?.tools ?? [],
         }
         setSaveError(null)
         setIsSaving(true)
@@ -580,6 +428,7 @@ const McpForm: React.FC<{ existing?: ConnectionsMcp; onClose: () => void }> = ({
             variant="premium"
             showLogo={false}
             maxWidth="max-w-[420px]"
+            sheetOnPhone
         >
             <form
                 onSubmit={(e) => {
@@ -637,8 +486,6 @@ const McpForm: React.FC<{ existing?: ConnectionsMcp; onClose: () => void }> = ({
                         options={[
                             { value: 'none', label: 'None' },
                             { value: 'header', label: 'Header' },
-                            // sample values only: the api has no sign-in with oauth yet
-                            ...(isDemo ? [{ value: 'oauth' as const, label: 'OAuth' }] : []),
                         ]}
                     />
                 </div>
@@ -723,36 +570,12 @@ const McpForm: React.FC<{ existing?: ConnectionsMcp; onClose: () => void }> = ({
                     </div>
                 )}
 
-                {testResult &&
-                    (testResult.ok ? (
-                        <DoneHint>Connected, {testResult.tools} tools</DoneHint>
-                    ) : (
-                        <FormError>{testResult.message}</FormError>
-                    ))}
                 <FormError>{saveError}</FormError>
 
                 <ModalActions
                     onCancel={onClose}
                     isPending={isSaving}
-                    submitLabel={
-                        existing ? 'Save' : auth === 'oauth' ? 'Add and sign in' : 'Add MCP'
-                    }
-                    leading={
-                        // sample values only: the api has no test, a session sets the status
-                        isDemo &&
-                        auth !== 'oauth' && (
-                            <SecondaryButton onClick={runTest} disabled={isTesting}>
-                                {isTesting ? (
-                                    <>
-                                        <Spinner />
-                                        Testing
-                                    </>
-                                ) : (
-                                    'Test'
-                                )}
-                            </SecondaryButton>
-                        )
-                    }
+                    submitLabel={existing ? 'Save' : 'Add MCP'}
                 />
             </form>
         </Modal>

@@ -1,30 +1,37 @@
 import { ApiError, apiFetch, apiRequest } from '@/shared/api/client'
 
+/** the balance the sidebar, the home page and Billing show. the payments list has its own route */
 export interface BillingOverview {
     creditBalance: number
-    giftedCredits: number
     createdAt: string
+    // the INR for one USD that a Razorpay top-up is charged at
     usdToInrRate?: number
-    usage: {
-        inputTokens: number
-        outputTokens: number
-        totalTokens: number
-        costInCents: number
-    }
-    claims: Array<{
-        id: string
-        createdAt: string
-        amountInCents: number
-        code: string
-    }>
-    transactions: Array<{
-        id: string
-        createdAt: string
-        amountInCents: number
-        currency: string
-        provider: 'RAZORPAY' | 'COINBASE' | 'GRANT' | 'ADJUSTMENT' | 'REFERRAL'
-        status: 'PENDING' | 'SUCCESS' | 'FAILED'
-    }>
+}
+
+/** one row of the payments list on Billing. pending checkouts are not in it */
+export interface BillingTransaction {
+    id: string
+    createdAt: string
+    amountInCents: number
+    status: 'SUCCESS' | 'FAILED'
+    kind: 'payment' | 'grant' | 'adjustment' | 'referral' | 'code'
+    // the redeem code, for a code row
+    code: string | null
+    // a payment that went through has a receipt pdf
+    hasReceipt: boolean
+}
+
+export interface TransactionsParams {
+    limit: number
+    offset: number
+}
+
+export interface TransactionsResponse {
+    items: BillingTransaction[]
+    // the count of every row, not of this page
+    total: number
+    limit: number
+    offset: number
 }
 
 /** the invite link of the user. both sides get the amount when the new account first pays */
@@ -145,12 +152,7 @@ export interface CreditsHistoryResponse {
     total: number
     limit: number
     offset: number
-    // the events of this page only. read totals for a sum
-    periods: Array<{
-        periodStart: string
-        periodEnd: string
-        costInCents: number
-    }>
+    // the sums of every event of the range
     totals: UsageTotals
     days: UsageDay[]
     hours?: UsageHour[]
@@ -187,6 +189,11 @@ const getCreditsHistory = (params: CreditsHistoryParams = {}) => {
     const path = `/billing/credits/history${queryString ? `?${queryString}` : ''}`
     return apiRequest<CreditsHistoryResponse>(path)
 }
+
+const listTransactions = (params: TransactionsParams) =>
+    apiRequest<TransactionsResponse>(
+        `/billing/transactions?limit=${params.limit}&offset=${params.offset}`
+    )
 
 /** the receipt pdf of one payment. a fetch, not a link, so the sign-in goes with it */
 const downloadReceipt = async (transactionId: string) => {
@@ -248,5 +255,6 @@ export const billingAPI = {
     createRazorpayOrder,
     verifyRazorpayPayment,
     getCreditsHistory,
+    listTransactions,
     downloadReceipt,
 }

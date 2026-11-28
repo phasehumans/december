@@ -39,12 +39,12 @@ const json = (data: unknown, status = 200) =>
 
 const overview = {
     creditBalance: 1500,
-    giftedCredits: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
-    usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, costInCents: 0 },
-    claims: [],
-    transactions: [],
+    usdToInrRate: 92.68,
 }
+
+/** when set, a PATCH of the limits fails with this status */
+let patchFails: number | null = null
 
 const fakeServer = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input instanceof Request ? input.url : input), 'http://localhost')
@@ -52,10 +52,14 @@ const fakeServer = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
     calls.push({ path: url.pathname, method, body })
     if (url.pathname.endsWith('/billing/limits')) {
+        if (method === 'PATCH' && patchFails) return json({ message: 'no' }, patchFails)
         if (method === 'PATCH') limits = { ...limits, ...body }
         return json(limits)
     }
     if (url.pathname.endsWith('/billing/overview')) return json(overview)
+    if (url.pathname.endsWith('/billing/transactions')) {
+        return json({ items: [], total: 0, limit: 10, offset: 0 })
+    }
     if (url.pathname.endsWith('/pending-question')) return json(pendingQuestion)
     if (url.pathname.endsWith('/question-answer')) return json({ success: true, continued: true })
     return json(null)
@@ -89,6 +93,7 @@ beforeEach(() => {
     calls = []
     limits = { lowBalanceAlertCents: 100, sessionLimitCents: 500, dayLimitCents: null }
     pendingQuestion = null
+    patchFails = null
     globalThis.fetch = fakeServer
 })
 
@@ -171,6 +176,27 @@ describe('the limits section on billing', () => {
 
         await waitFor(() => expect(box.value).toBe('5'))
         expect(limitChanges()).toEqual([])
+    })
+
+    test('a save the server refuses says so and the switch goes back', async () => {
+        patchFails = 500
+        const view = renderBilling()
+        const daySwitch = (await view.findByRole('switch', {
+            name: "Pause all sessions at a day's total of",
+        })) as HTMLButtonElement
+        expect(daySwitch.getAttribute('aria-checked')).toBe('false')
+
+        fireEvent.click(daySwitch)
+
+        await view.findByText('The limit did not save. Try again.')
+        await waitFor(() => expect(daySwitch.getAttribute('aria-checked')).toBe('false'))
+        expect(limitChanges()).toEqual([{ dayLimitCents: 1000 }])
+    })
+
+    test('the limits section has no Demo pill: it is saved on the server', async () => {
+        const view = renderBilling()
+        await view.findByText('Limits')
+        expect(view.queryByText('Demo')).toBeNull()
     })
 
     test('auto top-up is not shown to a normal user', async () => {

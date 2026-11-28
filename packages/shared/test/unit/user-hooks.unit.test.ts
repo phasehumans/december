@@ -7,11 +7,16 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
     findBlockingResult,
     hookMatches,
+    isSafeHookMatcher,
+    isToolHookEvent,
     loadUserHooks,
+    parseUserHooksData,
     parseUserHooksFile,
     runUserHooks,
     validateUserHooksFile,
+    type HookCommandRunner,
 } from '../../src/user-hooks'
+import { appendHookContext, attachUserHooks } from '../../src/user-hooks-agent'
 
 let dir: string
 
@@ -168,5 +173,94 @@ describe.skipIf(process.platform === 'win32')('running hooks', () => {
         )
         expect(result!.timedOut).toBe(true)
         expect(findBlockingResult([result!])).toBeUndefined()
+    })
+})
+
+describe('hooks shared with cloud sessions', () => {
+    test('parseUserHooksData reads parsed json like a file', () => {
+        const { hooks, problems } = parseUserHooksData(
+            { hooks: { Stop: [{ hooks: [{ command: 'npm test' }] }], Nope: [] } },
+            'global',
+            'account'
+        )
+        expect(hooks).toEqual([
+            {
+                event: 'Stop',
+                matcher: '',
+                command: 'npm test',
+                timeoutSeconds: 60,
+                source: 'global',
+                sourcePath: 'account',
+            },
+        ])
+        expect(problems[0]).toContain('unknown event "Nope"')
+        expect(parseUserHooksData(null, 'global', 'x').problems).toEqual([
+            'missing a "hooks" object',
+        ])
+    })
+
+    test('runUserHooks uses a given runner instead of spawning here', async () => {
+        const seen: Array<{ command: string; payload: Record<string, unknown>; cwd: string }> = []
+        const runCommand: HookCommandRunner = async (hook, payload, cwd) => {
+            seen.push({ command: hook.command, payload, cwd })
+            return { hook, exitCode: 2, stdout: '', stderr: 'blocked in sandbox', timedOut: false }
+        }
+        const hooks = parseUserHooksData(
+            { hooks: { PreToolUse: [{ matcher: 'bash', hooks: [{ command: 'check' }] }] } },
+            'global',
+            'account'
+        ).hooks
+        const results = await runUserHooks(
+            hooks,
+            'PreToolUse',
+            { tool_name: 'bash' },
+            {
+                cwd: '/workspace',
+                toolName: 'bash',
+                runCommand,
+            }
+        )
+        expect(seen).toEqual([
+            {
+                command: 'check',
+                payload: { hook_event_name: 'PreToolUse', cwd: '/workspace', tool_name: 'bash' },
+                cwd: '/workspace',
+            },
+        ])
+        expect(findBlockingResult(results)?.stderr).toBe('blocked in sandbox')
+    })
+
+    test('attachUserHooks blocks a tool through the runner and keeps earlier hooks', async () => {
+        const hooks = parseUserHooksData(
+            { hooks: { PreToolUse: [{ hooks: [{ command: 'x' }] }] } },
+            'global',
+            'account'
+        ).hooks
+        const agent: any = { hooks: { beforeToolCall: async () => undefined } }
+        attachUserHooks(agent, {
+            listHooks: () => hooks,
+            cwd: '/w',
+            runCommand: async (hook) => ({
+                hook,
+                exitCode: 2,
+                stdout: '',
+                stderr: 'no',
+                timedOut: false,
+            }),
+        })
+        expect(await agent.hooks.beforeToolCall({ name: 'bash', input: {} })).toEqual({
+            block: true,
+            reason: 'no',
+        })
+        expect(appendHookContext('p', 'ctx')).toBe('p\n\n<hook_context>\nctx\n</hook_context>')
+        expect(appendHookContext('p')).toBe('p')
+    })
+
+    test('isSafeHookMatcher and isToolHookEvent', () => {
+        expect(isSafeHookMatcher('bash|edit_file')).toBe(true)
+        expect(isSafeHookMatcher('(a+)+')).toBe(false)
+        expect(isSafeHookMatcher('[')).toBe(false)
+        expect(isToolHookEvent('PostToolUse')).toBe(true)
+        expect(isToolHookEvent('Stop')).toBe(false)
     })
 })

@@ -46,6 +46,7 @@ const FreeCreditsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             isOpen={true}
             onClose={onClose}
             title="Request $5 in credits"
+            description="One time for each person. We read each request."
             variant="premium"
             showLogo={false}
             sheetOnPhone

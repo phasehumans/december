@@ -19,9 +19,9 @@ To see the status for the repository in your current folder, type `/github` in t
 
 Each run uses the December account of the person who installed the app:
 
-- Their December Cloud wallet pays for the run.
-- December runs their default model.
-- If their default is their own key, December uses the key that they used last.
+- Their December credits pay for the run.
+- If they have no credits left and they saved an API key, December uses the key that they used last, with the default model of that key.
+- If they have no credits and no key, December replies with a link to add credits.
 
 Only collaborators on the repository can start a run. December adds an eyes reaction to the comment when it starts.
 
@@ -54,12 +54,12 @@ To push a branch and open no pull request, turn off **Open a pull request** in t
 
 These settings control what December does from GitHub:
 
-| Setting                                     | What it does                                                                                                                                                                                        |
-| :------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Work from GitHub comments                   | Turn it off to pause all runs from GitHub: replies, reviews and check fixes.                                                                                                                        |
-| Review pull requests                        | **When asked**: only on `@trydecember review`. **My PRs**: also your new pull requests. **All**: also the new pull requests of the owners, members and collaborators of the repository.            |
-| Answer review comments                      | **All**: every review comment on December pull requests. **Only @trydecember**: comments that mention December, on any pull request. **Off**: no review comments.                                   |
-| Fix failed checks on December pull requests | When a check fails on a December pull request, December pushes a fix.                                                                                                                               |
+| Setting                                     | What it does                                                                                                                                                                            |
+| :------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Work from GitHub comments                   | Turn it off to pause all runs from GitHub: replies, reviews and check fixes.                                                                                                            |
+| Review pull requests                        | **When asked**: only on `@trydecember review`. **My PRs**: also your new pull requests. **All**: also the new pull requests of the owners, members and collaborators of the repository. |
+| Answer review comments                      | **All**: every review comment on December pull requests. **Only @trydecember**: comments that mention December, on any pull request. **Off**: no review comments.                       |
+| Fix failed checks on December pull requests | When a check fails on a December pull request, December pushes a fix.                                                                                                                   |
 
 December reviews a pull request one time, when it opens or when it is ready for review. To review it again after a push, comment `@trydecember review`. December does not review draft pull requests without a request.
 

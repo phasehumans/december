@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import React from 'react'
 
 import { billingAPI } from '@/features/billing/api/billing'
+import { billingQueryKeys } from '@/features/billing/hooks/useBillingData'
 import { profileAPI } from '@/features/profile/api/profile'
 
 export const MIN_TOP_UP_USD = 1
@@ -37,9 +38,30 @@ export const useRazorpayCheckout = ({ onPaid }: UseRazorpayCheckoutOptions = {})
 
     const [isProcessing, setIsProcessing] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
+    // a second click (or Enter) before the first one re-renders must not open a second order
+    const busyRef = React.useRef(false)
+
+    const finish = React.useCallback(() => {
+        busyRef.current = false
+        setIsProcessing(false)
+    }, [])
+
+    // the balance and the payments list: after a payment, and after a verify that failed
+    // (the webhook can still add the credit)
+    const refreshBalance = React.useCallback(
+        () =>
+            Promise.all([
+                queryClient.invalidateQueries({ queryKey: billingQueryKeys.overview }),
+                queryClient.invalidateQueries({ queryKey: billingQueryKeys.transactions }),
+                queryClient.invalidateQueries({ queryKey: ['profile'] }),
+                queryClient.invalidateQueries({ queryKey: ['onboarding'] }),
+            ]),
+        [queryClient]
+    )
 
     const startCheckout = React.useCallback(
         async (amountUsd: number) => {
+            if (busyRef.current) return
             if (
                 !Number.isInteger(amountUsd) ||
                 amountUsd < MIN_TOP_UP_USD ||
@@ -51,6 +73,7 @@ export const useRazorpayCheckout = ({ onPaid }: UseRazorpayCheckoutOptions = {})
                 return
             }
 
+            busyRef.current = true
             setIsProcessing(true)
             setError(null)
 
@@ -86,22 +109,22 @@ export const useRazorpayCheckout = ({ onPaid }: UseRazorpayCheckoutOptions = {})
                                 throw new Error('Verification failed. Please contact support.')
                             }
 
-                            await Promise.all([
-                                queryClient.invalidateQueries({ queryKey: ['billing-overview'] }),
-                                queryClient.invalidateQueries({ queryKey: ['profile'] }),
-                                queryClient.invalidateQueries({ queryKey: ['onboarding'] }),
-                            ])
+                            await refreshBalance()
                             onPaid?.(amountUsd)
                         } catch (err: any) {
-                            setError(err?.message || 'Failed to verify payment signature.')
+                            // the money may have gone through: the webhook adds the credit
+                            void refreshBalance()
+                            setError(
+                                err?.message
+                                    ? `${err.message} If you paid, the credits show in a few minutes.`
+                                    : 'The payment did not verify. If you paid, the credits show in a few minutes.'
+                            )
                         } finally {
-                            setIsProcessing(false)
+                            finish()
                         }
                     },
                     modal: {
-                        ondismiss: () => {
-                            setIsProcessing(false)
-                        },
+                        ondismiss: finish,
                     },
                     prefill: {
                         name: profile?.name || '',
@@ -115,15 +138,11 @@ export const useRazorpayCheckout = ({ onPaid }: UseRazorpayCheckoutOptions = {})
                 const rzp = new (window as any).Razorpay(options)
                 rzp.open()
             } catch (err: any) {
-                setError(
-                    err?.message ||
-                        err?.errors ||
-                        'An error occurred during payment initialization.'
-                )
-                setIsProcessing(false)
+                setError(err?.message || 'The payment did not start. Try again.')
+                finish()
             }
         },
-        [onPaid, profile?.email, profile?.name, queryClient]
+        [finish, onPaid, profile?.email, profile?.name, refreshBalance]
     )
 
     return { startCheckout, isProcessing, error, setError }

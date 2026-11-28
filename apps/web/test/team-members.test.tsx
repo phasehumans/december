@@ -147,8 +147,8 @@ describe('members page on the team api', () => {
         expect(screen.getByText('arjun@example.com · Joined Nov 18')).toBeDefined()
         // the owner has no role select and no Remove
         expect(screen.queryByLabelText('Role of Asha Rao')).toBeNull()
-        expect((screen.getByLabelText('Role of Arjun Mehta') as HTMLSelectElement).value).toBe(
-            'ADMIN'
+        expect(screen.getByRole('button', { name: 'Role of Arjun Mehta' }).textContent).toContain(
+            'Admin'
         )
 
         expect(screen.getByText('meera@example.com')).toBeDefined()
@@ -184,7 +184,8 @@ describe('members page on the team api', () => {
         expect(writes()).toEqual([])
 
         typeInto(email, ' Sam@Example.com ')
-        fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'ADMIN' } })
+        fireEvent.click(screen.getByRole('button', { name: 'Role' }))
+        fireEvent.click(screen.getByRole('option', { name: 'Admin' }))
         fireEvent.submit(email.closest('form')!)
 
         await waitFor(() => expect(writes()).toEqual(['POST /team/invites']))
@@ -214,9 +215,8 @@ describe('members page on the team api', () => {
 
     test('a role change sends the PATCH for that member', async () => {
         renderPage()
-        const select = await screen.findByLabelText('Role of Arjun Mehta')
-
-        fireEvent.change(select, { target: { value: 'MEMBER' } })
+        fireEvent.click(await screen.findByRole('button', { name: 'Role of Arjun Mehta' }))
+        fireEvent.click(screen.getByRole('option', { name: 'Member' }))
 
         await waitFor(() => expect(writes()).toEqual(['PATCH /team/members/u-arjun']))
         expect(JSON.parse(calls.find((c) => c.method === 'PATCH')!.body)).toEqual({

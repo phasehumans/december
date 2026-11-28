@@ -34,6 +34,29 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
         })
     }
 
+    // a body the JSON parser refused (bad JSON, a bare string or number, too large) is the
+    // fault of the request, not of the server
+    if (
+        typeof err?.type === 'string' &&
+        err.type.startsWith('entity.') &&
+        Number.isInteger(err.status) &&
+        err.status >= 400 &&
+        err.status < 500
+    ) {
+        return res.status(err.status).json({
+            error: isCliRoute
+                ? {
+                      message: 'invalid request body',
+                      type: 'invalid_request_error',
+                      code: String(err.status),
+                  }
+                : undefined,
+            success: false,
+            message:
+                err.type === 'entity.too.large' ? 'request body too large' : 'invalid request body',
+        })
+    }
+
     if (err instanceof AppError) {
         const errorType =
             err.statusCode === 401

@@ -101,8 +101,12 @@ describe('Billing Integration Tests', () => {
         expect(res.status).toBe(200)
         expect(res.body.data.creditBalance).toBe(1000)
         expect(res.body.data.usdToInrRate).toBeDefined()
-        expect(res.body.data.usage).toBeDefined()
-        expect(res.body.data.transactions).toBeArray()
+        // the payments list has its own route: the overview stays small for the sidebar and the cli
+        expect(Object.keys(res.body.data).sort()).toEqual([
+            'createdAt',
+            'creditBalance',
+            'usdToInrRate',
+        ])
     })
 
     it('POST /api/v1/billing/wallet/order/razorpay - rejects amount below minimum ($1.00)', async () => {

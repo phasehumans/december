@@ -1,3 +1,5 @@
+import { ONBOARDING_PATH } from '@/features/onboarding/constants'
+
 export type ViewState = 'chat' | 'sessions' | 'pullrequests' | 'profile' | 'project'
 
 export type ProfileTab =
@@ -124,6 +126,26 @@ export const getViewForPath = (pathname: string): ViewState => {
         return 'project'
 
     return 'chat'
+}
+
+/**
+ * true for every path the signed-in app draws. Anything else shows "Page not found"
+ * instead of home. The admin path is checked in App, since only the admin knows it.
+ */
+export const isAppPath = (pathname: string): boolean => {
+    const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname
+    if (
+        path === '/' ||
+        path === '/login' ||
+        path === '/signup' ||
+        path === ONBOARDING_PATH ||
+        path === '/search' ||
+        path.startsWith('/search/')
+    ) {
+        return true
+    }
+    if (simplePathToView[path]) return true
+    return getViewForPath(path) === 'profile' || getViewForPath(path) === 'project'
 }
 
 export const isPublicPath = (pathname: string): boolean => {

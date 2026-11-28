@@ -61,6 +61,8 @@ export interface RunAgentSessionInput {
     skills?: string[]
     /** saved mcp servers turned off for this session (#632) */
     disabledMcps?: string[]
+    /** installed plugins turned off for this session (connections page) */
+    disabledPlugins?: string[]
     /** the files sent with this message (#634): copied into the sandbox before the turn */
     attachments?: JobAttachment[]
     /** the stop watch of this run (#637): a stop aborts the agent and ends the run */
@@ -129,12 +131,4 @@ export interface EphemeralTaskResult {
     success: boolean
     data?: any
     error?: string
-}
-
-export interface RunRepositorySetupInput {
-    sessionId: string
-    userId?: string
-    sandboxId: string
-    /** the stop watch of the run: a stop kills the setup commands */
-    stop?: RunStop
 }

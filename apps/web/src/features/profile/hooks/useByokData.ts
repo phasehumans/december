@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import type { ByokCredential, ByokList } from '@/features/profile/api/byok'
+
 import { byokAPI } from '@/features/profile/api/byok'
-import { profileAPI } from '@/features/profile/api/profile'
 
 export const byokQueryKey = ['byok'] as const
 
@@ -15,28 +16,53 @@ export const useByokList = (enabled = true) =>
 
 export const useByokMutations = () => {
     const queryClient = useQueryClient()
-    const invalidate = () => queryClient.invalidateQueries({ queryKey: byokQueryKey })
+
+    // the answer of a save or a check goes into the list at once (the prompt box reads the same
+    // list), then the list loads again from the server
+    const putCredential = (credential: ByokCredential) => {
+        queryClient.setQueryData<ByokList>(byokQueryKey, (list) => {
+            if (!list) return list
+            const others = list.credentials.filter((c) => c.provider !== credential.provider)
+            const isNew = others.length === list.credentials.length
+            return {
+                ...list,
+                credentials: isNew
+                    ? [...list.credentials, credential]
+                    : list.credentials.map((c) =>
+                          c.provider === credential.provider ? credential : c
+                      ),
+            }
+        })
+        return queryClient.invalidateQueries({ queryKey: byokQueryKey })
+    }
+
+    const dropCredential = (provider: string) => {
+        queryClient.setQueryData<ByokList>(byokQueryKey, (list) =>
+            list
+                ? { ...list, credentials: list.credentials.filter((c) => c.provider !== provider) }
+                : list
+        )
+        return queryClient.invalidateQueries({ queryKey: byokQueryKey })
+    }
 
     const saveKey = useMutation({
         mutationFn: ({ provider, apiKey }: { provider: string; apiKey: string }) =>
             byokAPI.save(provider, apiKey),
-        onSuccess: invalidate,
+        onSuccess: ({ credential }) => putCredential(credential),
     })
 
     const refreshKey = useMutation({
         mutationFn: (provider: string) => byokAPI.refresh(provider),
-        onSuccess: invalidate,
+        onSuccess: ({ credential }) => putCredential(credential),
+        // a 404 means the key is gone already: the list loads again either way
+        onError: () => queryClient.invalidateQueries({ queryKey: byokQueryKey }),
     })
 
     const removeKey = useMutation({
         mutationFn: (provider: string) => byokAPI.remove(provider),
-        onSuccess: invalidate,
+        onSuccess: (_data, provider) => dropCredential(provider),
+        onError: () => queryClient.invalidateQueries({ queryKey: byokQueryKey }),
     })
 
-    const updateModelSource = useMutation({
-        mutationFn: (source: 'CREDITS' | 'OWN_KEY') => profileAPI.updateModelSource(source),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profile'] }),
-    })
-
-    return { saveKey, refreshKey, removeKey, updateModelSource }
+    return { saveKey, refreshKey, removeKey }
 }

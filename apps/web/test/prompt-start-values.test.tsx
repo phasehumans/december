@@ -120,15 +120,6 @@ describe('the prompt box start values', () => {
         expect(onSubmit.mock.calls[0][1].runConfig.effort).toBe('deep')
     })
 
-    it('an old saved speed of deep no longer applies: the box starts on Fast', async () => {
-        // the Defaults page is gone; a value saved there before stays in the database
-        account = { ...account, defaultPlanFirst: true, defaultEffort: 'deep' } as any
-        const { result } = openBox()
-
-        await waitFor(() => expect(usePromptConfig.getState().values.planFirst).toBe(true))
-        expect(result.current.selectedSpeed).toBe('fast')
-    })
-
     it('starts on plan first and no pull request from "save as default"', async () => {
         account = { ...account, defaultPlanFirst: true, defaultOpenPullRequest: false }
         const onSubmit = mock((_prompt: string, _options?: any) => {})
@@ -149,8 +140,8 @@ describe('the prompt box start values', () => {
         })
     })
 
-    it('stays on credits with saved keys while the model source is credits', async () => {
-        account = { ...account, defaultModelSource: 'CREDITS', defaultPlanFirst: true }
+    it('stays on credits with saved keys while the user has credits', async () => {
+        account = { ...account, creditBalance: 500, defaultPlanFirst: true }
         const { result } = openBox()
 
         await waitFor(() => expect(usePromptConfig.getState().values.planFirst).toBe(true))
@@ -159,14 +150,8 @@ describe('the prompt box start values', () => {
         expect(result.current.selectedModel).toBe('')
     })
 
-    it('starts on the first key and its default model when the model source is your keys', async () => {
-        // an old saved own-key model is ignored: the key's own default is used
-        account = {
-            ...account,
-            defaultModelSource: 'OWN_KEY',
-            defaultOwnKeyProvider: 'groq',
-            defaultOwnKeyModel: 'qwen-qwq-32b',
-        } as any
+    it('starts on the first key and its default model when the credits are gone', async () => {
+        account = { ...account, creditBalance: 0 }
         const { result } = openBox()
 
         await waitFor(() => expect(result.current.selectedSource).toBe('OWN_KEY'))
@@ -174,13 +159,14 @@ describe('the prompt box start values', () => {
         expect(result.current.selectedModel).toBe('gpt-5')
     })
 
-    it('starts with no repository and does not load the list, even with an old saved repo', async () => {
-        account = {
-            ...account,
-            defaultPlanFirst: true,
-            defaultRepository: 'acme/api',
-            defaultBaseBranch: 'develop',
-        } as any
+    it('starts on a key when the balance is under the start balance', async () => {
+        account = { ...account, creditBalance: 49 }
+        const { result } = openBox()
+        await waitFor(() => expect(result.current.selectedSource).toBe('OWN_KEY'))
+    })
+
+    it('starts with no repository and does not load the list', async () => {
+        account = { ...account, defaultPlanFirst: true }
         const { result } = openBox()
 
         await waitFor(() => expect(usePromptConfig.getState().values.planFirst).toBe(true))
@@ -190,7 +176,6 @@ describe('the prompt box start values', () => {
     })
 
     it('a repository picked by hand starts on its default branch', async () => {
-        account = { ...account, defaultBaseBranch: 'develop' } as any
         const onSubmit = mock((_prompt: string, _options?: any) => {})
         const { result } = openBox(onSubmit)
 

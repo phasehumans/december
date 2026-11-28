@@ -293,7 +293,6 @@ const findUserDetails = async (userId: string) => {
             notifyLevel: true,
             notifyPush: true,
             timezone: true,
-            defaultModelSource: true,
             defaultPlanFirst: true,
             defaultOpenPullRequest: true,
             idleStopMinutes: true,

@@ -1,8 +1,18 @@
 import { Router } from 'express'
 
 import { authMiddleware } from '../../middleware/auth.middleware'
+import { createRateLimiter } from '../../middleware/rate-limiter'
 
 import { settingController } from './setting.controller'
+
+// each feedback is a row and a note in every admin's inbox: a per-user limit keeps one
+// account from filling them
+const feedbackLimiter = createRateLimiter({
+    windowMs: 60 * 60 * 1000,
+    limit: 10,
+    message: 'Too much feedback at once. Try again in an hour.',
+    prefix: 'rl:setting-feedback:',
+})
 
 const settingRouter = Router()
 
@@ -16,7 +26,6 @@ settingRouter.get('/me', settingController.getMe)
 settingRouter.get('/', settingController.getProfile)
 settingRouter.patch('/name', settingController.updateName)
 settingRouter.patch('/notifications', settingController.updateNotifications)
-settingRouter.patch('/model-source', settingController.updateModelSource)
 settingRouter.patch('/defaults', settingController.updateSessionDefaults)
 settingRouter.get('/permissions', settingController.getToolDenyRules)
 settingRouter.put('/permissions', settingController.updateToolDenyRules)
@@ -25,11 +34,10 @@ settingRouter.get('/pull-requests', settingController.getPullRequestSettings)
 settingRouter.patch('/pull-requests', settingController.updatePullRequestSettings)
 settingRouter.get('/sandbox', settingController.getSandboxSettings)
 settingRouter.patch('/sandbox', settingController.updateSandboxSettings)
-settingRouter.put('/sandbox/setup-commands', settingController.updateSetupCommands)
 settingRouter.get('/onboarding', settingController.getOnboarding)
 settingRouter.patch('/onboarding', settingController.updateOnboarding)
 settingRouter.post('/onboarding/complete', settingController.completeOnboarding)
 
-settingRouter.post('/feedback', settingController.submitFeedback)
+settingRouter.post('/feedback', feedbackLimiter, settingController.submitFeedback)
 
 export default settingRouter

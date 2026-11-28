@@ -465,6 +465,7 @@ export const worker = new Worker(
                 // skills picked for this message, mcp servers off for this session (#632)
                 skills: readNameList(job.data.skills),
                 disabledMcps: readNameList(job.data.disabledMcps),
+                disabledPlugins: readNameList(job.data.disabledPlugins),
                 // the files sent with this message (#634)
                 attachments: readJobAttachments({ sessionId, value: job.data.attachments }),
                 stop,

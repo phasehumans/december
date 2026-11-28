@@ -1,3 +1,5 @@
+import { ZodError } from 'zod'
+
 import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
@@ -6,13 +8,11 @@ import {
     updateNameSchema,
     updateNotificationSchema,
     updateOnboardingSchema,
-    updateModelSourceSchema,
     updateSessionDefaultsSchema,
     updateToolDenyRulesSchema,
     updatePreferencesSchema,
     updatePullRequestSettingsSchema,
     updateSandboxSettingsSchema,
-    updateSetupCommandsSchema,
     submitFeedbackSchema,
     unsubscribeQuerySchema,
 } from './setting.schema'
@@ -66,18 +66,6 @@ const updateNotifications = asyncHandler(async (req: Request, res: Response) => 
     const settings = updateNotificationSchema.parse(req.body)
     const result = await settingService.updateNotifications({ userId, settings })
     return sendSuccess(res, 'notifications preferences updated', result)
-})
-
-const updateModelSource = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const { defaultModelSource } = updateModelSourceSchema.parse(req.body)
-    const result = await settingService.updateModelSource({ userId, defaultModelSource })
-    return sendSuccess(res, 'default model source updated', result)
 })
 
 const updateSessionDefaults = asyncHandler(async (req: Request, res: Response) => {
@@ -173,18 +161,6 @@ const updateSandboxSettings = asyncHandler(async (req: Request, res: Response) =
     return sendSuccess(res, 'sandbox settings updated', result)
 })
 
-const updateSetupCommands = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const { repoFullName, commands } = updateSetupCommandsSchema.parse(req.body)
-    const result = await settingService.updateSetupCommands({ userId, repoFullName, commands })
-    return sendSuccess(res, 'setup commands updated', result)
-})
-
 const getOnboarding = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId as string | undefined
 
@@ -243,9 +219,24 @@ const unsubscribePage = (content: string) => simplePage('Unsubscribe', content)
 
 const escapeAttr = (value: string) => value.replace(/[^A-Za-z0-9-]/g, '')
 
+// a person opens the link in a browser: a link that is not valid gets a page, not JSON
+const sendInvalidLinkPage = (res: Response, error: unknown) => {
+    if (!(error instanceof ZodError) && !(error instanceof AppError && error.statusCode === 400)) {
+        throw error
+    }
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    return res.status(400).send(unsubscribePage('<p>This unsubscribe link is not valid.</p>'))
+}
+
 const showUnsubscribe = asyncHandler(async (req: Request, res: Response) => {
-    const { u, t } = unsubscribeQuerySchema.parse(req.query)
-    await settingService.checkUnsubscribe({ userId: u, token: t })
+    let link: { u: string; t: string }
+    try {
+        link = unsubscribeQuerySchema.parse(req.query)
+        await settingService.checkUnsubscribe({ userId: link.u, token: link.t })
+    } catch (error) {
+        return sendInvalidLinkPage(res, error)
+    }
+    const { u, t } = link
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     return res
         .status(200)
@@ -259,11 +250,15 @@ const showUnsubscribe = asyncHandler(async (req: Request, res: Response) => {
 // the form on the page sends u and t in the body. a mail app's one-click unsubscribe
 // (List-Unsubscribe-Post, RFC 8058) posts to the link itself, so they are in the query
 const unsubscribe = asyncHandler(async (req: Request, res: Response) => {
-    const { u, t } = unsubscribeQuerySchema.parse({
-        u: req.body?.u ?? req.query.u,
-        t: req.body?.t ?? req.query.t,
-    })
-    await settingService.unsubscribe({ userId: u, token: t })
+    try {
+        const { u, t } = unsubscribeQuerySchema.parse({
+            u: req.body?.u ?? req.query.u,
+            t: req.body?.t ?? req.query.t,
+        })
+        await settingService.unsubscribe({ userId: u, token: t })
+    } catch (error) {
+        return sendInvalidLinkPage(res, error)
+    }
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     return res
         .status(200)
@@ -277,7 +272,6 @@ export const settingController = {
     getProfile,
     updateName,
     updateNotifications,
-    updateModelSource,
     updateSessionDefaults,
     getToolDenyRules,
     updateToolDenyRules,
@@ -286,7 +280,6 @@ export const settingController = {
     updatePullRequestSettings,
     getSandboxSettings,
     updateSandboxSettings,
-    updateSetupCommands,
     getOnboarding,
     updateOnboarding,
     completeOnboarding,

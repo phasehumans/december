@@ -167,12 +167,6 @@ describe('Session configuration and the pull requests list (#632)', () => {
             })
         })
 
-        it('an old saved speed of deep no longer applies', async () => {
-            await prisma.user.update({ where: { id: ownerId }, data: { defaultEffort: 'deep' } })
-            const res = await as(ownerToken).post('/session', { prompt: 'x' })
-            expect(res.body.data.session.config.effort).toBe('fast')
-        })
-
         it('takes the credit tier as the effort when no effort is sent', async () => {
             const res = await as(ownerToken).post('/session', { prompt: 'x', tier: 'fast' })
             expect(res.body.data.session.config.effort).toBe('fast')

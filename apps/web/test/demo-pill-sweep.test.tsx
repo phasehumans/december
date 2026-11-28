@@ -8,11 +8,10 @@ if (!globalThis.document) {
 }
 
 // load react-dom and the app only after the dom exists, or react skips its input events
-const { render, screen, fireEvent, cleanup, within } = await import('@testing-library/react')
+const { render, screen, fireEvent, cleanup, waitFor, within } =
+    await import('@testing-library/react')
 const { MemoryRouter } = await import('react-router-dom')
 const { ConnectionsPage } = await import('../src/features/connections/components/ConnectionsPage')
-const { useConnectionsStore } =
-    await import('../src/features/connections/hooks/useConnectionsStore')
 const { setConnectionsDemo } = await import('../src/features/connections/lib/connectionsDemo')
 const { ChatPromptInput } = await import('../src/features/chat/components/ChatPromptInput')
 const { HomeTabs } = await import('../src/features/home/components/HomeTabs')
@@ -33,7 +32,6 @@ const { PromptFooter } = await import('../src/shared/components/ui/PromptFooter'
 // replaced.
 
 const originalFetch = globalThis.fetch
-const initialStore = useConnectionsStore.getState()
 
 type Call = { path: string; method: string }
 let calls: Call[] = []
@@ -47,7 +45,7 @@ const json = (data: unknown, status = 200) =>
 const answers: Record<string, unknown> = {
     '/setting': { id: 'u1', name: 'Asha', email: 'asha@example.com', githubConnected: true },
     '/setting/me': { fullName: 'Asha', isGithubConnected: true },
-    '/setting/sandbox': { idleStopMinutes: 10, archiveAfterDays: null, setupCommands: [] },
+    '/setting/sandbox': { idleStopMinutes: 10, archiveAfterDays: null },
     '/session/sandboxes': { items: [] },
     '/session': { sessions: [], total: 0 },
     '/integrations/gitlab': { available: false, connected: false, username: null },
@@ -79,7 +77,12 @@ const answers: Record<string, unknown> = {
     },
     '/connections/skills': { skills: [] },
     '/connections/mcps': { mcps: [] },
+    '/connections/rules': { rules: [] },
+    '/connections/memory': { enabled: true, memories: [] },
     '/connections/prompt-box': { skills: [], plugins: [], mcps: [] },
+    '/connections/plugins': { plugins: [] },
+    '/connections/plugins/marketplace': { marketplaces: [] },
+    '/connections/hooks': { hooks: [] },
     '/waitlist/super-crew': {
         feature: 'super-crew',
         joined: false,
@@ -143,17 +146,20 @@ const typeInBox = (value: string) => {
     return el
 }
 
-const SAMPLE_TABS = [
-    ['plugins', 'Plugins', 'Plugins are coming soon'],
-    ['hooks', 'Hooks', 'Hooks are coming soon'],
-    ['rules', 'Rules', 'Rules are coming soon'],
-    ['memory', 'Memory', 'Memory is coming soon'],
+/** every connections tab has a server behind it: never a pill, never "coming soon" */
+const LIVE_TABS = ['Apps', 'Plugins', 'Skills', 'MCPs', 'Hooks', 'Rules', 'Memory'] as const
+
+/** the tabs that read their own list from the server when they open */
+const SERVER_TABS = [
+    ['plugins', '/connections/plugins'],
+    ['hooks', '/connections/hooks'],
+    ['rules', '/connections/rules'],
+    ['memory', '/connections/memory'],
 ] as const
 
 beforeEach(() => {
     cleanup()
     resetPreviewValues()
-    useConnectionsStore.setState(initialStore, true)
     localStorage.clear()
     calls = []
     globalThis.fetch = fakeServer
@@ -168,96 +174,80 @@ afterEach(() => {
 describe('with the preview flag on, each part on sample values shows the Demo pill', () => {
     beforeEach(() => setConnectionsDemo(true))
 
-    test('connections: the Plugins, Hooks, Rules and Memory tabs', () => {
+    test('connections: no tab has a pill, and every tab opens on the server', async () => {
         page(<ConnectionsPage />, '/settings/connections/apps')
-
-        for (const [, label] of SAMPLE_TABS) {
-            expect(within(tab(label)).queryByText('Demo') !== null).toBe(true)
+        for (const name of LIVE_TABS) {
+            expect(within(tab(name)).queryByText('Demo') === null).toBe(true)
         }
-        expect(within(tab('Apps')).queryByText('Demo') === null).toBe(true)
         cleanup()
-
-        // the tabs open on their sample values, not on "coming soon"
-        for (const [slug, , soonText] of SAMPLE_TABS) {
+        for (const [slug, path] of SERVER_TABS) {
             page(<ConnectionsPage />, `/settings/connections/${slug}`)
-            expect(shows(soonText)).toBe(false)
+            expect(shows('coming soon')).toBe(false)
+            await waitFor(() => expect(calls.some((call) => call.path === path)).toBe(true))
             cleanup()
         }
     })
 
-    test('connections: the Skills and MCPs tabs list sample values, so they have the pill too', () => {
-        page(<ConnectionsPage />, '/settings/connections/apps')
-
-        expect(within(tab('Skills')).queryByText('Demo') !== null).toBe(true)
-        expect(within(tab('MCPs')).queryByText('Demo') !== null).toBe(true)
-        expect(within(tab('Apps')).queryByText('Demo') === null).toBe(true)
-    })
-
-    test('connections: the import setup dialog on sample values', () => {
+    test('connections: the import setup dialog reads the real repositories', () => {
         page(<ConnectionsPage />, '/settings/connections/apps')
         fireEvent.click(screen.getByRole('button', { name: 'Import setup' }))
 
-        expect(shows('6 found')).toBe(true)
-        // the pill sits next to the label of the sample repository list
-        expect(within(screen.getByText('Repository')).queryAllByText('Demo')).toHaveLength(1)
-        expect(calls.filter((call) => call.path.startsWith('/connections/import'))).toEqual([])
+        const dialog = within(screen.getByRole('group', { name: 'Import setup' }))
+        expect(dialog.queryByText('6 found') === null).toBe(true)
+        expect(dialog.queryByText('Demo') === null).toBe(true)
     })
 
-    test('prompt box: the Plugins row of the + menu', () => {
+    test('prompt box: the Skills, Plugins and MCPs rows of the + menu read the server, so no pill', () => {
         footer()
         fireEvent.click(screen.getByLabelText('Add'))
 
-        const row = within(screen.getByRole('menuitem', { name: /Plugins/ }))
-        expect(row.queryByText('Demo') !== null).toBe(true)
+        for (const name of [/Skills/, /Plugins/, /MCPs/]) {
+            const row = within(screen.getByRole('menuitem', { name }))
+            expect(row.queryByText('Demo') === null).toBe(true)
+        }
+        expect(count('Demo')).toBe(0)
         expect(shows('Soon')).toBe(false)
     })
 
-    test('prompt box: the Skills and MCPs rows of the + menu, the headings of the sample lists', () => {
-        footer()
-        fireEvent.click(screen.getByLabelText('Add'))
-
-        for (const name of [/Skills/, /MCPs/]) {
-            const row = within(screen.getByRole('menuitem', { name }))
-            expect(row.queryByText('Demo') !== null).toBe(true)
+    test('prompt box: the slash menu and /check list the real skills and servers, with no pill', async () => {
+        answers['/connections/prompt-box'] = {
+            skills: [{ name: 'write-tests', description: 'Write unit tests' }],
+            plugins: [],
+            mcps: [],
         }
-        // Plugins, Skills and MCPs. the other rows read the server
-        expect(count('Demo')).toBe(3)
-    })
-
-    test('prompt box: the Skills label of the slash menu', async () => {
-        page(<SessionBox />)
-        typeInBox('/')
-
-        // the skills of the account and the skills of the sample plugin: one label each
-        for (const name of ['Skills', 'release-kit']) {
-            const label = await screen.findByText(name)
-            expect(within(label.parentElement!).queryByText('Demo') !== null).toBe(true)
+        answers['/session/check'] = {
+            github: { connected: true, appInstalled: true, accounts: ['acme'] },
+            gitlab: { connected: false, username: null },
+            credits: { balanceInCents: 1250, enoughToStart: true },
+            keys: [],
+            machine: null,
+            mcpServers: [{ name: 'linear', enabled: true, status: 'connected', toolCount: 12 }],
         }
-        expect(within(screen.getByText('Commands').parentElement!).queryByText('Demo')).toBeNull()
-        expect(count('Demo')).toBe(2)
-    })
+        try {
+            page(<SessionBox />)
+            const el = typeInBox('/')
+            await screen.findByText('Skills')
+            expect(shows('Demo')).toBe(false)
 
-    test('prompt box: each MCP row of /check', async () => {
-        page(<SessionBox />)
-        const el = typeInBox('/check')
-        fireEvent.keyDown(el, { key: 'Enter' })
-
-        const rows = (await screen.findAllByText(/^MCP: /)).map(
-            (label) => label.closest('[role="option"]') as HTMLElement
-        )
-        expect(rows.length > 0).toBe(true)
-        for (const row of rows) {
-            expect(within(row).queryByText('Demo') !== null).toBe(true)
+            typeInBox('/check')
+            fireEvent.keyDown(el, { key: 'Enter' })
+            await screen.findByText('MCP: linear')
+            expect(shows('MCP: sentry')).toBe(false)
+            expect(shows('Demo')).toBe(false)
+        } finally {
+            answers['/connections/prompt-box'] = { skills: [], plugins: [], mcps: [] }
+            delete answers['/session/check']
         }
-        expect(count('Demo')).toBe(rows.length)
     })
 
     test('sandbox: machine size', async () => {
         page(<ProfileSandboxSettings />)
         await screen.findByRole('radio', { name: '10 min' })
 
-        const label = screen.getByText('Machine size')
-        expect(within(label).queryByText('Demo') !== null).toBe(true)
+        // the pill sits beside the section heading
+        const heading = screen.getByRole('heading', { name: 'Machine size' })
+        const headingRow = heading.parentElement?.parentElement as HTMLElement
+        expect(within(headingRow).queryByText('Demo') !== null).toBe(true)
         expect(count('Demo')).toBe(1)
         fireEvent.click(screen.getByRole('radio', { name: 'Large' }))
         expect(writes()).toEqual([])
@@ -286,11 +276,12 @@ describe('with the preview flag on, each part on sample values shows the Demo pi
 describe('with the preview flag off, the same parts show nothing or "Soon"', () => {
     beforeEach(() => setConnectionsDemo(false))
 
-    test('connections: the four tabs say "coming soon" and no tab has a pill', () => {
-        for (const [slug, , soonText] of SAMPLE_TABS) {
+    test('connections: plugins and hooks open on the server, with no pill', async () => {
+        for (const [slug, path] of SERVER_TABS.slice(0, 2)) {
             page(<ConnectionsPage />, `/settings/connections/${slug}`)
-            expect(shows(soonText)).toBe(true)
+            expect(shows('coming soon')).toBe(false)
             expect(shows('Demo')).toBe(false)
+            await waitFor(() => expect(calls.some((call) => call.path === path)).toBe(true))
             cleanup()
         }
     })
@@ -304,13 +295,12 @@ describe('with the preview flag off, the same parts show nothing or "Soon"', () 
         expect(dialog.queryByText('Demo') === null).toBe(true)
     })
 
-    test('prompt box: the Plugins row says "Soon"', () => {
+    test('prompt box: the Plugins row is live, with no "Soon"', () => {
         footer()
         fireEvent.click(screen.getByLabelText('Add'))
 
         const row = within(screen.getByRole('menuitem', { name: /Plugins/ }))
-        expect(row.queryByText('Soon') !== null).toBe(true)
-        expect(count('Soon')).toBe(1)
+        expect(row.queryByText('Soon') === null).toBe(true)
         expect(shows('Demo')).toBe(false)
     })
 
@@ -390,14 +380,15 @@ describe('with the preview flag off, the same parts show nothing or "Soon"', () 
 })
 
 describe('parts that are connected to the server have no preview gate', () => {
-    // the model source row lives on the API keys page for every user, with no pill
+    // the API keys page reads the server for every user, with no pill. the model source
+    // section was removed: a run picks credits or a key on its own
     for (const flag of [false, true]) {
-        test(`api keys page, flag ${flag ? 'on' : 'off'}: model source and keys, no pill`, async () => {
+        test(`api keys page, flag ${flag ? 'on' : 'off'}: keys, no model source, no pill`, async () => {
             setConnectionsDemo(flag)
             page(<ProfileModelKeysSettings />)
             await screen.findByText('Saved keys')
 
-            expect(shows('Model source')).toBe(true)
+            expect(shows('Model source')).toBe(false)
             expect(shows('Demo')).toBe(false)
             expect(shows('Soon')).toBe(false)
         })

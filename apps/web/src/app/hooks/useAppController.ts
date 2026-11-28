@@ -3,7 +3,13 @@ import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useAppStore } from '@/app/store'
-import { getPathForView, getViewForPath, toProjectSlug, type ViewState } from '@/app/types'
+import {
+    getPathForView,
+    getViewForPath,
+    isAppPath,
+    toProjectSlug,
+    type ViewState,
+} from '@/app/types'
 import { githubOAuth } from '@/features/auth/githubOAuth'
 import { useChatController } from '@/features/chat/hooks/useChatController'
 import { useNavigationController } from '@/features/navigation/hooks/useNavigationController'
@@ -121,6 +127,8 @@ export const useAppController = () => {
     // Redirect unauthenticated visitors attempting to access protected routes or root on app domain
     React.useEffect(() => {
         if (!isAuthRestored || isAuthenticated) return
+        // a path the app does not know shows "Page not found", signed in or not
+        if (!isAppPath(location.pathname)) return
 
         if (location.pathname !== '/login' && location.pathname !== '/signup') {
             const redirectTarget = encodeURIComponent(location.pathname + location.search)
@@ -283,10 +291,17 @@ export const useAppController = () => {
         navigate('/sessions')
     }, [activeProjectId, navigate, resetGenerationRefs])
 
+    // a session link that did not match any session of this user: the path it was for, so
+    // the page shows "Session not found" until the path changes
+    const [sessionNotFoundPath, setSessionNotFoundPath] = React.useState<string | null>(null)
+    const isSessionNotFound =
+        sessionNotFoundPath !== null && sessionNotFoundPath === location.pathname
+
     // deep-link resolution
     React.useEffect(() => {
         if (!isAuthenticated || activeProjectId || isProjectOpening || isNavigatingHomeRef.current)
             return
+        if (sessionNotFoundPath === location.pathname) return
 
         if (
             location.pathname.startsWith('/sessions/') ||
@@ -330,6 +345,9 @@ export const useAppController = () => {
                     }
 
                     // 2. Direct API resolution fallback (either direct ID or slug match via getSessions)
+                    // a failed lookup only means "not found" when the server said so; a
+                    // network or server error keeps today's empty screen
+                    let isDefinitelyMissing = true
                     try {
                         try {
                             const detail = await sessionAPI.getSessionDetail(slug)
@@ -341,8 +359,11 @@ export const useAppController = () => {
                                 })
                                 return
                             }
-                        } catch {
-                            // Intentionally swallowed: slug may not be an ID, try lookup in getSessions list below
+                        } catch (detailError) {
+                            // slug may not be an ID, try lookup in getSessions list below
+                            isDefinitelyMissing =
+                                detailError instanceof ApiError &&
+                                [400, 403, 404].includes(detailError.status)
                         }
 
                         const sessionsRes = await sessionAPI.getSessions()
@@ -364,6 +385,9 @@ export const useAppController = () => {
                                 projectId: found.id,
                                 originView: 'all-projects',
                             })
+                        } else if (isMounted && isDefinitelyMissing) {
+                            // deleted, mistyped, or another person's: the same page for each
+                            setSessionNotFoundPath(location.pathname)
                         }
                     } catch (err) {
                         console.error('[deep-link] failed to resolve session:', err)
@@ -383,6 +407,7 @@ export const useAppController = () => {
         location.pathname,
         openProject,
         queryClient,
+        sessionNotFoundPath,
     ])
 
     // poll preview session
@@ -486,5 +511,6 @@ export const useAppController = () => {
         needsOnboarding,
         isOnboardingRoute,
         isCheckingOnboarding,
+        isSessionNotFound,
     }
 }

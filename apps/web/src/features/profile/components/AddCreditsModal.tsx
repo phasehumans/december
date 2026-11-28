@@ -18,6 +18,8 @@ interface AddCreditsModalProps {
 /** one tap amounts under the input. all are inside the top-up limits */
 const QUICK_AMOUNTS = [5, 10, 25, 50]
 
+const NOT_DIGITS = /[^0-9]/g
+
 export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => {
     const { data: overview } = useBillingOverview()
     const usdToInrRate = overview?.usdToInrRate ?? 92.68
@@ -29,52 +31,33 @@ export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => 
         onPaid: () => onClose(),
     })
 
+    const amountNum = parseInt(amountStr, 10)
+    const isValidAmount =
+        !Number.isNaN(amountNum) && amountNum >= MIN_TOP_UP_USD && amountNum <= MAX_TOP_UP_USD
+    // what is wrong with the amount. a payment error is kept apart, so Pay works again after it
+    const amountError =
+        isValidAmount || amountStr === ''
+            ? null
+            : `Enter a whole number from $${MIN_TOP_UP_USD} to $${MAX_TOP_UP_USD}.`
+
     const handleAmountChange = (val: string) => {
-        // enforce whole numbers only by stripping any non-digits
-        const cleanVal = val.replace(/\D/g, '')
-        setAmountStr(cleanVal)
+        // whole dollars only: anything that is not a digit is removed
+        setAmountStr(val.replace(NOT_DIGITS, '').slice(0, 4))
         setError(null)
-
-        if (cleanVal === '') {
-            setError('Enter an amount in US dollars.')
-            return
-        }
-
-        const amountNum = parseInt(cleanVal, 10)
-        if (amountNum < MIN_TOP_UP_USD || amountNum > MAX_TOP_UP_USD) {
-            setError(`Enter a whole number from $${MIN_TOP_UP_USD} to $${MAX_TOP_UP_USD}.`)
-        }
     }
 
     const handlePayment = async () => {
-        if (!amountStr) {
-            setError('Enter an amount in US dollars.')
-            return
-        }
-
-        await startCheckout(parseInt(amountStr, 10))
+        if (!isValidAmount || isProcessing) return
+        await startCheckout(amountNum)
     }
 
-    const amountNum = parseInt(amountStr, 10)
-    const inrEstimate =
-        !isNaN(amountNum) && amountNum >= MIN_TOP_UP_USD && amountNum <= MAX_TOP_UP_USD
-            ? Math.round(amountNum * usdToInrRate)
-            : null
+    const inrEstimate = isValidAmount ? Math.round(amountNum * usdToInrRate) : null
 
     // desktop: its own line above the buttons, so Cancel and Pay stay on one row.
     // phones: under the full-width Pay button
     const securedBy = (
-        <span className="flex items-center gap-1.5 select-none">
-            <svg
-                viewBox="0 0 24 24"
-                className="h-3.5 w-3.5 fill-[#5893EE] shrink-0"
-                xmlns="http://www.w3.org/2000/svg"
-            >
-                <path d="M22.436 0l-11.91 7.773-1.174 4.276 6.625-4.297L11.65 24h4.391l6.395-24zM14.26 10.098L3.389 17.166 1.564 24h9.008l3.688-13.902Z" />
-            </svg>
-            <span className="text-[12px] font-medium text-[#7B7A79]">
-                Secured by <span className="text-[#D6D5C9] font-medium">Razorpay</span>
-            </span>
+        <span className="text-[12px] font-medium text-[#7B7A79] select-none">
+            Secured by <span className="text-[#D6D5C9] font-medium">Razorpay</span>
         </span>
     )
 
@@ -118,7 +101,7 @@ export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => 
                             autoFocus
                         />
                     </div>
-                    {inrEstimate && !error && (
+                    {inrEstimate && (
                         <span className="text-[12px] text-[#7B7A79] font-medium shrink-0">
                             ≈ ₹{inrEstimate.toLocaleString('en-IN')}
                         </span>
@@ -149,14 +132,14 @@ export const AddCreditsModal: React.FC<AddCreditsModalProps> = ({ onClose }) => 
                     })}
                 </div>
 
-                <FormError>{error}</FormError>
+                <FormError>{amountError ?? error}</FormError>
 
                 {!isPhone && securedBy}
 
                 <ModalActions
                     onCancel={onClose}
                     submitLabel={`Pay ${inrEstimate ? `₹${inrEstimate.toLocaleString('en-IN')}` : `$${amountStr || 0}`}`}
-                    submitDisabled={!amountStr || !!error}
+                    submitDisabled={!isValidAmount}
                     isPending={isProcessing}
                     leading={isPhone ? securedBy : undefined}
                 />

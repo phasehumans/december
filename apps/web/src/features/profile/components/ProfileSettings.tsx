@@ -43,6 +43,7 @@ import { useAppStore } from '@/app/store'
 import { getProfileTabFromSlug, getSlugForProfileTab, type ProfileTab } from '@/app/types'
 import { ConnectionsPage } from '@/features/connections/components/ConnectionsPage'
 import { CONNECTIONS_BASE_PATH } from '@/features/connections/lib/paths'
+import { PanelErrorBoundary } from '@/features/errors/components/PanelErrorBoundary'
 import {
     MobileBackButton,
     MobileIconButton,
@@ -440,7 +441,9 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                     {activeTab === 'Connections' ? (
                         // the connections page brings its own top bar, tabs and scrolling
                         <div className="flex-1 min-w-0 min-h-0">
-                            <ConnectionsPage />
+                            <PanelErrorBoundary title="This page could not load" mobileTopBar>
+                                <ConnectionsPage />
+                            </PanelErrorBoundary>
                         </div>
                     ) : (
                         <div className="flex-1 flex flex-col min-h-0 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none]">
@@ -480,7 +483,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                         />
                                     </div>
                                 )}
-                                {renderTabContent()}
+                                <PanelErrorBoundary
+                                    title="This page could not load"
+                                    resetKey={activeTab}
+                                    render={renderTabContent}
+                                />
                             </div>
 
                             {/* Desktop Content Render: always visible on md: and up */}
@@ -493,7 +500,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
                                         />
                                     )}
                                 </div>
-                                {renderTabContent()}
+                                <PanelErrorBoundary
+                                    title="This page could not load"
+                                    resetKey={activeTab}
+                                    render={renderTabContent}
+                                />
                             </div>
                         </div>
                     )}

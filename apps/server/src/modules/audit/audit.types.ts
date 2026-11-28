@@ -9,6 +9,7 @@ export type AuditAction =
     | 'secret.created'
     | 'secret.updated'
     | 'secret.deleted'
+    | 'secret.revealed'
     | 'key.created'
     | 'key.deleted'
     | 'billing.top_up'

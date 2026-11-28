@@ -79,11 +79,14 @@ export const ProfileSecretsSkeleton: React.FC = () => (
                 </div>
 
                 {/* Desktop row (>= md) */}
-                <div className="hidden md:grid grid-cols-12 items-center px-4 py-3 text-[13px]">
-                    <div className="col-span-4 pr-2">
+                <div className="hidden md:grid grid-cols-12 items-center gap-x-2 px-4 py-3 text-[13px]">
+                    <div className="col-span-3">
                         <Skeleton className={`h-4 ${row.nameW} bg-white/[0.04] rounded`} />
                     </div>
-                    <div className="col-span-4 pr-2">
+                    <div className="col-span-2">
+                        <Skeleton className="h-3.5 w-[50%] bg-white/[0.025] rounded" />
+                    </div>
+                    <div className="col-span-3">
                         <Skeleton className={`h-3.5 ${row.noteW} bg-white/[0.025] rounded`} />
                     </div>
                     <div className="col-span-2">
@@ -255,25 +258,20 @@ export const ProfileBillingHistorySkeleton: React.FC = () => (
                             <Skeleton className={`h-3 ${row.dateW} bg-white/[0.02] rounded`} />
                             <Skeleton className={`h-3 ${row.statusW} bg-white/[0.03] rounded`} />
                         </div>
-                        <Skeleton className="h-2.5 w-16 bg-white/[0.02] rounded mt-0.5" />
                     </div>
                     <Skeleton className={`h-4 ${row.amountW} bg-white/[0.04] rounded shrink-0`} />
                 </div>
 
-                {/* Desktop layout */}
-                <div className="hidden md:grid grid-cols-12 gap-2 items-center">
-                    <div className="md:col-span-3">
-                        <Skeleton className={`h-3.5 ${row.dateW} bg-white/[0.025] rounded`} />
-                    </div>
-                    <div className="md:col-span-5 flex flex-col gap-1 min-w-0 pr-2">
-                        <Skeleton className={`h-3.5 ${row.titleW} bg-white/[0.04] rounded`} />
-                        <Skeleton className="h-2.5 w-20 bg-white/[0.02] rounded" />
-                    </div>
-                    <div className="md:col-span-2">
-                        <Skeleton className={`h-3.5 ${row.statusW} bg-white/[0.03] rounded`} />
-                    </div>
-                    <div className="md:col-span-2 flex justify-end">
+                {/* Desktop layout: the grid of the history rows */}
+                <div className="hidden md:grid grid-cols-[120px_1fr_80px_100px_64px] gap-3 items-center">
+                    <Skeleton className={`h-3.5 ${row.dateW} bg-white/[0.025] rounded`} />
+                    <Skeleton className={`h-3.5 ${row.titleW} bg-white/[0.04] rounded`} />
+                    <Skeleton className={`h-3.5 ${row.statusW} bg-white/[0.03] rounded`} />
+                    <div className="flex justify-end">
                         <Skeleton className={`h-3.5 ${row.amountW} bg-white/[0.04] rounded`} />
+                    </div>
+                    <div className="flex justify-end">
+                        <Skeleton className="h-3.5 w-8 bg-white/[0.03] rounded" />
                     </div>
                 </div>
             </div>
@@ -299,28 +297,33 @@ export const ProfileBillingSkeleton: React.FC<{ onAddCredits?: () => void }> = (
                         <span className="text-[12px] font-medium text-[#7B7A79]">Balance</span>
                         <Skeleton className="h-6 sm:h-7 w-28 bg-white/[0.05] rounded" />
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={onAddCredits}
-                            className={`${blueButtonClass} flex-1 sm:flex-initial text-center`}
-                        >
-                            Add credits
-                        </button>
-                    </div>
+                    <button
+                        type="button"
+                        onClick={onAddCredits}
+                        className={`${blueButtonClass} w-full sm:w-auto text-center`}
+                    >
+                        Add credits
+                    </button>
                 </div>
             </div>
         </div>
 
         {/* history */}
         <div className="flex flex-col mb-0">
-            <SettingsSectionHeading title="History" description="Payments and codes you added." />
+            <SettingsSectionHeading title="History" description="Payments and credits added." />
             <div className={listBoxClass}>
-                <div className={`hidden md:grid grid-cols-12 gap-2 ${listHeaderClass}`}>
-                    <div className="col-span-3">Date</div>
-                    <div className="col-span-5">Details</div>
-                    <div className="col-span-2">Status</div>
-                    <div className="col-span-2 text-right">Amount</div>
+                <div className={listHeaderClass}>
+                    <div className="flex md:hidden items-center justify-between">
+                        <span>Details / Date</span>
+                        <span>Amount</span>
+                    </div>
+                    <div className="hidden md:grid grid-cols-[120px_1fr_80px_100px_64px] gap-3 items-center">
+                        <div>Date</div>
+                        <div>Details</div>
+                        <div>Status</div>
+                        <div className="text-right">Amount</div>
+                        <div className="text-right">Receipt</div>
+                    </div>
                 </div>
                 <div className="px-3.5 md:px-4">
                     <ProfileBillingHistorySkeleton />
@@ -538,8 +541,8 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                     />
                     <div className="flex flex-col gap-4">
                         {/* Controls Row: Search Input + Action Buttons */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                            <div className="relative flex-1 max-w-full sm:max-w-[280px]">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="relative flex-1 max-w-full md:max-w-[320px]">
                                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7B7A79]" />
                                 <input
                                     type="text"
@@ -567,11 +570,12 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                         {/* Secrets Table Container */}
                         <div className={listBoxClass}>
                             <div className={`hidden md:block ${listHeaderClass}`}>
-                                <div className="grid grid-cols-12">
-                                    <div className="col-span-4">Name</div>
-                                    <div className="col-span-4">Note</div>
-                                    <div className="col-span-2">Updated at</div>
-                                    <div className="col-span-2 text-right"></div>
+                                <div className="grid grid-cols-12 items-center gap-x-2">
+                                    <div className="col-span-3">Name</div>
+                                    <div className="col-span-2">Use in</div>
+                                    <div className="col-span-3">Note</div>
+                                    <div className="col-span-2">Updated</div>
+                                    <div className="col-span-2" />
                                 </div>
                             </div>
 

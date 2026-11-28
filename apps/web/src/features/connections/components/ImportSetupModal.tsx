@@ -2,23 +2,16 @@ import React from 'react'
 
 import {
     connectionErrorMessage,
-    useConnectionsDemo,
     useImportPreview,
     useImportSetup,
 } from '../hooks/useConnectionsData'
 
-import {
-    DemoPill,
-    FormError,
-    ModalActions,
-    Pill,
-    SectionTitle,
-    fieldLabelClass,
-} from './ConnectionsUi'
+import { FormError, ModalActions, Pill, SectionTitle, fieldLabelClass } from './ConnectionsUi'
 
 import type {
     ImportPreview,
     ImportPreviewMcp,
+    ImportPreviewRule,
     ImportPreviewSkill,
     ImportRepo,
     ImportResult,
@@ -26,7 +19,6 @@ import type {
 
 import { RepoSideList } from '@/features/home/components/PromptMenus'
 import { quietLinkClass } from '@/features/profile/components/settingsStyles'
-import { SettingsSelect } from '@/features/profile/components/SettingsUi'
 import { Modal } from '@/shared/components/ui/Modal'
 import { cn } from '@/shared/lib/utils'
 
@@ -34,71 +26,6 @@ type ModalProps = { isOpen: boolean; onClose: () => void }
 
 const TITLE = 'Import setup'
 const DESCRIPTION = 'Bring in the skills, MCP servers and rules a repository has.'
-
-// sample values for the dialog with the preview on: nothing is read or imported, and the
-// dialog says so with the Demo pill (the Skills and MCPs tabs are on sample values then too)
-const REPOSITORIES = ['acme/web', 'acme/api'] as const
-const FOUND: Record<string, [string, string][]> = {
-    'acme/web': [
-        ['Skills', '6 found'],
-        ['MCPs', '3 found'],
-        ['Rules', 'AGENTS.md'],
-    ],
-    'acme/api': [
-        ['Skills', '2 found'],
-        ['MCPs', 'None'],
-        ['Rules', 'CLAUDE.md'],
-    ],
-}
-
-const SampleImportSetup: React.FC<ModalProps> = ({ isOpen, onClose }) => {
-    const [repo, setRepo] = React.useState<string>(REPOSITORIES[0])
-
-    return (
-        <Modal
-            isOpen={isOpen}
-            onClose={onClose}
-            title={TITLE}
-            description={DESCRIPTION}
-            variant="premium"
-            showLogo={false}
-            sheetOnPhone
-        >
-            <form
-                onSubmit={(event) => {
-                    event.preventDefault()
-                    // the modal is portaled, so stop the submit reaching a form behind it
-                    event.stopPropagation()
-                    onClose()
-                }}
-                className="flex flex-col gap-4"
-            >
-                <div className="flex flex-col gap-1.5">
-                    <span className={cn(fieldLabelClass, 'inline-flex items-center gap-2')}>
-                        Repository
-                        <DemoPill />
-                    </span>
-                    <SettingsSelect
-                        label="Repository"
-                        value={repo}
-                        options={REPOSITORIES}
-                        onChange={setRepo}
-                        className="w-full"
-                    />
-                </div>
-                <div className="flex flex-col gap-2 text-[13px]">
-                    {(FOUND[repo] ?? []).map(([label, value]) => (
-                        <div key={label} className="flex items-center justify-between gap-3">
-                            <span className="text-[#D6D5C9]">{label}</span>
-                            <span className="text-[#7B7A79]">{value}</span>
-                        </div>
-                    ))}
-                </div>
-                <ModalActions onCancel={onClose} submitLabel="Import" />
-            </form>
-        </Modal>
-    )
-}
 
 /** one skill or mcp server of the repository, with its tick */
 const FoundRow: React.FC<{
@@ -151,6 +78,9 @@ const FoundSection: React.FC<{ title: string; children: React.ReactNode }> = ({
 const tickedAtStart = (rows: (ImportPreviewSkill | ImportPreviewMcp)[]) =>
     new Set(rows.filter((row) => row.importable && !row.exists).map((row) => row.name))
 
+/** rule files start unticked: a rule applies to every session, not only to this repository */
+const NO_RULES = new Set<string>()
+
 const FoundLists: React.FC<{
     preview: ImportPreview
     onCancel: () => void
@@ -159,6 +89,7 @@ const FoundLists: React.FC<{
     const importSetup = useImportSetup()
     const [skills, setSkills] = React.useState(() => tickedAtStart(preview.skills))
     const [mcps, setMcps] = React.useState(() => tickedAtStart(preview.mcps))
+    const [rules, setRules] = React.useState(NO_RULES)
     const [skipped, setSkipped] = React.useState<ImportResult['skipped']>([])
     const [error, setError] = React.useState('')
 
@@ -174,6 +105,8 @@ const FoundLists: React.FC<{
 
     const tickedSkills = preview.skills.filter((row) => skills.has(row.name))
     const tickedMcps = preview.mcps.filter((row) => mcps.has(row.name))
+    const tickedRules = preview.rules.filter((row) => rules.has(row.path))
+    const tickedCount = tickedSkills.length + tickedMcps.length + tickedRules.length
     const isEmpty =
         preview.skills.length === 0 && preview.mcps.length === 0 && preview.rules.length === 0
 
@@ -186,7 +119,10 @@ const FoundLists: React.FC<{
                 provider: preview.provider,
                 skills: tickedSkills.map((row) => row.name),
                 mcps: tickedMcps.map((row) => row.name),
-                overwrite: [...tickedSkills, ...tickedMcps].some((row) => row.exists),
+                rules: tickedRules.map((row) => row.path),
+                overwrite: [...tickedSkills, ...tickedMcps, ...tickedRules].some(
+                    (row) => row.exists
+                ),
             })
             if (result.skipped.length === 0) {
                 onDone()
@@ -197,6 +133,10 @@ const FoundLists: React.FC<{
                 new Set([...current].filter((name) => !names.includes(name)))
             setSkills(without(result.imported.skills))
             setMcps(without(result.imported.mcps))
+            const importedRules = tickedRules
+                .filter((row: ImportPreviewRule) => result.imported.rules.includes(row.name))
+                .map((row) => row.path)
+            setRules(without(importedRules))
             setSkipped(result.skipped)
         } catch (failure) {
             setError(connectionErrorMessage(failure, 'Could not import the setup.'))
@@ -256,14 +196,18 @@ const FoundLists: React.FC<{
                 )}
                 {preview.rules.length > 0 && (
                     <FoundSection title="Rules">
-                        {preview.rules.map((rule) => (
-                            <div
-                                key={rule.path}
-                                className="flex items-center justify-between gap-3 text-[13px]"
-                            >
-                                <span className="truncate text-[#D6D5C9]">{rule.path}</span>
-                                <span className="shrink-0 text-[#7B7A79]">Not imported yet</span>
-                            </div>
+                        {preview.rules.map((row) => (
+                            <FoundRow
+                                key={row.path}
+                                label={`Import rule ${row.path}`}
+                                name={row.path}
+                                detail={`Saved as ${row.name}`}
+                                note={row.reason}
+                                exists={row.exists}
+                                importable={row.importable}
+                                checked={rules.has(row.path)}
+                                onChange={toggle(setRules, row.path)}
+                            />
                         ))}
                     </FoundSection>
                 )}
@@ -281,7 +225,7 @@ const FoundLists: React.FC<{
             <ModalActions
                 onCancel={onCancel}
                 submitLabel="Import"
-                submitDisabled={tickedSkills.length + tickedMcps.length === 0}
+                submitDisabled={tickedCount === 0}
                 isPending={importSetup.isPending}
             />
         </form>
@@ -293,7 +237,7 @@ const FoundLists: React.FC<{
  * rules files it has, and import the ticked ones. The server reads the repository: the
  * dialog only sends names.
  */
-const LiveImportSetup: React.FC<ModalProps> = ({ isOpen, onClose }) => {
+export const ImportSetupModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     const [repo, setRepo] = React.useState<ImportRepo | null>(null)
     const preview = useImportPreview(isOpen ? repo : null)
 
@@ -360,6 +304,3 @@ const LiveImportSetup: React.FC<ModalProps> = ({ isOpen, onClose }) => {
         </Modal>
     )
 }
-
-export const ImportSetupModal: React.FC<ModalProps> = (props) =>
-    useConnectionsDemo() ? <SampleImportSetup {...props} /> : <LiveImportSetup {...props} />

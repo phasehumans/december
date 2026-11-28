@@ -423,21 +423,11 @@ export const McpSessionList: React.FC<{ onManage: () => void }> = ({ onManage })
                             </span>
                         )}
                     </span>
-                    {mcp.status === 'needs-signin' ? (
-                        <button
-                            type="button"
-                            onClick={onManage}
-                            className="text-[12px] font-medium text-[#87B2F4] hover:text-[#A4C8FF] transition-colors outline-none cursor-pointer shrink-0"
-                        >
-                            Sign in
-                        </button>
-                    ) : (
-                        <MiniSwitch
-                            label={`Use ${mcp.name} in this session`}
-                            checked={!mcpsOff.includes(mcp.name)}
-                            onChange={(checked) => setMcpOff(mcp.name, !checked)}
-                        />
-                    )}
+                    <MiniSwitch
+                        label={`Use ${mcp.name} in this session`}
+                        checked={!mcpsOff.includes(mcp.name)}
+                        onChange={(checked) => setMcpOff(mcp.name, !checked)}
+                    />
                 </div>
             ))}
         </>

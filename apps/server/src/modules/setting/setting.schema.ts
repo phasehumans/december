@@ -1,15 +1,24 @@
-import { checkBranchPrefix, isRepoFullName } from '@december/shared'
+import { checkBranchPrefix } from '@december/shared'
 import { z } from 'zod'
 
 import { isValidTimezone } from '../notification/notification.utils'
 
-export const updateNameSchema = z.object({
-    name: z
-        .string({ message: 'name is required' })
-        .trim()
-        .min(3, 'name must be at least 3 characters')
-        .max(20, 'name must be at most 20 characters'),
-})
+// a control character (a new line, a tab, NUL) in a name breaks the emails and lists it
+// shows in
+const CONTROL_CHARACTERS = /\p{Cc}/u
+
+export const updateNameSchema = z
+    .object({
+        name: z
+            .string({ message: 'name is required' })
+            .trim()
+            .min(3, 'name must be at least 3 characters')
+            .max(20, 'name must be at most 20 characters')
+            .refine((value) => !CONTROL_CHARACTERS.test(value), {
+                message: 'name cannot have control characters',
+            }),
+    })
+    .strict()
 
 // every field is optional: the page saves one row at a time (#636)
 export const updateNotificationSchema = z
@@ -34,29 +43,27 @@ export const updateNotificationSchema = z
         message: 'at least one notification setting must be provided',
     })
 
-export const updateOnboardingSchema = z.object({
-    step: z.enum(['github', 'start', 'models'], {
-        message: 'step must be github, start or models',
-    }),
-})
+export const updateOnboardingSchema = z
+    .object({
+        step: z.enum(['github', 'start', 'models'], {
+            message: 'step must be github, start or models',
+        }),
+    })
+    .strict()
 
 // the same limit as the box in the web app
 export const FEEDBACK_MAX_LENGTH = 5000
 
-export const submitFeedbackSchema = z.object({
-    rating: z.enum(['sad', 'neutral', 'happy']).nullable(),
-    feedback: z
-        .string({ message: 'feedback is required' })
-        .trim()
-        .min(1, 'feedback cannot be empty')
-        .max(FEEDBACK_MAX_LENGTH, `feedback must be at most ${FEEDBACK_MAX_LENGTH} characters`),
-})
-
-export const updateModelSourceSchema = z.object({
-    defaultModelSource: z.enum(['CREDITS', 'OWN_KEY'], {
-        message: 'defaultModelSource must be CREDITS or OWN_KEY',
-    }),
-})
+export const submitFeedbackSchema = z
+    .object({
+        rating: z.enum(['sad', 'neutral', 'happy']).nullable(),
+        feedback: z
+            .string({ message: 'feedback is required' })
+            .trim()
+            .min(1, 'feedback cannot be empty')
+            .max(FEEDBACK_MAX_LENGTH, `feedback must be at most ${FEEDBACK_MAX_LENGTH} characters`),
+    })
+    .strict()
 
 // "save as default" in the prompt box (#632): plan first and open pull request. both are
 // optional, at least one is sent
@@ -72,11 +79,13 @@ export const updateSessionDefaultsSchema = z
     })
 
 // /permissions for cloud sessions (#632): tool calls the agent may never make
-export const updateToolDenyRulesSchema = z.object({
-    rules: z
-        .array(z.string().trim().min(1, 'a rule cannot be empty').max(300))
-        .max(100, 'at most 100 rules'),
-})
+export const updateToolDenyRulesSchema = z
+    .object({
+        rules: z
+            .array(z.string().trim().min(1, 'a rule cannot be empty').max(300))
+            .max(100, 'at most 100 rules'),
+    })
+    .strict()
 
 // every field is optional: the page saves one row at a time
 export const updatePullRequestSettingsSchema = z
@@ -144,21 +153,3 @@ export const updateSandboxSettingsSchema = z
     .refine((value) => Object.keys(value).length > 0, {
         message: 'send at least one sandbox setting',
     })
-
-export const SETUP_COMMANDS_MAX_LENGTH = 4000
-
-// the setup commands of one repository (#637). an empty text removes them
-export const updateSetupCommandsSchema = z.object({
-    // owner/name, or a gitlab group path
-    repoFullName: z
-        .string({ message: 'repoFullName is required' })
-        .trim()
-        .max(200, 'repoFullName must be at most 200 characters')
-        .refine(isRepoFullName, 'repoFullName must be owner/name'),
-    commands: z
-        .string({ message: 'commands must be a text' })
-        .max(
-            SETUP_COMMANDS_MAX_LENGTH,
-            `commands must be at most ${SETUP_COMMANDS_MAX_LENGTH} characters`
-        ),
-})

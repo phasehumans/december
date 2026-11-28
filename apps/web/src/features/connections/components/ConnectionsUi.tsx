@@ -416,8 +416,21 @@ export function ChoiceGroup<T extends string>({
     label: string
     disabled?: boolean
 }) {
+    const boxRef = React.useRef<HTMLDivElement>(null)
+    // a narrow screen cuts the last choices off: keep the chosen one in view (a link to
+    // /connections/memory on a phone opens with Memory past the edge)
+    React.useEffect(() => {
+        const box = boxRef.current
+        const chosen = box?.querySelector<HTMLElement>('[aria-checked="true"]')
+        if (!box || !chosen) return
+        const boxRect = box.getBoundingClientRect()
+        const chosenRect = chosen.getBoundingClientRect()
+        if (chosenRect.right > boxRect.right) box.scrollLeft += chosenRect.right - boxRect.right
+        else if (chosenRect.left < boxRect.left) box.scrollLeft -= boxRect.left - chosenRect.left
+    }, [value])
     return (
         <div
+            ref={boxRef}
             role="radiogroup"
             aria-label={label}
             className="inline-flex items-center gap-1 bg-[#1a1a1a] p-0.5 rounded-lg border border-[#282828] self-start max-w-full overflow-x-auto no-scrollbar [scrollbar-width:none]"
@@ -563,7 +576,14 @@ export const ConfirmModal: React.FC<{
     onConfirm: () => void
     onClose: () => void
 }> = ({ isOpen, title, body, confirmLabel, onConfirm, onClose }) => (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} variant="premium" showLogo={false}>
+    <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={title}
+        variant="premium"
+        showLogo={false}
+        sheetOnPhone
+    >
         <form
             onSubmit={(e) => {
                 // the modal is portaled, so stop the submit reaching a form behind it

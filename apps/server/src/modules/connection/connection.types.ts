@@ -70,6 +70,8 @@ export type ImportSetup = RepoSetupRef & {
     /** the names the user ticked */
     skills: string[]
     mcps: string[]
+    /** the rule files the user ticked (AGENTS.md, CLAUDE.md) */
+    rules: string[]
     /** without it a name that is saved already is skipped */
     overwrite: boolean
 }
@@ -96,16 +98,28 @@ export type FoundMcp = {
     reason?: string
 }
 
+/** a rule file at the root of a repository, imported as an account rule */
+export type FoundRule = {
+    /** AGENTS.md or CLAUDE.md */
+    path: string
+    /** the account rule it becomes */
+    name: string
+    /** null when the file cannot be imported */
+    body: string | null
+    importable: boolean
+    reason?: string
+}
+
 export type FoundSetup = {
     skills: FoundSkill[]
     mcps: FoundMcp[]
-    rules: { path: string }[]
+    rules: FoundRule[]
     /** true when the repository has more skill folders than one import reads */
     truncated: boolean
 }
 
 export type ImportSkipped = {
-    kind: 'skill' | 'mcp'
+    kind: 'skill' | 'mcp' | 'rule'
     name: string
     reason: string
 }

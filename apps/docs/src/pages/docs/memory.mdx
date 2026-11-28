@@ -26,6 +26,8 @@ December adds the files in this order: global rules first, then rules from the t
 
 December reads rule files when the CLI starts. If you change a rule file, exit and start `december` again.
 
+In a cloud session, December reads `AGENTS.md` (or `CLAUDE.md`) at the root of the repository at the start of each run. The rules you add on the Connections page apply too. Files longer than 32 KiB are cut.
+
 December does not read other rule or memory files, such as `.december/memory.md`, `.december/rules.md`, `RULES.md`, or `AGENTS.override.md`. If you have one of these files, move its content to `AGENTS.md`.
 
 ## Save a lesson with `/learn`

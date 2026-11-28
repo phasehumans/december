@@ -33,6 +33,8 @@ export const STOP_REQUEST_SECONDS = QUEUED_RUN_MARK_SECONDS
 export const IDLE_STOP_MINUTES = [10, 30, 60] as const
 export type IdleStopMinutes = (typeof IDLE_STOP_MINUTES)[number]
 export const DEFAULT_IDLE_STOP_MINUTES: IdleStopMinutes = 10
+/** a sandbox that has been starting this long is left over from a crashed worker */
+export const STALE_SANDBOX_START_MS = 15 * 60 * 1000
 
 export const runMarkKey = (sessionId: string) => `${RUN_MARK_PREFIX}${sessionId}`
 export const steeringListKey = (sessionId: string) => `${STEERING_LIST_PREFIX}${sessionId}`

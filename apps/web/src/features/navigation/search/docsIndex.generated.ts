@@ -116,7 +116,6 @@ export const DOCS_INDEX: DocsIndexEntry[] = [
             'live browser previews',
             'sandbox limits',
             'sandbox settings',
-            'setup commands',
         ],
     },
     {

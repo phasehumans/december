@@ -6,6 +6,7 @@ import {
     creditsHistoryQuerySchema,
     creditRequestSchema,
     receiptParamsSchema,
+    transactionsQuerySchema,
     createRazorpayOrderSchema,
     verifyRazorpayPaymentSchema,
     updateLimitsSchema,
@@ -97,38 +98,38 @@ const getReceipt = asyncHandler(async (req: Request, res: Response) => {
     return res.status(200).send(body)
 })
 
-const addCredits = asyncHandler(async (req: Request, res: Response) => {
-    // Manual credit additions without payment gateway verification are disabled in public APIs.
-    throw new AppError('Direct credit addition is disabled. Please use payment checkout.', 403)
-})
-
 const handleRazorpayWebhook = asyncHandler(async (req: Request, res: Response) => {
-    const signature = req.headers['x-razorpay-signature'] as string | undefined
+    const signature = req.headers['x-razorpay-signature']
 
-    if (!signature) {
+    if (typeof signature !== 'string' || !signature) {
         throw new AppError('missing razorpay webhook signature', 400)
     }
 
-    const rawBody = (req as any).rawBody
-        ? (req as any).rawBody
-        : Buffer.isBuffer(req.body)
-          ? req.body
-          : typeof req.body === 'string'
-            ? req.body
-            : JSON.stringify(req.body)
-
-    const eventPayload =
-        typeof req.body === 'object' && !Buffer.isBuffer(req.body)
-            ? req.body
-            : JSON.parse(rawBody.toString('utf8'))
+    // the signature is of the bytes razorpay sent: express.json keeps them on rawBody. a
+    // body that was not json has no raw bytes, and its signature cannot match
+    const rawBody = (req as Request & { rawBody?: Buffer }).rawBody
+    if (!Buffer.isBuffer(rawBody)) {
+        throw new AppError('invalid razorpay webhook signature', 400)
+    }
 
     const result = await billingService.handleRazorpayWebhook({
         rawBody,
         signature,
-        eventPayload,
+        eventPayload: req.body,
     })
 
     return sendSuccess(res, 'webhook processed successfully', result)
+})
+
+const listTransactions = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId as string | undefined
+    if (!userId) {
+        throw new AppError('unauthorized', 401)
+    }
+
+    const { limit, offset } = transactionsQuerySchema.parse(req.query)
+    const result = await billingService.listTransactions({ userId, limit, offset })
+    return sendSuccess(res, 'transactions fetched successfully', result)
 })
 
 const requestFreeCredits = asyncHandler(async (req: Request, res: Response) => {
@@ -199,7 +200,7 @@ export const billingController = {
     createRazorpayOrder,
     verifyRazorpayPayment,
     getCreditsHistory,
+    listTransactions,
     getReceipt,
-    addCredits,
     handleRazorpayWebhook,
 }

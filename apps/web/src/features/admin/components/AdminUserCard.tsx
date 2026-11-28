@@ -204,9 +204,6 @@ const Card: React.FC<{ user: AdminUserDetails }> = ({ user }) => {
                 </Block>
 
                 <Block title="Defaults">
-                    <Field label="Runs on">
-                        {defaults.modelSource === 'OWN_KEY' ? 'Own key' : 'Credits'}
-                    </Field>
                     <Field label="Plan first">{yesNo(defaults.planFirst)}</Field>
                     <Field label="Open a PR">{yesNo(defaults.openPullRequest)}</Field>
                     <Field label="Blocked tools">{defaults.blockedTools}</Field>

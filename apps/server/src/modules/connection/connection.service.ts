@@ -1,8 +1,16 @@
 import { RULE_FILE_NAMES, checkMcpUrl, splitRepoFullName } from '@december/shared'
+import {
+    RULE_MAX_BYTES,
+    RULES_PER_USER_MAX,
+    RULES_TOTAL_MAX_BYTES,
+    utf8Bytes,
+} from '@december/shared/agent-context'
 import { getGitProvider } from '@december/shared/git'
 
 import { AppError } from '../../shared/appError'
 import { platformService } from '../platform/platform.service'
+import { pluginRepository } from '../plugin/plugin.repository'
+import { ruleRepository } from '../rule/rule.repository'
 
 import { connectionRepository } from './connection.repository'
 import {
@@ -10,8 +18,10 @@ import {
     mapInBatches,
     mergeHeaders,
     toFoundMcps,
+    toFoundRule,
     toFoundSkill,
     toPreviewMcp,
+    toPreviewRule,
     toPreviewSkill,
     toPublicMcpServer,
     toRepoReadError,
@@ -44,6 +54,10 @@ const SKILL_ROOTS = ['.december', '.agents', '.agent', '.claude']
 const SKILL_FILE_NAMES = ['SKILL.md', 'skill.md']
 const MCP_CONFIG_DIR = '.december'
 const MCP_CONFIG_PATH = `${MCP_CONFIG_DIR}/mcp.json`
+
+/** true for the error prisma throws when a unique name is taken by a save at the same time */
+const isNameTaken = (error: unknown) =>
+    Boolean(error && typeof error === 'object' && (error as { code?: string }).code === 'P2002')
 
 const toPublicSkill = (skill: {
     name: string
@@ -80,14 +94,20 @@ const saveSkill = async (data: SaveSkill) => {
             throw new AppError(`You can save up to ${MAX_SKILLS} skills.`, 409)
         }
     }
-    const skill = await connectionRepository.upsertSkill(userId, currentName, {
-        name,
-        description,
-        body,
-        runs,
-        enabled,
-    })
-    return { skill: toPublicSkill(skill) }
+    try {
+        const skill = await connectionRepository.upsertSkill(userId, currentName, {
+            name,
+            description,
+            body,
+            runs,
+            enabled,
+        })
+        return { skill: toPublicSkill(skill) }
+    } catch (error) {
+        // two saves of the same new name at once: the second one loses
+        if (isNameTaken(error)) throw new AppError(`A skill named ${name} already exists.`, 409)
+        throw error
+    }
 }
 
 const setSkillEnabled = async (data: SetSkillEnabled) => {
@@ -163,8 +183,15 @@ const saveMcpServer = async (data: SaveMcpServer) => {
     if (all.length >= MAX_MCP_SERVERS) {
         throw new AppError(`You can save up to ${MAX_MCP_SERVERS} mcp servers.`, 409)
     }
-    const server = await connectionRepository.createMcpServer({ ...fields, userId })
-    return { mcp: toPublicMcpServer(server) }
+    try {
+        const server = await connectionRepository.createMcpServer({ ...fields, userId })
+        return { mcp: toPublicMcpServer(server) }
+    } catch (error) {
+        if (isNameTaken(error)) {
+            throw new AppError(`An mcp server named ${name} already exists.`, 409)
+        }
+        throw error
+    }
 }
 
 const updateMcpServer = async (data: UpdateMcpServer) => {
@@ -188,16 +215,38 @@ const deleteMcpServer = async (data: DeleteByName) => {
 /** what the prompt box lists: skills to pick with /name, plugins and mcp servers to switch off */
 const getPromptBoxLists = async (data: UserRef) => {
     const { userId } = data
-    const [skills, servers] = await Promise.all([
+    const [skills, servers, plugins] = await Promise.all([
         connectionRepository.findSkills(userId),
         connectionRepository.findMcpServers(userId),
+        pluginRepository.findPlugins(userId),
     ])
+    const ownNames = new Set(skills.map((skill) => skill.name))
+    // the skills of plugins that are on; a saved skill of the same name wins, like in a run
+    const pluginSkills = plugins
+        .filter((plugin) => plugin.enabled)
+        .flatMap((plugin) =>
+            (Array.isArray(plugin.skills) ? plugin.skills : []).map((skill) => {
+                const row = (skill ?? {}) as { name?: unknown; description?: unknown }
+                return {
+                    name: String(row.name ?? ''),
+                    description: String(row.description ?? ''),
+                    plugin: plugin.name as string | null,
+                }
+            })
+        )
+        .filter((skill) => skill.name && !ownNames.has(skill.name))
     return {
-        skills: skills
-            .filter((skill) => skill.enabled)
-            .map((skill) => ({ name: skill.name, description: skill.description, plugin: null })),
-        // installing plugins is not built yet, so there are none
-        plugins: [] as Array<{ name: string; enabled: boolean }>,
+        skills: [
+            ...skills
+                .filter((skill) => skill.enabled)
+                .map((skill) => ({
+                    name: skill.name,
+                    description: skill.description,
+                    plugin: null as string | null,
+                })),
+            ...pluginSkills,
+        ],
+        plugins: plugins.map((plugin) => ({ name: plugin.name, enabled: plugin.enabled })),
         mcps: servers.map((server) => ({
             name: server.name,
             enabled: server.enabled,
@@ -282,11 +331,21 @@ const readRepoSetup = async (data: RepoSetupRef): Promise<FoundSetup> => {
               )
             : null
 
+        // the rule files at the root become account rules
+        const rules = await Promise.all(
+            RULE_FILE_NAMES.filter((name) => rootFiles.has(name)).map(async (path) =>
+                toFoundRule(
+                    repoFullName,
+                    path,
+                    await orNull(host.readTextFile({ ...repo, path, maxBytes: RULE_MAX_BYTES }))
+                )
+            )
+        )
+
         return {
             skills: [...skills.values()].sort((a, b) => a.name.localeCompare(b.name)),
             mcps: mcpFile?.content ? toFoundMcps(mcpFile.content) : [],
-            // listed only: the account has no place for rules yet
-            rules: RULE_FILE_NAMES.filter((name) => rootFiles.has(name)).map((path) => ({ path })),
+            rules,
             truncated: folders.length > MAX_IMPORT_SKILL_FILES,
         }
     } catch (error) {
@@ -297,36 +356,39 @@ const readRepoSetup = async (data: RepoSetupRef): Promise<FoundSetup> => {
 /** what a repository has to import, and which names the account has already */
 const previewImport = async (data: RepoSetupRef) => {
     const { userId, repoFullName, provider } = data
-    const [found, savedSkills, savedServers] = await Promise.all([
+    const [found, savedSkills, savedServers, savedRules] = await Promise.all([
         readRepoSetup({ userId, repoFullName, provider }),
         connectionRepository.findSkills(userId),
         connectionRepository.findMcpServers(userId),
+        ruleRepository.findRules(userId),
     ])
     const skillNames = new Set(savedSkills.map((skill) => skill.name))
     const serverNames = new Set(savedServers.map((server) => server.name))
+    const ruleNames = new Set(savedRules.map((rule) => rule.name))
     return {
         repoFullName,
         provider,
         skills: found.skills.map((skill) => toPreviewSkill(skill, skillNames.has(skill.name))),
         mcps: found.mcps.map((server) => toPreviewMcp(server, serverNames.has(server.name))),
-        rules: found.rules,
+        rules: found.rules.map((rule) => toPreviewRule(rule, ruleNames.has(rule.name))),
         truncated: found.truncated,
     }
 }
 
 /**
- * Imports the ticked names. The repository is read again here: nothing the browser sends
+ * Imports the ticked names and rule files. The repository is read again here: nothing the browser sends
  * is saved. A name the account has already is skipped unless `overwrite` is set.
  */
 const importSetup = async (data: ImportSetup) => {
-    const { userId, repoFullName, provider, skills, mcps, overwrite } = data
-    const [found, savedSkills, savedServers] = await Promise.all([
+    const { userId, repoFullName, provider, skills, mcps, rules, overwrite } = data
+    const [found, savedSkills, savedServers, savedRules] = await Promise.all([
         readRepoSetup({ userId, repoFullName, provider }),
         connectionRepository.findSkills(userId),
         connectionRepository.findMcpServers(userId),
+        ruleRepository.findRules(userId),
     ])
 
-    const imported = { skills: [] as string[], mcps: [] as string[] }
+    const imported = { skills: [] as string[], mcps: [] as string[], rules: [] as string[] }
     const skipped: ImportSkipped[] = []
 
     let skillCount = savedSkills.length
@@ -404,6 +466,40 @@ const importSetup = async (data: ImportSetup) => {
             })
             serverCount++
             imported.mcps.push(name)
+        }
+    }
+
+    // a rule file becomes the account rule named after the repository and the file
+    const ruleBytes = new Map(savedRules.map((rule) => [rule.name, utf8Bytes(rule.body)]))
+    const totalRuleBytes = () => [...ruleBytes.values()].reduce((sum, size) => sum + size, 0)
+    for (const path of new Set(rules)) {
+        const rule = found.rules.find((row) => row.path === path)
+        const skip = (reason: string) =>
+            skipped.push({ kind: 'rule', name: rule?.name ?? path, reason })
+        const saved = rule ? savedRules.find((row) => row.name === rule.name) : undefined
+        const size = rule?.body ? utf8Bytes(rule.body) : 0
+
+        if (!rule) {
+            skip('It is not in the repository.')
+        } else if (!rule.importable || rule.body === null) {
+            skip(rule.reason ?? 'It cannot be imported.')
+        } else if (saved && !overwrite) {
+            skip('A rule with this name exists already.')
+        } else if (!saved && ruleBytes.size >= RULES_PER_USER_MAX) {
+            skip(`You can save up to ${RULES_PER_USER_MAX} rules.`)
+        } else if (
+            totalRuleBytes() - (ruleBytes.get(rule.name) ?? 0) + size >
+            RULES_TOTAL_MAX_BYTES
+        ) {
+            skip('All rules together can be up to 32 KiB.')
+        } else {
+            if (saved) {
+                await ruleRepository.updateRule(saved.id, { body: rule.body })
+            } else {
+                await ruleRepository.createRule({ userId, name: rule.name, body: rule.body })
+            }
+            ruleBytes.set(rule.name, size)
+            imported.rules.push(rule.name)
         }
     }
 

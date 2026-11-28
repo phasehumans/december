@@ -17,6 +17,7 @@ import { OutOfCreditsModal } from '@/features/billing/components/OutOfCreditsMod
 import { useBillingOverview } from '@/features/billing/hooks/useBillingData'
 import { isBlockedByCredits, isLowOnCredits } from '@/features/billing/lib/creditsBlock'
 import { ChatThread as ChatSidebar } from '@/features/chat/components/ChatThread'
+import { PanelErrorBoundary } from '@/features/errors/components/PanelErrorBoundary'
 import { useModelSelection } from '@/features/home/model-selection'
 import { MobileIconButton, MobileTopBar } from '@/features/navigation/components/MobileTopBar'
 import { useWorkspaceScreenController } from '@/features/preview/hooks/useWorkspaceScreenController'
@@ -489,7 +490,9 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                     {/* Changes Tab */}
                     {mobileActiveTab === 'changes' && (
                         <div className="h-full min-h-0 flex flex-col">
-                            <ChangesWorkspace />
+                            <PanelErrorBoundary resetKey={projectId}>
+                                <ChangesWorkspace />
+                            </PanelErrorBoundary>
                         </div>
                     )}
 
@@ -528,21 +531,23 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                         </div>
 
                         <div className="flex-1 min-h-0 relative">
-                            <DesktopWorkspace
-                                sessionId={previewSession?.previewId || projectId || undefined}
-                                isGenerating={isGenerating}
-                                iframeRef={iframeRef}
-                                previewUrl={previewSession?.previewUrl}
-                                previewState={previewSession?.state ?? null}
-                                previewError={previewSession?.lastError ?? null}
-                                previewSessionError={
-                                    importState.status === 'failed'
-                                        ? importState.message || 'Import failed'
-                                        : previewSessionError
-                                }
-                                projectType={projectType}
-                                projectId={projectId}
-                            />
+                            <PanelErrorBoundary resetKey={projectId}>
+                                <DesktopWorkspace
+                                    sessionId={previewSession?.previewId || projectId || undefined}
+                                    isGenerating={isGenerating}
+                                    iframeRef={iframeRef}
+                                    previewUrl={previewSession?.previewUrl}
+                                    previewState={previewSession?.state ?? null}
+                                    previewError={previewSession?.lastError ?? null}
+                                    previewSessionError={
+                                        importState.status === 'failed'
+                                            ? importState.message || 'Import failed'
+                                            : previewSessionError
+                                    }
+                                    projectType={projectType}
+                                    projectId={projectId}
+                                />
+                            </PanelErrorBoundary>
                         </div>
                     </div>
 
@@ -554,10 +559,12 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                                 : 'hidden h-full min-h-0 flex flex-col'
                         }
                     >
-                        <TerminalWorkspace
-                            previewSessionId={previewSession?.previewId || projectId}
-                            generatedFiles={activeFilesToDisplay}
-                        />
+                        <PanelErrorBoundary resetKey={projectId}>
+                            <TerminalWorkspace
+                                previewSessionId={previewSession?.previewId || projectId}
+                                generatedFiles={activeFilesToDisplay}
+                            />
+                        </PanelErrorBoundary>
                     </div>
                 </div>
 
@@ -647,41 +654,43 @@ export const WorkspaceScreen: React.FC<WorkspaceScreenProps> = ({
                     )}
 
                     {!isPreviewPanelCollapsed && (
-                        <WorkspaceScreenMainContent
-                            activeTab={activeTab}
-                            setActiveTab={setActiveTab}
-                            isChatSidebarCollapsed={isChatSidebarCollapsed}
-                            onToggleSidebar={() =>
-                                setIsChatSidebarCollapsed(!isChatSidebarCollapsed)
-                            }
-                            isPreviewCollapsed={isPreviewPanelCollapsed}
-                            onTogglePreview={() =>
-                                setIsPreviewPanelCollapsed(!isPreviewPanelCollapsed)
-                            }
-                            onOpenInNewTab={handleOpenInNewTab}
-                            onBack={handleTriggerExit}
-                            generatedFiles={activeFilesToDisplay}
-                            activeGeneratedFilePath={activeGeneratedFilePath}
-                            isGenerating={isGenerating}
-                            iframeRef={iframeRef}
-                            onIframeMessage={handleIframeMessage}
-                            showStructureOnly={showStructureOnly}
-                            projectName={projectName}
-                            projectId={projectId}
-                            sessionBranch={currentSession?.prBranch}
-                            versions={versions}
-                            activeVersionId={activeVersionId}
-                            isVersionLoading={isVersionLoading}
-                            onSelectVersion={onSelectVersion}
-                            previewSession={previewSession}
-                            previewSessionError={
-                                importState.status === 'failed'
-                                    ? importState.message || 'Import failed'
-                                    : previewSessionError
-                            }
-                            projectType={projectType}
-                            onRefresh={handleRefreshPreview}
-                        />
+                        <PanelErrorBoundary resetKey={projectId} className="flex-1 min-w-0">
+                            <WorkspaceScreenMainContent
+                                activeTab={activeTab}
+                                setActiveTab={setActiveTab}
+                                isChatSidebarCollapsed={isChatSidebarCollapsed}
+                                onToggleSidebar={() =>
+                                    setIsChatSidebarCollapsed(!isChatSidebarCollapsed)
+                                }
+                                isPreviewCollapsed={isPreviewPanelCollapsed}
+                                onTogglePreview={() =>
+                                    setIsPreviewPanelCollapsed(!isPreviewPanelCollapsed)
+                                }
+                                onOpenInNewTab={handleOpenInNewTab}
+                                onBack={handleTriggerExit}
+                                generatedFiles={activeFilesToDisplay}
+                                activeGeneratedFilePath={activeGeneratedFilePath}
+                                isGenerating={isGenerating}
+                                iframeRef={iframeRef}
+                                onIframeMessage={handleIframeMessage}
+                                showStructureOnly={showStructureOnly}
+                                projectName={projectName}
+                                projectId={projectId}
+                                sessionBranch={currentSession?.prBranch}
+                                versions={versions}
+                                activeVersionId={activeVersionId}
+                                isVersionLoading={isVersionLoading}
+                                onSelectVersion={onSelectVersion}
+                                previewSession={previewSession}
+                                previewSessionError={
+                                    importState.status === 'failed'
+                                        ? importState.message || 'Import failed'
+                                        : previewSessionError
+                                }
+                                projectType={projectType}
+                                onRefresh={handleRefreshPreview}
+                            />
+                        </PanelErrorBoundary>
                     )}
                 </div>
             </div>

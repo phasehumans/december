@@ -7,7 +7,6 @@ import { getSlashGroupLabel } from './slashModel'
 
 import type { SlashMenuState } from './useSlashMenu'
 
-import { DemoPill } from '@/features/connections/components/ConnectionsUi'
 import { Modal } from '@/shared/components/ui/Modal'
 import { cn } from '@/shared/lib/utils'
 
@@ -147,7 +146,6 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ menu, anchorRef, placement
                               <span className="truncate">{option.label}</span>
                               <span className={hintClass}>
                                   {option.hint && <span className="truncate">{option.hint}</span>}
-                                  {option.demo && <DemoPill />}
                                   {option.selected && (
                                       <Check className="w-3.5 h-3.5 text-white shrink-0" />
                                   )}
@@ -164,8 +162,6 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ menu, anchorRef, placement
                                   {label && (
                                       <div className={cn(labelClass, 'flex items-center gap-1.5')}>
                                           <span>{label}</span>
-                                          {/* with the preview on the skills are sample values */}
-                                          {menu.demo && item.type === 'skill' && <DemoPill />}
                                       </div>
                                   )}
                                   <button

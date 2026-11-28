@@ -6,6 +6,8 @@
  * A value is never put in a command line and never printed to a log.
  */
 
+import { isSandboxSecretName } from '@december/shared/secrets'
+
 import { shellQuote } from './shell-quote'
 
 export type SandboxSecret = { key: string; value: string }
@@ -30,12 +32,15 @@ const ENSURE_SOURCE_COMMAND =
 // the values each sandbox got last, for the commands the agent runs
 const envsBySandbox = new WeakMap<object, Record<string, string>>()
 
-/** the secrets as environment values. a name that a shell cannot export is dropped */
+/**
+ * the secrets as environment values. a name that a shell cannot export, or a system name
+ * of the sandbox (PATH, LD_PRELOAD, DECEMBER_...), is dropped
+ */
 export const toSecretEnvs = (secrets: SandboxSecret[] | undefined): Record<string, string> => {
     const envs: Record<string, string> = {}
     if (!Array.isArray(secrets)) return envs
     for (const secret of secrets) {
-        if (!secret?.key || !secret.value || !ENV_NAME.test(secret.key)) continue
+        if (!secret?.key || !secret.value || !isSandboxSecretName(secret.key)) continue
         envs[secret.key] = secret.value
     }
     return envs

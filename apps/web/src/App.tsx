@@ -7,13 +7,19 @@ import { AppSideNavigation } from './app/components/AppSideNavigation'
 import { useAppController } from './app/hooks/useAppController'
 import { AuthModal } from './features/auth/components/AuthModal'
 import { githubOAuth } from './features/auth/githubOAuth'
+import {
+    InAppPage,
+    NotFoundPage,
+    SessionNotFoundPage,
+} from './features/errors/components/NotFoundPage'
+import { PanelErrorBoundary } from './features/errors/components/PanelErrorBoundary'
 import { OnboardingPage } from './features/onboarding/components/OnboardingPage'
 import { profileAPI } from './features/profile/api/profile'
 import { useFinishSound } from './features/profile/hooks/useFinishSound'
 import { SuperCrewCard } from './features/supercrew/components/SuperCrewCard'
 
 import { useAppStore } from '@/app/store'
-import { getViewForPath } from '@/app/types'
+import { getViewForPath, isAppPath } from '@/app/types'
 import { LogoLoader } from '@/shared/components/ui/LogoLoader'
 import { getWebUrl } from '@/shared/config/env'
 import { resetUserQueryCache } from '@/shared/lib/query-cache'
@@ -56,6 +62,7 @@ const App: React.FC = () => {
         needsOnboarding,
         isOnboardingRoute,
         isCheckingOnboarding,
+        isSessionNotFound,
     } = useAppController()
 
     // the finish sound from Settings, Preferences
@@ -80,8 +87,21 @@ const App: React.FC = () => {
         isProjectOpening && !activeProjectId && getViewForPath(location.pathname) === 'project'
     const showOpeningLoader = isSlowOpen || isLinkOpen
 
+    // the admin path is a known page only for the admin; for anyone else it is unknown
+    const isUnknownPath =
+        !isAppPath(location.pathname) && !(adminPath && location.pathname === adminPath)
+
     if (!isAuthRestored) {
         return <LogoLoader />
+    }
+
+    // signed out: an unknown path shows the page full screen, and home is the landing page
+    if (!isAuthenticated && isUnknownPath) {
+        return (
+            <div className="fixed inset-0 bg-[#141414] font-sans">
+                <NotFoundPage onGoHome={() => window.location.assign(getWebUrl())} />
+            </div>
+        )
     }
 
     if (!isAuthenticated) {
@@ -160,7 +180,7 @@ const App: React.FC = () => {
                     isWorkspaceScreen={!isHome && (view === 'chat' || view === 'project')}
                 />
 
-                <SuperCrewCard isHome={isHome} />
+                <SuperCrewCard isHome={isHome && !isUnknownPath} />
 
                 <AuthModal
                     isOpen={showAuthModal}
@@ -173,21 +193,42 @@ const App: React.FC = () => {
                 />
 
                 <div className="flex-1 flex flex-col h-full min-h-0 relative overflow-hidden">
-                    <AppContentView
-                        view={view}
-                        isHome={isHome}
-                        onHomePromptSubmit={handlePromptSubmit}
-                        onOutputPromptSubmit={handleOutputPromptSubmit}
-                        onPreviewRuntimeError={handlePreviewRuntimeError}
-                        onOpenAuth={() => setShowAuthModal(true)}
-                        onBackFromOutput={handleBackFromOutput}
-                        onNewProject={handleNewThread}
-                        onOpenProject={handleOpenProject}
-                        onSelectVersion={handleSelectVersion}
-                        onSignOut={handleSignOut}
-                        onOpenFile={handleOpenFile}
-                        onResetImportState={resetImportState}
-                    />
+                    {isUnknownPath ? (
+                        <InAppPage>
+                            <NotFoundPage onGoHome={handleHomeClick} />
+                        </InAppPage>
+                    ) : isSessionNotFound ? (
+                        <InAppPage>
+                            <SessionNotFoundPage
+                                onGoToSessions={() => handleNavigate('sessions')}
+                            />
+                        </InAppPage>
+                    ) : (
+                        // P4: a page that crashes keeps the sidebar; going to another page
+                        // tries again
+                        <PanelErrorBoundary
+                            title="This page could not load"
+                            size="page"
+                            resetKey={location.pathname}
+                            mobileTopBar
+                        >
+                            <AppContentView
+                                view={view}
+                                isHome={isHome}
+                                onHomePromptSubmit={handlePromptSubmit}
+                                onOutputPromptSubmit={handleOutputPromptSubmit}
+                                onPreviewRuntimeError={handlePreviewRuntimeError}
+                                onOpenAuth={() => setShowAuthModal(true)}
+                                onBackFromOutput={handleBackFromOutput}
+                                onNewProject={handleNewThread}
+                                onOpenProject={handleOpenProject}
+                                onSelectVersion={handleSelectVersion}
+                                onSignOut={handleSignOut}
+                                onOpenFile={handleOpenFile}
+                                onResetImportState={resetImportState}
+                            />
+                        </PanelErrorBoundary>
+                    )}
                 </div>
             </div>
         </>

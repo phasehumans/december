@@ -10,6 +10,7 @@ import type { BackendSession } from '@/features/sessions/api/session'
 
 import { useAppStore } from '@/app/store'
 import { getViewForPath } from '@/app/types'
+import { PanelErrorBoundary } from '@/features/errors/components/PanelErrorBoundary'
 import { notificationAPI } from '@/features/notification/api/notification'
 import { useInbox } from '@/features/notification/hooks/useInbox'
 import { openLabelForLink } from '@/features/notification/lib/notificationLinks'
@@ -695,14 +696,16 @@ export const MobileMenuSheet: React.FC<MobileMenuSheetProps> = (props) => {
             </>
         )
         body = (
-            <InboxList
-                emptyText={inboxFilter === 'mentions' ? 'No mentions' : 'No notifications'}
-                items={inbox.notifications}
-                isLoading={inbox.isLoading}
-                hasMore={!!inbox.hasNextPage}
-                onMore={() => inbox.fetchNextPage()}
-                onPick={pickNote}
-            />
+            <PanelErrorBoundary title="Inbox could not load" size="small" className="py-16">
+                <InboxList
+                    emptyText={inboxFilter === 'mentions' ? 'No mentions' : 'No notifications'}
+                    items={inbox.notifications}
+                    isLoading={inbox.isLoading}
+                    hasMore={!!inbox.hasNextPage}
+                    onMore={() => inbox.fetchNextPage()}
+                    onPick={pickNote}
+                />
+            </PanelErrorBoundary>
         )
     } else {
         // delete is a quiet icon in the header (D1), no confirm: it is one notification

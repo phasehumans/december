@@ -100,10 +100,6 @@ _Avoid_: banner, alert bar, notice
 
 ## Settings
 
-**Setup Commands**:
-The shell commands of one repository that run in the sandbox after the repository is cloned, such as `bun install`.
-_Avoid_: init script, bootstrap
-
 **Repository Secret**:
 A secret that belongs to one repository. A session in that repository gets it, and it wins over an account secret with the same name.
 _Avoid_: project secret, scoped env

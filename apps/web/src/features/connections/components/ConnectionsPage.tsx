@@ -3,12 +3,11 @@ import React from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 
 import { useConnectionsNav } from '../hooks/useConnectionsNav'
-import { isConnectionsDemoActive } from '../lib/connectionsDemo'
 import { CONNECTIONS_BASE_PATH } from '../lib/paths'
 import { CONNECTIONS_TAB_LABELS, CONNECTIONS_TABS, type ConnectionsTab } from '../types'
 
 import { AppsTab } from './AppsTab'
-import { ChoiceGroup, DemoPill, SecondaryButton } from './ConnectionsUi'
+import { ChoiceGroup, SecondaryButton } from './ConnectionsUi'
 import { HooksTab } from './HooksTab'
 import { ImportSetupModal } from './ImportSetupModal'
 import { McpsTab } from './McpsTab'
@@ -16,7 +15,6 @@ import { MemoryTab } from './MemoryTab'
 import { PluginsTab } from './PluginsTab'
 import { RulesTab } from './RulesTab'
 import { SkillsTab } from './SkillsTab'
-import { SoonTab } from './SoonTab'
 
 import { useAppStore } from '@/app/store'
 import {
@@ -24,7 +22,11 @@ import {
     MobileIconButton,
     MobileTopBar,
 } from '@/features/navigation/components/MobileTopBar'
-import { PAGE_SUBTITLES } from '@/features/profile/components/settingsStyles'
+import {
+    PAGE_SUBTITLES,
+    pageSubtitleClass,
+    pageTitleClass,
+} from '@/features/profile/components/settingsStyles'
 
 const isTab = (value: string | undefined): value is ConnectionsTab =>
     Boolean(value && (CONNECTIONS_TABS as readonly string[]).includes(value))
@@ -45,11 +47,8 @@ const redirectFor = (pathname: string, search: string): string | null => {
     return null
 }
 
-/** the tabs with a server behind them. the other tabs run on sample values (preview only) */
-const LIVE_TABS: ConnectionsTab[] = ['apps', 'skills', 'mcps']
-
-/** live tabs that list sample values while the preview is on, so they are marked then */
-const PREVIEW_SAMPLE_TABS: ConnectionsTab[] = ['skills', 'mcps']
+/** tabs with no page per item: an item link opens the tab */
+const NO_DETAIL_TABS: ConnectionsTab[] = ['hooks', 'memory']
 
 /** what the phone top bar "+" does on each tab (only tabs with an add action) */
 const mobileAddTarget: Partial<Record<ConnectionsTab, 'modal' | 'page'>> = {
@@ -58,13 +57,13 @@ const mobileAddTarget: Partial<Record<ConnectionsTab, 'modal' | 'page'>> = {
     mcps: 'modal',
     hooks: 'modal',
     rules: 'page',
+    memory: 'modal',
 }
 
 export const ConnectionsPage: React.FC = () => {
     const location = useLocation()
     const { navigate, toTab, openAdd } = useConnectionsNav()
     const openMobileSheet = useAppStore((s) => s.openMobileSheet)
-    const [isDemo] = React.useState(isConnectionsDemoActive)
     const [isImportOpen, setIsImportOpen] = React.useState(false)
 
     const redirect = redirectFor(location.pathname, location.search)
@@ -78,13 +77,14 @@ export const ConnectionsPage: React.FC = () => {
     if (!isTab(tab)) {
         return <Navigate to={`${CONNECTIONS_BASE_PATH}/apps`} replace />
     }
+    if (itemId && NO_DETAIL_TABS.includes(tab)) {
+        return <Navigate to={`${CONNECTIONS_BASE_PATH}/${tab}`} replace />
+    }
 
-    const isSoon = !isDemo && !LIVE_TABS.includes(tab)
-    const isDetail = Boolean(itemId) && !isSoon
-    const addTarget = isSoon ? undefined : mobileAddTarget[tab]
+    const isDetail = Boolean(itemId)
+    const addTarget = mobileAddTarget[tab]
 
     const renderTab = () => {
-        if (isSoon) return <SoonTab tab={tab} />
         switch (tab) {
             case 'apps':
                 return <AppsTab itemId={itemId} />
@@ -99,7 +99,7 @@ export const ConnectionsPage: React.FC = () => {
             case 'rules':
                 return <RulesTab itemId={itemId} />
             case 'memory':
-                return <MemoryTab itemId={itemId} />
+                return <MemoryTab />
             default:
                 return null
         }
@@ -147,12 +147,8 @@ export const ConnectionsPage: React.FC = () => {
                     <>
                         <div className="flex items-start justify-between gap-3 mb-5 md:mb-6">
                             <div className="flex flex-col min-w-0">
-                                <h1 className="text-[20px] md:text-[18px] font-sans font-medium tracking-[-0.025em] text-[#D6D5C9] mb-1">
-                                    Connections
-                                </h1>
-                                <p className="text-[13px] text-[#9A9998]">
-                                    {PAGE_SUBTITLES.connections}
-                                </p>
+                                <h1 className={pageTitleClass}>Connections</h1>
+                                <p className={pageSubtitleClass}>{PAGE_SUBTITLES.connections}</p>
                             </div>
                             {/* reads a repository for skills and mcp servers (N24, #637) */}
                             <SecondaryButton onClick={() => setIsImportOpen(true)}>
@@ -164,18 +160,7 @@ export const ConnectionsPage: React.FC = () => {
                                 label="Connections sections"
                                 options={CONNECTIONS_TABS.map((value) => ({
                                     value,
-                                    // a tab on sample values says so, with the preview on
-                                    label:
-                                        isDemo &&
-                                        (!LIVE_TABS.includes(value) ||
-                                            PREVIEW_SAMPLE_TABS.includes(value)) ? (
-                                            <span className="inline-flex items-center gap-1.5">
-                                                {CONNECTIONS_TAB_LABELS[value]}
-                                                <DemoPill />
-                                            </span>
-                                        ) : (
-                                            CONNECTIONS_TAB_LABELS[value]
-                                        ),
+                                    label: CONNECTIONS_TAB_LABELS[value],
                                 }))}
                                 value={tab}
                                 onChange={toTab}

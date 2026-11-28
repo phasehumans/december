@@ -18,7 +18,6 @@ import type { SlashCommand, SlashScope } from './commands'
 import type { PromptInputSubmitOptions } from '@/features/home/types'
 
 import { useAppStore } from '@/app/store'
-import { isConnectionsDemoActive } from '@/features/connections/lib/connectionsDemo'
 import { usePromptBoxConnections } from '@/features/home/api/promptBoxConnections'
 import { saveHomeDraft } from '@/features/home/draft'
 import { usePromptConfig } from '@/features/home/promptConfig'
@@ -45,8 +44,6 @@ export interface SlashPickOption {
     label: string
     hint?: string
     selected?: boolean
-    /** the row shows a sample value (preview only), so it carries the Demo pill */
-    demo?: boolean
     /** what Enter or a click does. a row with no pick only shows a fact */
     pick?: () => void
 }
@@ -103,7 +100,6 @@ const mcpCheckHint = (server: CheckMcpServer) => {
         const tools = server.toolCount ?? 0
         return tools > 0 ? `Connected · ${tools} ${tools === 1 ? 'tool' : 'tools'}` : 'Connected'
     }
-    if (server.status === 'needs-signin') return 'Sign in'
     if (server.status === 'error') return server.lastError || 'Error'
     // no session has used the server yet
     return 'Not used yet'
@@ -163,11 +159,8 @@ export const useSlashMenu = ({
     onNavigate,
 }: UseSlashMenuArgs) => {
     const queryClient = useQueryClient()
-    const [demo] = useState(isConnectionsDemoActive)
 
     const connections = usePromptBoxConnections(Boolean(isAuthenticated))
-    // the preview has no server behind it: /check reads its sample MCP servers
-    const demoMcps = connections.mcps
     const pluginsOff = usePromptConfig((s) => s.pluginsOff)
     const planFirst = usePromptConfig((s) => s.values.planFirst)
     const setConfigValue = usePromptConfig((s) => s.setValue)
@@ -264,20 +257,18 @@ export const useSlashMenu = ({
         if (check?.gitlab.connected) {
             rows.push({ id: 'gitlab', label: 'GitLab', hint: 'Connected' })
         }
-        // the MCP servers that are turned on. the preview has no server behind it, so it
-        // lists its sample servers
-        const mcpServers: CheckMcpServer[] = demo
-            ? demoMcps
-            : (check?.mcpServers ?? []).filter((server) => server.enabled)
+        // the MCP servers that are turned on
+        const mcpServers: CheckMcpServer[] = (check?.mcpServers ?? []).filter(
+            (server) => server.enabled
+        )
         mcpServers.forEach((server) =>
             rows.push({
                 id: `mcp:${server.name}`,
                 label: `MCP: ${server.name}`,
                 hint: mcpCheckHint(server),
-                ...(demo ? { demo: true } : {}),
                 // a server that needs a fix opens the MCP servers page
                 pick:
-                    server.status === 'error' || server.status === 'needs-signin'
+                    server.status === 'error'
                         ? () => onNavigate?.('/settings/connections/mcps')
                         : undefined,
             })
@@ -293,7 +284,7 @@ export const useSlashMenu = ({
             })
         }
         return rows
-    }, [subKind, check, github.connectUrl, demo, demoMcps, scope, previewState, onNavigate])
+    }, [subKind, check, github.connectUrl, scope, previewState, onNavigate])
 
     const sub = useMemo<SlashSubMenu | null>(() => {
         if (result) return result
@@ -927,7 +918,6 @@ export const useSlashMenu = ({
     )
 
     return {
-        demo,
         scope,
         isOpen,
         items,

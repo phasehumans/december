@@ -24,7 +24,7 @@ export type SecretWithDecryptedValue = {
 export type CreateSecretInput = {
     name: string
     value: string
-    note?: string
+    note?: string | null
     /** `owner/name`. null or no field: all repositories */
     repoFullName?: string | null
 }
@@ -32,7 +32,7 @@ export type CreateSecretInput = {
 export type BulkCreateSecretItem = {
     name: string
     value: string
-    note?: string
+    note?: string | null
     /** `owner/name`. null or no field: all repositories */
     repoFullName?: string | null
 }
@@ -43,6 +43,13 @@ export type BulkCreateSecretsInput = {
     repoFullName?: string | null
 }
 
+/** what a bulk save did: new secrets, secrets saved again, and both together */
+export type BulkCreateSecretsResult = { created: number; updated: number; saved: number }
+
+/** every query of secrets starts with this key: a save or a delete refreshes them all */
+export const SECRETS_KEY = ['secrets'] as const
+/** the list of the Secrets settings page */
+export const SECRETS_LIST_KEY = ['secrets', 'list'] as const
 /** the list of secrets the prompt box mentions from (`@secrets:` and the + menu) */
 export const SECRETS_MENTION_KEY = ['secrets', 'mention'] as const
 
@@ -81,7 +88,7 @@ const createSecret = (data: CreateSecretInput) => {
 }
 
 const bulkCreateSecrets = (data: BulkCreateSecretsInput) => {
-    return apiRequest<null>('/secrets/bulk', {
+    return apiRequest<BulkCreateSecretsResult>('/secrets/bulk', {
         method: 'POST',
         body: JSON.stringify(data),
     })

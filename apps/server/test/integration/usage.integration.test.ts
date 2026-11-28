@@ -334,24 +334,6 @@ describe('Usage Module Integration Tests', () => {
             })
             expect(has100Cents).toBe(false)
         })
-
-        it('canRunSelfCorrection checks against credit threshold', async () => {
-            await prisma.user.update({
-                where: { id: testUserId },
-                data: { creditBalance: 10 },
-            })
-
-            const canRun = await usageService.canRunSelfCorrection({ userId: testUserId })
-            expect(canRun).toBe(true)
-
-            await prisma.user.update({
-                where: { id: testUserId },
-                data: { creditBalance: 3 }, // below default 5 cents threshold
-            })
-
-            const cannotRun = await usageService.canRunSelfCorrection({ userId: testUserId })
-            expect(cannotRun).toBe(false)
-        })
     })
 
     describe('End-to-End Workflow Verification', () => {
@@ -405,7 +387,10 @@ describe('Usage Module Integration Tests', () => {
 
             expect(overviewRes.status).toBe(200)
             expect(overviewRes.body.data.creditBalance).toBe(3000)
-            const hasTx = overviewRes.body.data.transactions.some(
+            const transactionsRes = await request(app)
+                .get('/api/v1/billing/transactions')
+                .set('Authorization', `Bearer ${accessToken}`)
+            const hasTx = transactionsRes.body.data.items.some(
                 (tx: any) => tx.amountInCents === 2000 && tx.status === 'SUCCESS'
             )
             expect(hasTx).toBe(true)
@@ -457,8 +442,6 @@ describe('Usage Module Integration Tests', () => {
 
             expect(overviewRes.status).toBe(200)
             expect(overviewRes.body.data.creditBalance).toBe(2997.5)
-            expect(overviewRes.body.data.usage.totalTokens).toBeGreaterThanOrEqual(4000)
-            expect(overviewRes.body.data.usage.costInCents).toBeGreaterThanOrEqual(2.5)
         })
     })
 })

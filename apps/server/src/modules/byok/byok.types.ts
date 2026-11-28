@@ -60,6 +60,8 @@ export type UpsertCredentialData = {
 export type UpdateVerificationData = {
     userId: string
     provider: string
+    // the key that was checked: the row changes only while it still holds this key
+    encryptedKey: string
     models: string[]
     defaultModel: string
     verifiedAt: Date

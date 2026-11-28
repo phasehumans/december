@@ -9,7 +9,9 @@ import { byokRepository } from './byok.repository'
 import {
     buildKeyHint,
     byokUtils,
+    cleanModelIds,
     providerName,
+    redactKey,
     toCredentialSummary,
     verifyFailureMessage,
 } from './byok.utils'
@@ -23,26 +25,43 @@ import type {
     SaveCredential,
 } from './byok.types'
 
+// asks the provider whether the key works and which models it serves. every message that
+// leaves here has the key taken out, as some providers repeat it in their errors
 const checkKey = async (data: CheckKey) => {
     const { provider, apiKey } = data
     let result
     try {
         result = await byokUtils.verifyKey({ provider, apiKey })
     } catch (error) {
-        if (error instanceof ByokError) throw new AppError(error.message, 400)
-        throw error
+        if (error instanceof ByokError) {
+            throw new AppError(redactKey({ text: error.message, apiKey }), 400)
+        }
+        // an unknown failure: do not pass its text on, it may hold the request
+        console.error('[BYOK] key check failed:', error instanceof Error ? error.name : 'error')
+        throw new AppError(
+            `December could not reach ${providerName(provider)} to check the key. Try again.`,
+            502
+        )
     }
     if (!result.ok) {
         throw new AppError(
             verifyFailureMessage({
                 providerName: providerName(provider),
                 reason: result.reason,
-                ...(result.message ? { message: result.message } : {}),
+                ...(result.message ? { message: redactKey({ text: result.message, apiKey }) } : {}),
             }),
             400
         )
     }
-    return result
+    const models = cleanModelIds(result.models)
+    const defaultModel = models.includes(result.defaultModel) ? result.defaultModel : models[0]
+    if (!defaultModel) {
+        throw new AppError(
+            verifyFailureMessage({ providerName: providerName(provider), reason: 'no_endpoint' }),
+            400
+        )
+    }
+    return { models, defaultModel }
 }
 
 const listCredentials = async (data: ListCredentials) => {
@@ -58,7 +77,8 @@ const saveCredential = async (data: SaveCredential) => {
     try {
         key = normalizeByokKey({ provider, apiKey })
     } catch (error) {
-        if (error instanceof ByokError) throw new AppError(error.message, 400)
+        if (error instanceof ByokError)
+            throw new AppError(redactKey({ text: error.message, apiKey }), 400)
         throw error
     }
 
@@ -92,14 +112,28 @@ const refreshCredential = async (data: RefreshCredential) => {
         )
     }
     const verified = await checkKey({ provider, apiKey: key })
-    const row = await byokRepository.updateVerification({
+    const verifiedAt = new Date()
+    const isSaved = await byokRepository.updateVerification({
         userId,
         provider,
+        encryptedKey: stored.encryptedKey,
         models: verified.models,
         defaultModel: verified.defaultModel,
-        verifiedAt: new Date(),
+        verifiedAt,
     })
-    return toCredentialSummary(row)
+    if (isSaved) {
+        return toCredentialSummary({
+            ...stored,
+            models: verified.models,
+            defaultModel: verified.defaultModel,
+            verifiedAt,
+        })
+    }
+
+    // the key was replaced or removed during the check: show what is saved now
+    const current = await byokRepository.findCredentialSummary(userId, provider)
+    if (!current) throw new AppError(`no ${providerName(provider)} key saved`, 404)
+    return toCredentialSummary(current)
 }
 
 const deleteCredential = async (data: DeleteCredential) => {

@@ -1,11 +1,12 @@
 import { checkMcpUrl, parseSkillContent } from '@december/shared'
+import { RULE_MAX_BYTES, RULE_NAME_PATTERN, utf8Bytes } from '@december/shared/agent-context'
 import { decryptText, encryptText } from '@december/shared/crypto'
 import { GitProviderError } from '@december/shared/git'
 
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
 
-import type { FoundMcp, FoundSkill, McpHeader } from './connection.types'
+import type { FoundMcp, FoundRule, FoundSkill, McpHeader } from './connection.types'
 import type { RepoTextFile } from '@december/shared/git'
 
 type StoredMcpServer = {
@@ -223,6 +224,54 @@ export const toFoundMcps = (text: string): FoundMcp[] => {
     }
     return found.sort((a, b) => a.name.localeCompare(b.name))
 }
+
+/**
+ * The account rule a rule file of a repository becomes: named after the repository and the
+ * file ("web-agents" for AGENTS.md of acme/web), in the rule name rules.
+ */
+export const ruleNameFor = (repoFullName: string, path: string): string => {
+    const repo = repoFullName.split('/').pop() ?? 'repo'
+    const file = path.replace(/\.md$/i, '')
+    const name = `${repo}-${file}`
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-+|-+$/g, '')
+    const short = name.slice(0, 64).replace(/-+$/, '')
+    return RULE_NAME_PATTERN.test(short) ? short : 'repo-rules'
+}
+
+/** a rule file of a repository as an import row */
+export const toFoundRule = (
+    repoFullName: string,
+    path: string,
+    file: RepoTextFile | null
+): FoundRule => {
+    const name = ruleNameFor(repoFullName, path)
+    const unusable = (reason: string): FoundRule => ({
+        path,
+        name,
+        body: null,
+        importable: false,
+        reason,
+    })
+    if (!file) return unusable('The file could not be read.')
+    if (file.content === null || utf8Bytes(file.content) > RULE_MAX_BYTES) {
+        return unusable('The file is larger than 16 KiB.')
+    }
+    const body = file.content.trim()
+    if (!body) return unusable('The file is empty.')
+    return { path, name, body, importable: true }
+}
+
+/** a rule row of the preview: the text stays on the server */
+export const toPreviewRule = (rule: FoundRule, exists: boolean) => ({
+    path: rule.path,
+    name: rule.name,
+    exists,
+    importable: rule.importable,
+    ...(rule.reason ? { reason: rule.reason } : {}),
+})
 
 /** a skill row of the preview: the instructions stay on the server */
 export const toPreviewSkill = (skill: FoundSkill, exists: boolean) => ({

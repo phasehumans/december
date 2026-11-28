@@ -48,6 +48,70 @@ describe('AgentHarness (Unit)', () => {
         expect(systemPrompt).toContain('Use bash for file operations like ls, rg, find')
     })
 
+    test('a cloud run (localDiscovery false) never reads the disk, only the rules it is given', () => {
+        // the worker's disk has rule and skill files that must not reach a user's run
+        fs.writeFileSync(path.join(tmpDir, 'AGENTS.md'), '# Worker Disk Rules\nnot the repo')
+        const skillDir = path.join(tmpDir, '.december', 'skills', 'host-skill')
+        fs.mkdirSync(skillDir, { recursive: true })
+        fs.writeFileSync(
+            path.join(skillDir, 'SKILL.md'),
+            '---\nname: host-skill\ndescription: a skill on the worker disk\n---\nbody'
+        )
+
+        const harness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            homeDir: tmpDir,
+            rootBoundary: tmpDir,
+            localDiscovery: false,
+            projectRules: [{ path: '/workspace/AGENTS.md', content: '# Repo Rules\nuse bun' }],
+        })
+
+        const systemPrompt = harness.getAgent().systemPrompt
+        expect(systemPrompt).toContain('Repo Rules')
+        expect(systemPrompt).toContain('use bun')
+        expect(systemPrompt).not.toContain('Worker Disk Rules')
+        expect(systemPrompt).not.toContain('host-skill')
+        expect(
+            harness
+                .getAgent()
+                .getTools()
+                .some((t) => t.name === 'run_skill')
+        ).toBe(false)
+    })
+
+    test('localDiscovery false with no rules given has no project rules at all', () => {
+        fs.writeFileSync(path.join(tmpDir, 'AGENTS.md'), '# Worker Disk Rules\nnot the repo')
+        const harness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            rootBoundary: tmpDir,
+            localDiscovery: false,
+        })
+        expect(harness.getAgent().systemPrompt).not.toContain('Worker Disk Rules')
+        // a refresh (a tool turned on) keeps it that way
+        expect(harness.refreshSystemPrompt()).not.toContain('Worker Disk Rules')
+    })
+
+    test('rules given by the caller win over the disk even with discovery on', () => {
+        fs.writeFileSync(path.join(tmpDir, 'AGENTS.md'), '# Disk Rules\nignored')
+        const harness = new AgentHarness({
+            llm: new MockLLM(),
+            tools: [],
+            operations: {} as any,
+            workspaceDir: tmpDir,
+            rootBoundary: tmpDir,
+            projectRules: [{ path: '/x/AGENTS.md', content: '# Given Rules' }],
+        })
+        const systemPrompt = harness.getAgent().systemPrompt
+        expect(systemPrompt).toContain('Given Rules')
+        expect(systemPrompt).not.toContain('Disk Rules')
+    })
+
     test('reads CLAUDE.md only when the folder has no AGENTS.md', () => {
         const subDir = path.join(tmpDir, 'packages', 'app')
         fs.mkdirSync(subDir, { recursive: true })

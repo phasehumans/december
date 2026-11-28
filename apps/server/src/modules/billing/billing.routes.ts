@@ -21,6 +21,7 @@ billingRouter.post(
 billingRouter.use(authMiddleware)
 billingRouter.get('/overview', billingController.getOverview)
 billingRouter.get('/credits/history', billingController.getCreditsHistory)
+billingRouter.get('/transactions', billingController.listTransactions)
 billingRouter.get('/transactions/:id/receipt', billingController.getReceipt)
 billingRouter.get('/referral', billingController.getReferral)
 // spend limits and the low balance alert (#638 section 1)

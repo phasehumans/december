@@ -273,17 +273,21 @@ export type StartGithubRunResult = {
 
 export type ResolveRunModel = {
     userId: string
-    defaultModelSource: 'CREDITS' | 'OWN_KEY'
+    // the installer's balance, in cents
+    creditBalance: number
 }
 
-export type RunModelChoice =
-    | {
-          ok: true
-          billingSource: 'CREDITS' | 'OWN_KEY'
-          provider?: string
-          model?: string
-      }
-    | { ok: false; message: string }
+export type RunModelChoice = {
+    billingSource: 'CREDITS' | 'OWN_KEY'
+    provider?: string
+    model?: string
+}
+
+export type OwnKeyCandidate = {
+    provider: string
+    defaultModel: string
+    models: unknown
+}
 
 export type ShouldAutoReview = {
     settings: PullRequestSettingsValues

@@ -1,6 +1,6 @@
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 
+import { ListPager } from './ListPager'
 import {
     PAGE_SUBTITLES,
     listBoxClass,
@@ -50,7 +50,6 @@ export const ProfileUsageSettings: React.FC = () => {
     const [offset, setOffset] = useState(0)
 
     const [timeRange, setTimeRange] = useState<string>('30d')
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const [now, setNow] = useState(() => Date.now())
 
     useEffect(() => {
@@ -92,19 +91,6 @@ export const ProfileUsageSettings: React.FC = () => {
             .split('-')
             .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' ')
-    }
-
-    const handlePreviousPage = () => {
-        if (offset >= limit) {
-            setOffset((prev) => prev - limit)
-        }
-    }
-
-    const handleNextPage = () => {
-        // the count of every event of the range, not of the rows on this page
-        if (offset + limit < totalEvents) {
-            setOffset((prev) => prev + limit)
-        }
     }
 
     // a new range starts at its first page
@@ -151,9 +137,8 @@ export const ProfileUsageSettings: React.FC = () => {
     // the user, so their cost is not in the total
     const totals = history?.totals ?? NO_TOTALS
     const paginatedEvents = history?.events ?? []
+    // the count of every event of the range, not of the rows on this page
     const totalEvents = history?.total ?? 0
-    const currentPage = Math.floor(offset / limit) + 1
-    const totalPages = Math.max(Math.ceil(totalEvents / limit), 1)
 
     const isLoading = isHistoryLoading || isSkeletonPreviewActive()
     // nothing in the range: the empty chart says so and offers a start, so no empty table
@@ -304,9 +289,11 @@ export const ProfileUsageSettings: React.FC = () => {
                                                     {formatRowCost(row)}
                                                 </span>
                                             </div>
-                                            <div className="flex items-center justify-between font-sans text-[11.5px] text-[#7B7A79]">
-                                                <div className="flex items-center gap-1.5 truncate">
-                                                    <span>{formatRowDate(row.createdAt)}</span>
+                                            <div className="flex items-center justify-between gap-2 font-sans text-[11.5px] text-[#7B7A79]">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <span className="shrink-0 whitespace-nowrap">
+                                                        {formatRowDate(row.createdAt)}
+                                                    </span>
                                                     <span>•</span>
                                                     <span className="truncate">
                                                         {formatModelName(row.model)}
@@ -345,84 +332,18 @@ export const ProfileUsageSettings: React.FC = () => {
                     </div>
                 )}
 
-                {/* footer controls */}
-                {/* phones: no "Show" control, and the pager shows only with a second page */}
-                {totalEvents > 0 && (
-                    <div
-                        className={`items-center justify-between mt-5 ${totalPages > 1 ? 'flex' : 'hidden md:flex'}`}
-                    >
-                        {/* left limit selector */}
-                        <div className="hidden md:flex items-center gap-2">
-                            <span className="text-[12.5px] text-[#7B7A79]">Show</span>
-                            <div className="relative">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                    className="flex items-center justify-between w-[70px] bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-2.5 py-1 text-[12.5px] text-[#D6D5C9] hover:bg-[#242424] transition-colors focus:outline-none focus:border-[#7B7A79] font-medium cursor-pointer"
-                                >
-                                    <span>{limit}</span>
-                                    <ChevronDown className="w-3.5 h-3.5 text-[#7B7A79]" />
-                                </button>
-
-                                {isDropdownOpen && (
-                                    <>
-                                        <div
-                                            className="fixed inset-0 z-10"
-                                            onClick={() => setIsDropdownOpen(false)}
-                                        />
-                                        <div className="absolute bottom-full left-0 mb-1 z-20 w-[70px] bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg shadow-xl overflow-hidden py-1">
-                                            {[10, 20, 30].map((num) => (
-                                                <button
-                                                    key={num}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setLimit(num)
-                                                        setOffset(0)
-                                                        setIsDropdownOpen(false)
-                                                    }}
-                                                    className={`w-full text-left px-2.5 py-1 text-[12.5px] transition-colors cursor-pointer ${
-                                                        limit === num
-                                                            ? 'bg-[#2B2A29] text-[#D6D5C9] font-medium'
-                                                            : 'text-[#7B7A79] hover:bg-[#202020] hover:text-[#D6D5C9]'
-                                                    }`}
-                                                >
-                                                    {num}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* right page selectors */}
-                        <div className="flex items-center gap-4 text-[12.5px] text-[#7B7A79] font-medium">
-                            <span>
-                                {currentPage} of {totalPages}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                                <button
-                                    type="button"
-                                    aria-label="Previous page"
-                                    onClick={handlePreviousPage}
-                                    disabled={offset === 0}
-                                    className="p-1.5 rounded-lg border border-[#383736] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#191919] transition-colors bg-[#141414] text-[#D6D5C9]"
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
-                                <button
-                                    type="button"
-                                    aria-label="Next page"
-                                    onClick={handleNextPage}
-                                    disabled={offset + limit >= totalEvents}
-                                    className="p-1.5 rounded-lg border border-[#383736] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#191919] transition-colors bg-[#141414] text-[#D6D5C9]"
-                                >
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {/* footer: "Show 10" and the pager. phones have only the pager, with a second page */}
+                <ListPager
+                    total={totalEvents}
+                    limit={limit}
+                    offset={offset}
+                    onOffsetChange={setOffset}
+                    onLimitChange={(next) => {
+                        setLimit(next)
+                        setOffset(0)
+                    }}
+                    className="mt-5"
+                />
             </div>
         </SettingsPage>
     )

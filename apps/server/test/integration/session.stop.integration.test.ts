@@ -187,6 +187,129 @@ describe('stop and running sandboxes', () => {
             const res = await as(owner.token).post('/session/not-an-id/stop')
             expect(res.status).toBe(400)
         })
+
+        it('needs a signed in user and stops nothing without one', async () => {
+            const session = await workingSession('no-token')
+
+            const res = await request(app)
+                .post(`/api/v1/session/${session.id}/stop`)
+                .set('x-forwarded-for', getRandomIP())
+
+            expect(res.status).toBe(401)
+            expect(interrupts()).toEqual([])
+            expect(queued).toEqual([])
+        })
+
+        it('answers 404 for a session id that does not exist', async () => {
+            const res = await as(owner.token).post(
+                '/session/00000000-0000-4000-8000-000000000000/stop'
+            )
+            expect(res.status).toBe(404)
+            expect(queued).toEqual([])
+        })
+
+        it('a sandbox that still starts: the run stops, and nothing is paused yet', async () => {
+            const session = await prisma.session.create({
+                data: {
+                    userId: owner.userId,
+                    title: 'starting',
+                    vmId: `vm-starting-${stamp}`,
+                    vmStatus: 'PROVISIONING',
+                    sandboxStatus: 'STARTING',
+                },
+            })
+
+            const res = await as(owner.token).post(`/session/${session.id}/stop`)
+
+            expect(res.status).toBe(200)
+            expect(interrupts().map((sent) => sent.channel)).toEqual([
+                `session_interrupts:${session.id}`,
+            ])
+            expect(queued).toEqual([])
+            expect(res.body.data).toEqual({
+                sessionId: session.id,
+                vmStatus: 'STOPPED',
+                sandboxStatus: 'STARTING',
+            })
+        })
+
+        it('a running sandbox with no sandbox id queues no pause', async () => {
+            const session = await prisma.session.create({
+                data: {
+                    userId: owner.userId,
+                    title: 'no vm id',
+                    vmStatus: 'RUNNING',
+                    sandboxStatus: 'RUNNING',
+                },
+            })
+
+            const res = await as(owner.token).post(`/session/${session.id}/stop`)
+
+            expect(res.status).toBe(200)
+            expect(queued).toEqual([])
+            expect(res.body.data.sandboxStatus).toBe('RUNNING')
+        })
+
+        it('answers 503 when the pause cannot be queued, and the sandbox is left as it is', async () => {
+            const session = await workingSession('stop-no-queue')
+            setAgentQueue({
+                add: async () => {
+                    throw new Error('redis is down')
+                },
+            } as any)
+            try {
+                const res = await as(owner.token).post(`/session/${session.id}/stop`)
+
+                expect(res.status).toBe(503)
+                expect(res.body.message).toBe('could not stop the session. try again')
+                // nothing about the queue reaches the page
+                expect(JSON.stringify(res.body)).not.toContain('redis')
+                const after = await prisma.session.findUnique({ where: { id: session.id } })
+                expect(after?.sandboxStatus).toBe('RUNNING')
+            } finally {
+                setAgentQueue({
+                    add: async (name: string, data: any) => {
+                        queued.push({ name, data })
+                        return { id: `job-${queued.length}` }
+                    },
+                } as any)
+            }
+        })
+
+        it('an archived session with a running sandbox can be stopped', async () => {
+            const session = await workingSession('archived-running')
+            await prisma.session.update({ where: { id: session.id }, data: { isArchived: true } })
+
+            const res = await as(owner.token).post(`/session/${session.id}/stop`)
+
+            expect(res.status).toBe(200)
+            expect(queued.map((job) => job.data.sessionId)).toEqual([session.id])
+        })
+
+        it('is capped at 30 stops a minute for each user', async () => {
+            const busy = await createSignedInUser({
+                email: `session-stop-limit-${stamp}@example.com`,
+            })
+            try {
+                const session = await prisma.session.create({
+                    data: { userId: busy.userId, title: 'many stops' },
+                })
+                const statuses: number[] = []
+                for (let i = 0; i < 31; i++) {
+                    const res = await as(busy.token).post(`/session/${session.id}/stop`)
+                    statuses.push(res.status)
+                }
+                expect(statuses.slice(0, 30).every((status) => status === 200)).toBe(true)
+                expect(statuses[30]).toBe(429)
+                // the cap is per user: another user is not slowed down
+                const other = await workingSession('other-user-not-capped')
+                const res = await as(owner.token).post(`/session/${other.id}/stop`)
+                expect(res.status).toBe(200)
+            } finally {
+                await prisma.session.deleteMany({ where: { userId: busy.userId } })
+                await cleanupTestUser({ id: busy.userId })
+            }
+        })
     })
 
     describe('GET /session/sandboxes', () => {
@@ -264,6 +387,90 @@ describe('stop and running sandboxes', () => {
             })
         })
 
+        it('needs a signed in user', async () => {
+            const res = await request(app)
+                .get('/api/v1/session/sandboxes')
+                .set('x-forwarded-for', getRandomIP())
+            expect(res.status).toBe(401)
+        })
+
+        it('leaves out a start that is left over from a crashed worker', async () => {
+            await prisma.session.deleteMany({ where: { userId: owner.userId } })
+            const fresh = await prisma.session.create({
+                data: { userId: owner.userId, title: 'fresh start', sandboxStatus: 'STARTING' },
+            })
+            const stale = await prisma.session.create({
+                data: { userId: owner.userId, title: 'stale start', sandboxStatus: 'STARTING' },
+            })
+            // a running sandbox that was last changed long ago still runs
+            const oldRunning = await prisma.session.create({
+                data: { userId: owner.userId, title: 'old running', sandboxStatus: 'RUNNING' },
+            })
+            const longAgo = new Date(Date.now() - 16 * 60 * 1000)
+            await prisma.$executeRaw`UPDATE "Session" SET "updatedAt" = ${longAgo} WHERE "id" IN (${stale.id}, ${oldRunning.id})`
+
+            const res = await as(owner.token).get('/session/sandboxes')
+
+            expect(res.status).toBe(200)
+            const ids = res.body.data.items.map((item: { sessionId: string }) => item.sessionId)
+            expect(ids).toContain(fresh.id)
+            expect(ids).toContain(oldRunning.id)
+            expect(ids).not.toContain(stale.id)
+        })
+
+        it('uses the time the sandbox last started, and lists archived sessions too', async () => {
+            await prisma.session.deleteMany({ where: { userId: owner.userId } })
+            const resumed = await prisma.session.create({
+                data: {
+                    userId: owner.userId,
+                    title: 'resumed',
+                    sandboxStatus: 'RUNNING',
+                    isArchived: true,
+                    createdAt: new Date('2026-11-20T08:00:00Z'),
+                    sandboxStartedAt: new Date('2026-11-25T12:30:00Z'),
+                },
+            })
+
+            const res = await as(owner.token).get('/session/sandboxes')
+
+            expect(res.body.data.items).toEqual([
+                {
+                    sessionId: resumed.id,
+                    title: 'resumed',
+                    repoFullName: null,
+                    startedAt: '2026-11-25T12:30:00.000Z',
+                    costInCents: 0,
+                    sandboxStatus: 'RUNNING',
+                },
+            ])
+        })
+
+        it("never lists or counts another user's sandbox", async () => {
+            await prisma.session.deleteMany({
+                where: { userId: { in: [owner.userId, stranger.userId] } },
+            })
+            const theirs = await prisma.session.create({
+                data: { userId: stranger.userId, title: 'theirs', sandboxStatus: 'RUNNING' },
+            })
+            await prisma.usageEvent.create({
+                data: {
+                    userId: stranger.userId,
+                    sessionId: theirs.id,
+                    model: 'test-model',
+                    costInCents: 500,
+                    billingSource: 'CREDITS',
+                    periodStart: new Date('2026-11-01T00:00:00Z'),
+                    periodEnd: new Date('2026-12-01T00:00:00Z'),
+                },
+            })
+
+            const mine = await as(owner.token).get('/session/sandboxes')
+            const list = await as(stranger.token).get('/session/sandboxes')
+
+            expect(mine.body.data).toEqual({ items: [] })
+            expect(list.body.data.items.map((item: any) => item.costInCents)).toEqual([500])
+        })
+
         it('is empty for a user with no running sandbox', async () => {
             await prisma.session.deleteMany({ where: { userId: stranger.userId } })
             const res = await as(stranger.token).get('/session/sandboxes')
@@ -290,7 +497,7 @@ describe('stop and running sandboxes', () => {
             // "finished" goes out only on the "everything" level
             await prisma.user.update({
                 where: { id: owner.userId },
-                data: { notifyLevel: 'ALL', notifyEmail: false },
+                data: { notifyLevel: 'ALL' },
             })
         })
 

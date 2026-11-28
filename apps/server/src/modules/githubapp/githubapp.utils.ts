@@ -10,6 +10,7 @@ import type {
     ClaimInstallationResult,
     InstallProblem,
     NotifyGithubActivity,
+    OwnKeyCandidate,
     ResolveInstallReturnUrl,
     ShouldAutoReview,
     ToLocalCallbackUrl,
@@ -311,6 +312,30 @@ export const toWebhookRepository = (payload: any) => ({
 // the session page on the web app
 export const sessionLink = (sessionId: string) =>
     `${(env.APP_URL || 'https://app.trydecember.com').replace(/\/+$/, '')}/session/${sessionId}`
+
+// the balance a session needs to start on credits: the same env value and default as
+// createSession in session.service.ts
+export const minRunStartBalanceInCents = (): number => {
+    const value = parseInt(process.env.MIN_SESSION_START_BALANCE_IN_CENTS || '50', 10)
+    return Number.isFinite(value) ? value : 50
+}
+
+/**
+ * The saved key a github run falls back to when the installer has no credits: the first key
+ * (the one used last comes first) whose default model is still in its model list, the same
+ * check a session on an own key gets. Null when no saved key can run.
+ */
+export const pickRunnableOwnKey = (
+    keys: OwnKeyCandidate[]
+): { provider: string; model: string } | null => {
+    for (const key of keys) {
+        const models = Array.isArray(key.models) ? key.models : []
+        if (key.defaultModel && models.includes(key.defaultModel)) {
+            return { provider: key.provider, model: key.defaultModel }
+        }
+    }
+    return null
+}
 
 const MAX_BODY = 8000
 

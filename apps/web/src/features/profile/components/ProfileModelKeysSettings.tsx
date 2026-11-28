@@ -1,15 +1,29 @@
-import { ArrowUpRight, Eye, EyeOff, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { ArrowUpRight, Eye, EyeOff, Loader2, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 
-import { ModelSourceControl } from './ModelSourceControl'
-import { PAGE_SUBTITLES, blueButtonClass, listEmptyClass } from './settingsStyles'
-import { SettingsPage, SettingsRow, SettingsSection } from './SettingsUi'
+import {
+    PAGE_SUBTITLES,
+    blueButtonClass,
+    listEmptyClass,
+    listRowClass,
+    listRowNoteClass,
+    listRowTitleClass,
+} from './settingsStyles'
+import { SettingsEmptyArt, SettingsPage, SettingsSection } from './SettingsUi'
 
 import type { ByokCredential, ByokProvider } from '../api/byok'
 
-import { ListBox, ListRows, ModalActions } from '@/features/connections/components/ConnectionsUi'
+import {
+    FormError,
+    ListBox,
+    ListRows,
+    ListSkeleton,
+    ModalActions,
+    inputClass,
+} from '@/features/connections/components/ConnectionsUi'
 import { useByokList, useByokMutations } from '@/features/profile/hooks/useByokData'
 import { useSettingsTopBarAction } from '@/features/profile/lib/settingsTopBar'
+import { listActionButtonClass } from '@/features/sessions/components/ListParts'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Modal } from '@/shared/components/ui/Modal'
 import { cn } from '@/shared/lib/utils'
@@ -17,14 +31,27 @@ import { cn } from '@/shared/lib/utils'
 const errorText = (error: unknown, fallback: string) =>
     error instanceof Error && error.message ? error.message : fallback
 
-const formatDate = (value: string | null) =>
-    value
-        ? new Date(value).toLocaleDateString(undefined, {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-          })
-        : 'Never'
+const formatDate = (value: string) =>
+    new Date(value).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    })
+
+// one line under the provider name: hint, model count, when it was checked and last used
+const credentialNote = (credential: ByokCredential) => {
+    const parts = [
+        credential.keyHint ? `••••${credential.keyHint}` : '••••',
+        `${credential.models.length} ${credential.models.length === 1 ? 'model' : 'models'}`,
+        `checked ${formatDate(credential.verifiedAt)}`,
+    ]
+    if (credential.lastUsedAt) parts.push(`last used ${formatDate(credential.lastUsedAt)}`)
+    return parts.join(' · ')
+}
+
+// icon buttons of a row: a larger tap area on phones, the usual size on desktop
+const rowIconButtonClass =
+    'p-2 md:p-1.5 rounded-lg text-[#7B7A79] hover:bg-white/5 disabled:opacity-40 disabled:cursor-default cursor-pointer transition-colors'
 
 export const ProfileModelKeysSettings: React.FC = () => {
     const { data, isLoading, error: listError } = useByokList(true)
@@ -37,14 +64,13 @@ export const ProfileModelKeysSettings: React.FC = () => {
     const [showKey, setShowKey] = useState(false)
     const [formError, setFormError] = useState<string | null>(null)
     const [rowError, setRowError] = useState<string | null>(null)
-    const [sourceError, setSourceError] = useState<string | null>(null)
-
-    // phones: the + in the top bar opens the Add key dialog (P3)
-    useSettingsTopBarAction('Add key', () => setIsAddOpen(true))
+    const [removing, setRemoving] = useState<ByokCredential | null>(null)
+    const [removeError, setRemoveError] = useState<string | null>(null)
 
     const providers = useMemo(() => data?.providers ?? [], [data])
     const credentials = useMemo(() => data?.credentials ?? [], [data])
     const nameOf = (id: string) => providers.find((p) => p.id === id)?.name || id
+    const isSaved = (id: string) => credentials.some((c) => c.provider === id)
 
     const filteredProviders = useMemo(() => {
         const q = providerQuery.trim().toLowerCase()
@@ -55,6 +81,14 @@ export const ProfileModelKeysSettings: React.FC = () => {
             : providers
     }, [providers, providerQuery])
 
+    const openAdd = () => {
+        setSelectedProvider(null)
+        setIsAddOpen(true)
+    }
+
+    // phones: the + in the top bar opens the Add key dialog
+    useSettingsTopBarAction('Add key', openAdd)
+
     const closeAdd = () => {
         setIsAddOpen(false)
         setSelectedProvider(null)
@@ -64,17 +98,23 @@ export const ProfileModelKeysSettings: React.FC = () => {
         setFormError(null)
     }
 
-    const openAdd = (provider?: ByokProvider) => {
-        setSelectedProvider(provider ?? null)
-        setIsAddOpen(true)
+    const pickProvider = (provider: ByokProvider | null) => {
+        setSelectedProvider(provider)
+        setApiKey('')
+        setShowKey(false)
+        setFormError(null)
     }
 
     const handleSave = async (event: React.FormEvent) => {
         event.preventDefault()
-        if (!selectedProvider || !apiKey.trim()) return
+        // the modal is portaled, so stop the submit reaching a form behind it
+        event.stopPropagation()
+        const key = apiKey.trim()
+        // Enter while a save runs must not send the key twice
+        if (!selectedProvider || !key || saveKey.isPending) return
         setFormError(null)
         try {
-            await saveKey.mutateAsync({ provider: selectedProvider.id, apiKey: apiKey.trim() })
+            await saveKey.mutateAsync({ provider: selectedProvider.id, apiKey: key })
             closeAdd()
         } catch (err) {
             setFormError(errorText(err, 'December could not save this key. Try again.'))
@@ -82,6 +122,7 @@ export const ProfileModelKeysSettings: React.FC = () => {
     }
 
     const handleRefresh = async (credential: ByokCredential) => {
+        if (refreshKey.isPending) return
         setRowError(null)
         try {
             await refreshKey.mutateAsync(credential.provider)
@@ -90,28 +131,36 @@ export const ProfileModelKeysSettings: React.FC = () => {
         }
     }
 
-    const handleRemove = async (credential: ByokCredential) => {
-        setRowError(null)
+    const openRemove = (credential: ByokCredential) => {
+        setRemoveError(null)
+        setRemoving(credential)
+    }
+
+    const closeRemove = () => {
+        if (removeKey.isPending) return
+        setRemoving(null)
+        setRemoveError(null)
+    }
+
+    const handleRemove = async (event: React.FormEvent) => {
+        event.preventDefault()
+        event.stopPropagation()
+        if (!removing || removeKey.isPending) return
+        setRemoveError(null)
         try {
-            await removeKey.mutateAsync(credential.provider)
+            await removeKey.mutateAsync(removing.provider)
+            setRemoving(null)
         } catch (err) {
-            setRowError(errorText(err, 'December could not remove this key. Try again.'))
+            setRemoveError(errorText(err, 'December could not remove this key. Try again.'))
         }
     }
+
+    const checkingProvider = refreshKey.isPending ? refreshKey.variables : null
+    const replacing = selectedProvider ? isSaved(selectedProvider.id) : false
 
     return (
         <>
             <SettingsPage title="API keys" subtitle={PAGE_SUBTITLES.yourKeys}>
-                {/* new sessions start on credits; runs from GitHub have no prompt box */}
-                <SettingsSection
-                    title="Model source"
-                    description="What new sessions and runs from GitHub start on."
-                >
-                    <SettingsRow label="Start on" hint={sourceError ?? undefined}>
-                        <ModelSourceControl onErrorChange={setSourceError} />
-                    </SettingsRow>
-                </SettingsSection>
-
                 <SettingsSection
                     title="Saved keys"
                     description="Keys December can run on."
@@ -119,7 +168,7 @@ export const ProfileModelKeysSettings: React.FC = () => {
                     action={
                         <button
                             type="button"
-                            onClick={() => openAdd()}
+                            onClick={openAdd}
                             className={cn(blueButtonClass, 'hidden md:flex items-center gap-1.5')}
                         >
                             <Plus className="w-3.5 h-3.5" />
@@ -130,62 +179,86 @@ export const ProfileModelKeysSettings: React.FC = () => {
                     <ErrorAlert
                         message={
                             rowError ||
-                            (listError
+                            (listError && data
                                 ? errorText(listError, 'December could not load your keys.')
                                 : null)
                         }
+                        onClear={() => setRowError(null)}
                     />
 
                     <ListBox>
                         {isLoading ? (
-                            <div className={listEmptyClass}>Loading keys...</div>
+                            <div aria-label="Loading keys">
+                                <ListSkeleton />
+                            </div>
+                        ) : listError && !data ? (
+                            <div role="alert" className={listEmptyClass}>
+                                {errorText(listError, 'December could not load your keys.')}
+                            </div>
                         ) : credentials.length === 0 ? (
-                            <div className={listEmptyClass}>No keys yet</div>
+                            <SettingsEmptyArt art="keys" title="No keys yet">
+                                <button
+                                    type="button"
+                                    onClick={openAdd}
+                                    className={`bg-[#191919] ${listActionButtonClass}`}
+                                >
+                                    Add key
+                                </button>
+                            </SettingsEmptyArt>
                         ) : (
                             <ListRows>
-                                {credentials.map((credential) => (
-                                    <div
-                                        key={credential.provider}
-                                        data-testid={`byok-row-${credential.provider}`}
-                                        className="flex items-center justify-between gap-3 px-3.5 md:px-4 py-3"
-                                    >
-                                        <div className="flex flex-col min-w-0">
-                                            <span className="text-[13px] font-medium">
-                                                {nameOf(credential.provider)}
-                                            </span>
-                                            <span className="text-[12px] text-[#7B7A79] truncate">
-                                                {credential.keyHint
-                                                    ? `••••${credential.keyHint}`
-                                                    : '••••'}{' '}
-                                                · {credential.models.length} models · checked{' '}
-                                                {formatDate(credential.verifiedAt)} · last used{' '}
-                                                {formatDate(credential.lastUsedAt)}
-                                            </span>
+                                {credentials.map((credential) => {
+                                    const name = nameOf(credential.provider)
+                                    const isChecking = checkingProvider === credential.provider
+                                    return (
+                                        <div
+                                            key={credential.provider}
+                                            data-testid={`byok-row-${credential.provider}`}
+                                            className={listRowClass}
+                                        >
+                                            <div className="flex flex-col min-w-0 flex-1">
+                                                <span className={listRowTitleClass}>{name}</span>
+                                                <span className={listRowNoteClass}>
+                                                    {isChecking
+                                                        ? 'Checking...'
+                                                        : credentialNote(credential)}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRefresh(credential)}
+                                                    disabled={refreshKey.isPending}
+                                                    aria-label={`Check ${name} key again`}
+                                                    title="Check again"
+                                                    className={cn(
+                                                        rowIconButtonClass,
+                                                        'hover:text-[#D6D5C9]'
+                                                    )}
+                                                >
+                                                    {isChecking ? (
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    ) : (
+                                                        <RefreshCw className="w-3.5 h-3.5" />
+                                                    )}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openRemove(credential)}
+                                                    disabled={isChecking}
+                                                    aria-label={`Remove ${name} key`}
+                                                    title="Remove"
+                                                    className={cn(
+                                                        rowIconButtonClass,
+                                                        'hover:text-red-400'
+                                                    )}
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRefresh(credential)}
-                                                disabled={refreshKey.isPending}
-                                                aria-label={`Check ${nameOf(credential.provider)} key again`}
-                                                title="Check the key again and update its models"
-                                                className="p-1.5 rounded-lg text-[#7B7A79] hover:text-[#D6D5C9] hover:bg-white/5 disabled:opacity-40 cursor-pointer"
-                                            >
-                                                <RefreshCw className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemove(credential)}
-                                                disabled={removeKey.isPending}
-                                                aria-label={`Remove ${nameOf(credential.provider)} key`}
-                                                title="Remove key"
-                                                className="p-1.5 rounded-lg text-[#7B7A79] hover:text-red-400 hover:bg-white/5 disabled:opacity-40 cursor-pointer"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </ListRows>
                         )}
                     </ListBox>
@@ -195,8 +268,15 @@ export const ProfileModelKeysSettings: React.FC = () => {
             <Modal
                 isOpen={isAddOpen}
                 onClose={closeAdd}
-                title={selectedProvider ? `Add ${selectedProvider.name} key` : 'Add key'}
-                description="December checks the key with the provider before it saves it."
+                title={
+                    selectedProvider
+                        ? `${replacing ? 'Replace' : 'Add'} ${selectedProvider.name} key`
+                        : 'Add key'
+                }
+                description={
+                    selectedProvider?.keyHint ||
+                    'December checks the key with the provider before it saves it.'
+                }
                 variant="premium"
                 showLogo={false}
                 sheetOnPhone
@@ -212,31 +292,28 @@ export const ProfileModelKeysSettings: React.FC = () => {
                                 aria-label="Search providers"
                                 value={providerQuery}
                                 onChange={(e) => setProviderQuery(e.target.value)}
-                                className="w-full pl-9 pr-3 py-2 bg-white/[0.03] border border-[#2B2A27] rounded-lg text-[13px] text-white placeholder:text-[#4A4948] focus:outline-none"
+                                className={cn(inputClass, 'pl-9')}
                             />
                         </div>
                         <div className="max-h-[320px] overflow-y-auto flex flex-col">
-                            {filteredProviders.map((provider) => {
-                                const saved = credentials.some((c) => c.provider === provider.id)
-                                return (
-                                    <button
-                                        key={provider.id}
-                                        type="button"
-                                        onClick={() => setSelectedProvider(provider)}
-                                        className="flex items-center justify-between px-3 py-2 rounded-lg text-left text-[13px] text-[#EDEDEF] hover:bg-white/5 cursor-pointer"
-                                    >
-                                        <span>{provider.name}</span>
-                                        {saved && (
-                                            <span className="text-[11px] text-[#7B7A79]">
-                                                saved, replace
-                                            </span>
-                                        )}
-                                    </button>
-                                )
-                            })}
+                            {filteredProviders.map((provider) => (
+                                <button
+                                    key={provider.id}
+                                    type="button"
+                                    onClick={() => pickProvider(provider)}
+                                    className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-left text-[13px] text-[#D6D5C9] hover:bg-white/5 hover:text-white cursor-pointer"
+                                >
+                                    <span className="truncate">{provider.name}</span>
+                                    {isSaved(provider.id) && (
+                                        <span className="shrink-0 text-[12px] text-[#7B7A79]">
+                                            Saved
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
                             {filteredProviders.length === 0 && (
                                 <span className="px-3 py-2 text-[13px] text-[#7B7A79]">
-                                    No provider matches.
+                                    No provider matches
                                 </span>
                             )}
                         </div>
@@ -251,15 +328,14 @@ export const ProfileModelKeysSettings: React.FC = () => {
                                     type={showKey ? 'text' : 'password'}
                                     autoFocus
                                     autoComplete="off"
+                                    autoCapitalize="off"
                                     spellCheck={false}
-                                    placeholder={
-                                        selectedProvider.keyHint
-                                            ? selectedProvider.keyHint
-                                            : 'Paste your key'
-                                    }
+                                    maxLength={4096}
+                                    placeholder="Paste your key"
                                     value={apiKey}
                                     onChange={(e) => setApiKey(e.target.value)}
-                                    className="w-full bg-white/[0.03] border border-[#2B2A27] rounded-lg pl-3.5 pr-10 py-2.5 text-white text-[13px] font-mono focus:outline-none placeholder:text-[#4A4948]"
+                                    disabled={saveKey.isPending}
+                                    className={cn(inputClass, 'pr-10 font-mono')}
                                     required
                                 />
                                 <button
@@ -275,11 +351,6 @@ export const ProfileModelKeysSettings: React.FC = () => {
                                     )}
                                 </button>
                             </div>
-                            {selectedProvider.keyHint && (
-                                <span className="text-[12px] text-[#7B7A79]">
-                                    {selectedProvider.keyHint}
-                                </span>
-                            )}
                             <a
                                 href={selectedProvider.keyUrl}
                                 target="_blank"
@@ -291,25 +362,17 @@ export const ProfileModelKeysSettings: React.FC = () => {
                             </a>
                         </div>
 
-                        {formError && (
-                            <p role="alert" className="text-[12.5px] text-red-500 font-medium">
-                                {formError}
-                            </p>
-                        )}
+                        <FormError>{formError}</FormError>
 
                         <ModalActions
                             onCancel={closeAdd}
-                            submitLabel="Add key"
+                            submitLabel={replacing ? 'Replace key' : 'Add key'}
                             submitDisabled={!apiKey.trim()}
                             isPending={saveKey.isPending}
                             leading={
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setSelectedProvider(null)
-                                        setApiKey('')
-                                        setFormError(null)
-                                    }}
+                                    onClick={() => pickProvider(null)}
                                     disabled={saveKey.isPending}
                                     className="text-[13px] text-[#8F8E8D] hover:text-white cursor-pointer disabled:opacity-50"
                                 >
@@ -319,6 +382,26 @@ export const ProfileModelKeysSettings: React.FC = () => {
                         />
                     </form>
                 )}
+            </Modal>
+
+            <Modal
+                isOpen={removing !== null}
+                onClose={closeRemove}
+                title={removing ? `Remove ${nameOf(removing.provider)} key` : 'Remove key'}
+                description="December stops using this key. You can add it again later."
+                variant="premium"
+                showLogo={false}
+                sheetOnPhone
+            >
+                <form onSubmit={handleRemove} className="flex flex-col gap-4">
+                    <FormError>{removeError}</FormError>
+                    <ModalActions
+                        onCancel={closeRemove}
+                        submitLabel="Remove"
+                        isPending={removeKey.isPending}
+                        danger
+                    />
+                </form>
             </Modal>
         </>
     )

@@ -90,18 +90,6 @@ async function updateToolDenyRules(id: string, toolDenyRules: string[]) {
     })
 }
 
-async function countProviderCredentials(userId: string) {
-    return prisma.providerCredential.count({ where: { userId } })
-}
-
-async function updateModelSource(id: string, defaultModelSource: 'CREDITS' | 'OWN_KEY') {
-    return prisma.user.update({
-        where: { id },
-        data: { defaultModelSource },
-        select: { defaultModelSource: true },
-    })
-}
-
 async function findPreferences(id: string) {
     return prisma.user.findUnique({
         where: { id },
@@ -138,10 +126,6 @@ async function findSandboxSettings(userId: string) {
         select: {
             idleStopMinutes: true,
             archiveAfterDays: true,
-            repositorySettings: {
-                select: { repoFullName: true, setupCommands: true },
-                orderBy: { repoFullName: 'asc' },
-            },
         },
     })
 }
@@ -155,18 +139,6 @@ async function updateSandboxSettings(
         data: settings,
         select: { id: true },
     })
-}
-
-async function upsertSetupCommands(userId: string, repoFullName: string, setupCommands: string) {
-    return prisma.repositorySetting.upsert({
-        where: { userId_repoFullName: { userId, repoFullName } },
-        create: { userId, repoFullName, setupCommands },
-        update: { setupCommands },
-    })
-}
-
-async function deleteSetupCommands(userId: string, repoFullName: string) {
-    return prisma.repositorySetting.deleteMany({ where: { userId, repoFullName } })
 }
 
 /**
@@ -247,16 +219,6 @@ async function createFeedback(userId: string, rating: string | null, feedback: s
     })
 }
 
-async function findUserByEmail(email: string) {
-    return prisma.user.findUnique({
-        where: { email },
-        select: {
-            id: true,
-            name: true,
-        },
-    })
-}
-
 async function disableProductUpdates(id: string) {
     return prisma.user.updateMany({
         where: { id },
@@ -265,7 +227,6 @@ async function disableProductUpdates(id: string) {
 }
 
 export const settingRepository = {
-    countProviderCredentials,
     disableProductUpdates,
     findUserByIdForInfo,
     countGithubInstallations,
@@ -274,7 +235,6 @@ export const settingRepository = {
     updateUserName,
 
     updateNotifications,
-    updateModelSource,
     updateSessionDefaults,
     findToolDenyRules,
     updateToolDenyRules,
@@ -284,13 +244,10 @@ export const settingRepository = {
     upsertPullRequestSettings,
     findSandboxSettings,
     updateSandboxSettings,
-    upsertSetupCommands,
-    deleteSetupCommands,
     archiveInactiveSessions,
 
     findOnboardingSource,
     updateOnboardingStep,
     markOnboardingCompleted,
     createFeedback,
-    findUserByEmail,
 }

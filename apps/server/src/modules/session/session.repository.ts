@@ -1,4 +1,5 @@
 import { Prisma, prisma } from '@december/database'
+import { STALE_SANDBOX_START_MS } from '@december/shared'
 
 import { AppError } from '../../shared/appError'
 import { escapeLike } from '../../shared/escape-like'
@@ -596,10 +597,23 @@ export async function findSessionRunState(sessionId: string, userId: string) {
     })
 }
 
-/** the sessions of this user whose sandbox starts or runs, newest first (#637) */
-export async function findRunningSandboxes(userId: string) {
+/**
+ * The sessions of this user whose sandbox starts or runs, newest first (#637). A start
+ * that has gone on for too long is left over from a crashed worker: the worker does not
+ * count it as running, so the list does not show it either.
+ */
+export async function findRunningSandboxes(userId: string, now: Date = new Date()) {
     return prisma.session.findMany({
-        where: { userId, sandboxStatus: { in: ['STARTING', 'RUNNING'] } },
+        where: {
+            userId,
+            OR: [
+                { sandboxStatus: 'RUNNING' },
+                {
+                    sandboxStatus: 'STARTING',
+                    updatedAt: { gt: new Date(now.getTime() - STALE_SANDBOX_START_MS) },
+                },
+            ],
+        },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         // far over the 10 running sandboxes a user can have (#624)
         take: 100,

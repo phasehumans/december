@@ -1,8 +1,7 @@
-import { ChevronDown, ChevronRight, Upload } from 'lucide-react'
 import React from 'react'
 
 import { useConnectionsNav } from '../hooks/useConnectionsNav'
-import { useConnectionsStore } from '../hooks/useConnectionsStore'
+import { usePlugins } from '../hooks/usePlugins'
 
 import {
     BackLink,
@@ -16,6 +15,7 @@ import {
     ListHeader,
     ListRow,
     ListRows,
+    ListSkeleton,
     LogoTile,
     ModalActions,
     MoreMenu,
@@ -32,121 +32,91 @@ import {
     matchesQuery,
 } from './ConnectionsUi'
 
-import type { ConnectionsPlugin, ConnectionsTab, PluginItemType } from '../types'
+import type { ApiMarketplacePlugin, ApiPlugin } from '../api/plugins'
 
 import { Modal } from '@/shared/components/ui/Modal'
+import { apiErrorMessage } from '@/shared/lib/apiErrorMessage'
 import { cn } from '@/shared/lib/utils'
 
-const ITEM_LABEL: Record<PluginItemType, [string, string]> = {
-    skill: ['skill', 'skills'],
-    mcp: ['MCP', 'MCPs'],
-    hook: ['hook', 'hooks'],
-    rule: ['rule', 'rules'],
-}
+// plugins in the cli's format (plugin.json, skills/, mcp.json), from the built-in
+// marketplace or a public github repository. cloud sessions get their files, skills and
+// mcp servers in the sandbox
 
-const ITEM_TAB: Record<PluginItemType, ConnectionsTab> = {
-    skill: 'skills',
-    mcp: 'mcps',
-    hook: 'hooks',
-    rule: 'rules',
-}
+const RUNS_COMMANDS = 'Plugins can run commands in your sessions.'
 
-const describeContents = (plugin: ConnectionsPlugin) => {
-    const counts = new Map<PluginItemType, number>()
-    for (const item of plugin.contents) counts.set(item.type, (counts.get(item.type) ?? 0) + 1)
-    return [...counts.entries()]
-        .map(([type, n]) => `${n} ${ITEM_LABEL[type][n === 1 ? 0 : 1]}`)
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
+
+/** "2 skills, 1 MCP" */
+export const describeContents = (plugin: Pick<ApiPlugin, 'skills' | 'mcpServers'>) =>
+    [
+        plugin.skills.length > 0 ? plural(plugin.skills.length, 'skill', 'skills') : '',
+        plugin.mcpServers.length > 0 ? plural(plugin.mcpServers.length, 'MCP', 'MCPs') : '',
+    ]
+        .filter(Boolean)
         .join(', ')
-}
 
-const REPO_PATTERN = /^(?:https:\/\/github\.com\/)?([\w.-]+\/[\w.-]+?)(?:\.git)?\/?$/
+const formatSize = (bytes: number) =>
+    bytes < 1024
+        ? `${bytes} B`
+        : bytes < 1024 * 1024
+          ? `${Math.round(bytes / 1024)} KB`
+          : `${(bytes / 1024 / 1024).toFixed(1)} MB`
 
 export const PluginsTab: React.FC<{ itemId?: string }> = ({ itemId }) => {
     const { addParam, closeAdd } = useConnectionsNav()
     return (
         <>
             {itemId ? <PluginPage itemId={itemId} /> : <PluginsList />}
-            {!itemId && addParam === 'repo' && <AddFromRepoModal onClose={closeAdd} />}
-            {!itemId && addParam === 'zip' && <UploadZipModal onClose={closeAdd} />}
+            {!itemId && addParam !== null && <AddPluginModal onClose={closeAdd} />}
         </>
     )
 }
 
-/** runs the one-time "plugins can run commands" notice before the first install */
-const useInstall = () => {
-    const hasSeenInstallNotice = useConnectionsStore((s) => s.hasSeenInstallNotice)
-    const markInstallNoticeSeen = useConnectionsStore((s) => s.markInstallNoticeSeen)
-    const setPluginInstalled = useConnectionsStore((s) => s.setPluginInstalled)
-    const [installing, setInstalling] = React.useState<string | null>(null)
-    const [justInstalled, setJustInstalled] = React.useState<string | null>(null)
-    const [asking, setAsking] = React.useState<string | null>(null)
-    const timers = React.useRef<ReturnType<typeof setTimeout>[]>([])
-
-    React.useEffect(() => {
-        const list = timers.current
-        return () => list.forEach(clearTimeout)
-    }, [])
-
-    const runInstall = (name: string) => {
-        setInstalling(name)
-        // demo only: pretend the install takes a moment
-        timers.current.push(
-            setTimeout(() => {
-                setPluginInstalled(name, true)
-                setInstalling(null)
-                setJustInstalled(name)
-                timers.current.push(setTimeout(() => setJustInstalled(null), 2000))
-            }, 900)
-        )
-    }
-
-    const install = (name: string) => {
-        if (!hasSeenInstallNotice) setAsking(name)
-        else runInstall(name)
-    }
-
-    const notice = (
-        <Modal
-            isOpen={asking !== null}
-            onClose={() => setAsking(null)}
-            title={`Install ${asking ?? ''}?`}
-            variant="premium"
-            showLogo={false}
-        >
-            <form
-                onSubmit={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    if (asking) runInstall(asking)
-                    markInstallNoticeSeen()
-                    setAsking(null)
-                }}
-                className="flex flex-col gap-4"
-            >
-                <p className="text-[13px] text-[#8F8E8D] leading-relaxed">
-                    Plugins can run commands in your sessions.
-                </p>
-                <ModalActions onCancel={() => setAsking(null)} submitLabel="Install" />
-            </form>
-        </Modal>
-    )
-
-    return { install, installing, justInstalled, notice }
-}
-
 const PluginsList: React.FC = () => {
     const { toItem, openAdd } = useConnectionsNav()
-    const plugins = useConnectionsStore((s) => s.plugins)
-    const setPluginEnabled = useConnectionsStore((s) => s.setPluginEnabled)
-    const setPluginInstalled = useConnectionsStore((s) => s.setPluginInstalled)
+    const {
+        plugins,
+        isLoading,
+        loadFailed,
+        marketplaces,
+        marketplaceLoading,
+        marketplaceFailed,
+        install,
+        setEnabled,
+        uninstall,
+        update,
+    } = usePlugins({ withMarketplace: true })
     const [query, setQuery] = React.useState('')
-    const [menuOpen, setMenuOpen] = React.useState(false)
-    const [uninstalling, setUninstalling] = React.useState<ConnectionsPlugin | null>(null)
-    const { install, installing, justInstalled, notice } = useInstall()
+    const [uninstalling, setUninstalling] = React.useState<ApiPlugin | null>(null)
+    const [installing, setInstalling] = React.useState<ApiMarketplacePlugin | null>(null)
+    const [busy, setBusy] = React.useState<string | null>(null)
+    const [justInstalled, setJustInstalled] = React.useState<string | null>(null)
+    const [actionError, setActionError] = React.useState<string | null>(null)
 
-    const installed = plugins.filter((p) => p.installed && matchesQuery(query, p.name))
-    const marketplace = plugins.filter(
-        (p) => (!p.installed || p.name === justInstalled) && matchesQuery(query, p.name)
+    /** runs a change from a row; a change the server refuses shows above the list */
+    const run = async (name: string, change: () => Promise<unknown>, fallback: string) => {
+        setActionError(null)
+        setBusy(name)
+        try {
+            await change()
+            return true
+        } catch (error) {
+            setActionError(apiErrorMessage(error, fallback))
+            return false
+        } finally {
+            setBusy(null)
+        }
+    }
+
+    const filtered = plugins.filter((plugin) =>
+        matchesQuery(query, plugin.name, plugin.description, plugin.source)
+    )
+    const catalog = marketplaces.flatMap((market) => market.plugins)
+    const available = catalog.filter(
+        (entry) =>
+            (!entry.installed || entry.name === justInstalled) &&
+            !plugins.some((plugin) => plugin.name === entry.name && entry.name !== justInstalled) &&
+            matchesQuery(query, entry.name, entry.description, entry.category)
     )
 
     return (
@@ -154,63 +124,45 @@ const PluginsList: React.FC = () => {
             <div className="flex items-center gap-2">
                 <SearchInput value={query} onChange={setQuery} placeholder="Search plugins" />
                 <span className="hidden md:block flex-1" />
-                <div className="relative">
-                    <PrimaryButton
-                        onClick={() => setMenuOpen((v) => !v)}
-                        trailing={<ChevronDown className="w-3.5 h-3.5" />}
-                    >
-                        Add plugin
-                    </PrimaryButton>
-                    {menuOpen && (
-                        <>
-                            <div
-                                className="fixed inset-0 z-40"
-                                onClick={() => setMenuOpen(false)}
-                            />
-                            <div className="absolute right-0 top-full mt-1.5 z-50 w-44 bg-[#1C1C1C] border border-[#2B2A27] rounded-xl shadow-2xl p-1 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100">
-                                {(
-                                    [
-                                        ['repo', 'From GitHub repo'],
-                                        ['zip', 'Upload .zip'],
-                                    ] as const
-                                ).map(([kind, label]) => (
-                                    <button
-                                        key={kind}
-                                        type="button"
-                                        onClick={() => {
-                                            setMenuOpen(false)
-                                            openAdd(kind)
-                                        }}
-                                        className="w-full px-2.5 py-1.5 rounded-lg text-[12px] text-[#D6D5C9] hover:text-white hover:bg-[#282828] text-left cursor-pointer"
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
+                <PrimaryButton onClick={() => openAdd('repo')}>Add plugin</PrimaryButton>
             </div>
+            <FormError>{actionError}</FormError>
 
-            {installed.length > 0 && (
-                <div className="flex flex-col gap-2">
-                    <SectionTitle>Installed</SectionTitle>
-                    <ListBox>
-                        <ListHeader>
-                            <span className="w-7" />
-                            <span className="flex-1">Name</span>
-                            <span className="w-[160px]">Contains</span>
-                            <span className="w-[70px]">Version</span>
-                            <span className="w-[150px]" />
-                        </ListHeader>
+            <div className="flex flex-col gap-2">
+                <SectionTitle>Installed</SectionTitle>
+                <ListBox>
+                    <ListHeader>
+                        <span className="w-7" />
+                        <span className="flex-1">Name</span>
+                        <span className="w-[140px]">Contains</span>
+                        <span className="w-[70px]">Version</span>
+                        <span className="w-[150px]" />
+                    </ListHeader>
+                    {isLoading ? (
+                        <ListSkeleton />
+                    ) : loadFailed ? (
+                        <EmptyRow>Could not load plugins</EmptyRow>
+                    ) : plugins.length === 0 ? (
+                        <EmptyRow
+                            action={
+                                <SecondaryButton onClick={() => openAdd('repo')}>
+                                    Add plugin
+                                </SecondaryButton>
+                            }
+                        >
+                            No plugins yet
+                        </EmptyRow>
+                    ) : filtered.length === 0 ? (
+                        <EmptyRow>No results for "{query.trim()}"</EmptyRow>
+                    ) : (
                         <ListRows>
-                            {installed.map((plugin) => (
+                            {filtered.map((plugin) => (
                                 <ListRow
                                     key={plugin.name}
                                     onClick={() => toItem('plugins', plugin.name)}
                                 >
                                     <span className={cn(!plugin.enabled && 'opacity-50')}>
-                                        <LogoTile brand={plugin.brand} name={plugin.name} />
+                                        <LogoTile name={plugin.name} />
                                     </span>
                                     <span className="flex-1 min-w-0 flex flex-col">
                                         <span
@@ -225,18 +177,17 @@ const PluginsList: React.FC = () => {
                                             {describeContents(plugin) || plugin.source}
                                         </span>
                                     </span>
-                                    <span className="hidden md:block w-[160px] truncate text-[12.5px] text-[#7B7A79]">
+                                    <span className="hidden md:block w-[140px] truncate text-[12.5px] text-[#7B7A79]">
                                         {describeContents(plugin)}
                                     </span>
-                                    <span className="hidden md:block w-[70px] font-mono text-[12px] text-[#7B7A79]">
-                                        {plugin.version}
+                                    <span className="hidden md:block w-[70px] truncate font-mono text-[12px] text-[#7B7A79]">
+                                        {plugin.version ?? ''}
                                     </span>
-                                    <span className="md:w-[150px] flex items-center justify-end gap-2">
+                                    <span className="md:w-[150px] flex items-center justify-end gap-2 shrink-0">
                                         {plugin.name === justInstalled && (
                                             <DoneHint>Installed</DoneHint>
                                         )}
-                                        {plugin.updateTo && <Pill tone="warn">Update</Pill>}
-                                        {!plugin.enabled && <Pill>Off</Pill>}
+                                        {plugin.updateAvailable && <Pill tone="warn">Update</Pill>}
                                         <RowActions
                                             noun="plugin"
                                             onDelete={() => setUninstalling(plugin)}
@@ -244,19 +195,54 @@ const PluginsList: React.FC = () => {
                                         <Switch
                                             checked={plugin.enabled}
                                             label={`Turn ${plugin.name} on or off`}
-                                            onChange={(on) => setPluginEnabled(plugin.name, on)}
+                                            onChange={(on) =>
+                                                void run(
+                                                    plugin.name,
+                                                    () => setEnabled(plugin.name, on),
+                                                    'Could not update the plugin'
+                                                )
+                                            }
+                                        />
+                                        <MoreMenu
+                                            mobileOnly
+                                            label={`${plugin.name} options`}
+                                            items={[
+                                                {
+                                                    label: 'Update',
+                                                    hidden: busy === plugin.name,
+                                                    onClick: () =>
+                                                        void run(
+                                                            plugin.name,
+                                                            () => update(plugin.name),
+                                                            'Could not update the plugin'
+                                                        ),
+                                                },
+                                                {
+                                                    label: 'Uninstall',
+                                                    danger: true,
+                                                    onClick: () => setUninstalling(plugin),
+                                                },
+                                            ]}
                                         />
                                     </span>
                                 </ListRow>
                             ))}
                         </ListRows>
-                    </ListBox>
-                </div>
-            )}
+                    )}
+                </ListBox>
+            </div>
 
             <div className="flex flex-col gap-2">
                 <SectionTitle>Marketplace</SectionTitle>
-                {marketplace.length === 0 ? (
+                {marketplaceLoading ? (
+                    <ListBox>
+                        <ListSkeleton />
+                    </ListBox>
+                ) : marketplaceFailed ? (
+                    <ListBox>
+                        <EmptyRow>Could not load the marketplace</EmptyRow>
+                    </ListBox>
+                ) : available.length === 0 ? (
                     <ListBox>
                         <EmptyRow>
                             {query.trim()
@@ -266,24 +252,25 @@ const PluginsList: React.FC = () => {
                     </ListBox>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                        {marketplace.map((plugin) => (
+                        {available.map((entry) => (
                             <div
-                                key={plugin.name}
+                                key={entry.name}
+                                title={entry.description}
                                 className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl p-3 flex items-center gap-2.5 min-w-0"
                             >
-                                <LogoTile brand={plugin.brand} name={plugin.name} />
+                                <LogoTile name={entry.name} />
                                 <span className="flex-1 min-w-0 truncate text-[13px] text-[#D6D5C9]">
-                                    {plugin.name}
+                                    {entry.name}
                                 </span>
-                                {plugin.name === justInstalled ? (
+                                {entry.name === justInstalled ? (
                                     <DoneHint>Installed</DoneHint>
                                 ) : (
                                     <SecondaryButton
                                         small
-                                        disabled={installing !== null}
-                                        onClick={() => install(plugin.name)}
+                                        disabled={busy !== null}
+                                        onClick={() => setInstalling(entry)}
                                     >
-                                        {installing === plugin.name ? (
+                                        {busy === entry.name ? (
                                             <>
                                                 <Spinner />
                                                 Installing
@@ -299,20 +286,55 @@ const PluginsList: React.FC = () => {
                 )}
             </div>
 
-            {notice}
+            <Modal
+                isOpen={installing !== null}
+                onClose={() => setInstalling(null)}
+                title={`Install ${installing?.name ?? ''}?`}
+                description={RUNS_COMMANDS}
+                variant="premium"
+                showLogo={false}
+                sheetOnPhone
+            >
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        const entry = installing
+                        setInstalling(null)
+                        if (!entry) return
+                        void run(
+                            entry.name,
+                            () => install(entry.name),
+                            'Could not install the plugin'
+                        ).then((ok) => {
+                            if (ok) setJustInstalled(entry.name)
+                        })
+                    }}
+                    className="flex flex-col gap-4"
+                >
+                    <ModalActions onCancel={() => setInstalling(null)} submitLabel="Install" />
+                </form>
+            </Modal>
             <ConfirmModal
                 isOpen={uninstalling !== null}
                 title={`Uninstall ${uninstalling?.name ?? ''}?`}
                 body={
-                    uninstalling && uninstalling.contents.length > 0
+                    uninstalling && describeContents(uninstalling)
                         ? `Its ${describeContents(uninstalling)} are removed too.`
                         : undefined
                 }
                 confirmLabel="Uninstall"
                 onClose={() => setUninstalling(null)}
                 onConfirm={() => {
-                    if (uninstalling) setPluginInstalled(uninstalling.name, false)
+                    const plugin = uninstalling
                     setUninstalling(null)
+                    if (plugin) {
+                        void run(
+                            plugin.name,
+                            () => uninstall(plugin.name),
+                            'Could not uninstall the plugin'
+                        )
+                    }
                 }}
             />
         </div>
@@ -320,289 +342,270 @@ const PluginsList: React.FC = () => {
 }
 
 const PluginPage: React.FC<{ itemId: string }> = ({ itemId }) => {
-    const { toTab, toItem } = useConnectionsNav()
-    const plugins = useConnectionsStore((s) => s.plugins)
-    const setPluginEnabled = useConnectionsStore((s) => s.setPluginEnabled)
-    const setPluginInstalled = useConnectionsStore((s) => s.setPluginInstalled)
-    const updatePlugin = useConnectionsStore((s) => s.updatePlugin)
+    const { toTab } = useConnectionsNav()
+    const { plugins, isLoading, loadFailed, setEnabled, update, uninstall } = usePlugins()
     const [isUninstalling, setIsUninstalling] = React.useState(false)
-    const { install, installing, notice } = useInstall()
+    const [busy, setBusy] = React.useState<'update' | 'uninstall' | 'switch' | null>(null)
+    const [notice, setNotice] = React.useState<string | null>(null)
+    const [error, setError] = React.useState<string | null>(null)
 
-    const plugin = plugins.find((p) => p.name === itemId)
-    if (!plugin) {
+    const back = <BackLink label="Plugins" onClick={() => toTab('plugins')} />
+    const plugin = plugins.find((row) => row.name === itemId)
+    if (isLoading || loadFailed || !plugin) {
         return (
             <div className="flex flex-col">
-                <BackLink label="Plugins" onClick={() => toTab('plugins')} />
+                {back}
                 <ListBox className="mt-4">
-                    <EmptyRow>Plugin not found</EmptyRow>
+                    {isLoading ? (
+                        <ListSkeleton />
+                    ) : (
+                        <EmptyRow>
+                            {loadFailed ? 'Could not load plugins' : 'Plugin not found'}
+                        </EmptyRow>
+                    )}
                 </ListBox>
             </div>
         )
     }
 
-    const openItem = (type: PluginItemType, name: string) => {
-        if (type === 'hook') toTab('hooks')
-        else toItem(ITEM_TAB[type], name)
+    const act = async (
+        kind: 'update' | 'uninstall' | 'switch',
+        change: () => Promise<void>,
+        fallback: string
+    ) => {
+        setError(null)
+        setNotice(null)
+        setBusy(kind)
+        try {
+            await change()
+        } catch (failure) {
+            setError(apiErrorMessage(failure, fallback))
+        } finally {
+            setBusy(null)
+        }
     }
+
+    const facts = [
+        {
+            label: 'Source',
+            value: <span className="font-mono text-[12.5px]">{plugin.source}</span>,
+        },
+        {
+            label: 'Version',
+            value: (
+                <span className="font-mono text-[12.5px]">
+                    {[plugin.version, plugin.commitSha?.slice(0, 7)].filter(Boolean).join(' · ') ||
+                        '-'}
+                </span>
+            ),
+        },
+        {
+            label: 'Files',
+            value: `${plural(plugin.fileCount, 'file', 'files')} · ${formatSize(plugin.sizeBytes)}`,
+        },
+        ...(plugin.env.length > 0
+            ? [
+                  {
+                      label: 'Needs secrets',
+                      value: (
+                          <span className="font-mono text-[12.5px]">{plugin.env.join(', ')}</span>
+                      ),
+                  },
+              ]
+            : []),
+    ]
+    const contents = [
+        ...plugin.skills.map((skill) => ({
+            key: `skill-${skill.name}`,
+            name: skill.name,
+            type: 'Skill',
+        })),
+        ...plugin.mcpServers.map((server) => ({
+            key: `mcp-${server.name}`,
+            name: server.name,
+            type: server.transport === 'stdio' ? 'MCP (command)' : 'MCP (url)',
+        })),
+    ]
 
     return (
         <div className="flex flex-col">
-            <BackLink label="Plugins" onClick={() => toTab('plugins')} />
-            <DetailHeader
-                title={plugin.name}
-                logo={<LogoTile brand={plugin.brand} name={plugin.name} large />}
-            >
-                {plugin.installed && (
-                    <Switch
-                        checked={plugin.enabled}
-                        label="Turn this plugin on or off"
-                        onChange={(on) => setPluginEnabled(plugin.name, on)}
-                    />
-                )}
+            {back}
+            <DetailHeader title={plugin.name} logo={<LogoTile name={plugin.name} large />}>
+                <Switch
+                    checked={plugin.enabled}
+                    disabled={busy === 'switch'}
+                    label="Turn this plugin on or off"
+                    onChange={(on) =>
+                        void act(
+                            'switch',
+                            () => setEnabled(plugin.name, on),
+                            'Could not update the plugin'
+                        )
+                    }
+                />
                 <span className="flex-1" />
-                {plugin.installed ? (
-                    <>
-                        {plugin.updateTo && (
-                            <SecondaryButton onClick={() => updatePlugin(plugin.name)}>
-                                Update to {plugin.updateTo}
-                            </SecondaryButton>
-                        )}
-                        <MoreMenu
-                            label="Plugin options"
-                            items={[
-                                {
-                                    label: 'Uninstall',
-                                    danger: true,
-                                    onClick: () => setIsUninstalling(true),
-                                },
-                            ]}
-                        />
-                    </>
-                ) : (
-                    <SecondaryButton
-                        disabled={installing !== null}
-                        onClick={() => install(plugin.name)}
-                    >
-                        {installing === plugin.name ? (
-                            <>
-                                <Spinner />
-                                Installing
-                            </>
-                        ) : (
-                            'Install'
-                        )}
-                    </SecondaryButton>
-                )}
-            </DetailHeader>
-
-            <div className="mb-8">
-                <FactsBox
-                    rows={[
-                        { label: 'Source', value: plugin.source },
+                <SecondaryButton
+                    disabled={busy !== null}
+                    onClick={() =>
+                        void act(
+                            'update',
+                            async () => {
+                                const { changed } = await update(plugin.name)
+                                setNotice(changed ? 'Updated' : 'Up to date')
+                            },
+                            'Could not update the plugin'
+                        )
+                    }
+                >
+                    {busy === 'update' ? (
+                        <>
+                            <Spinner />
+                            Updating
+                        </>
+                    ) : plugin.updateAvailable ? (
+                        'Update available'
+                    ) : (
+                        'Update'
+                    )}
+                </SecondaryButton>
+                <MoreMenu
+                    label="Plugin options"
+                    items={[
                         {
-                            label: 'Version',
-                            value: (
-                                <span className="font-mono text-[12.5px]">
-                                    {plugin.version} · {plugin.commit}
-                                </span>
-                            ),
+                            label: 'Uninstall',
+                            danger: true,
+                            onClick: () => setIsUninstalling(true),
                         },
                     ]}
                 />
+            </DetailHeader>
+            {plugin.description && (
+                <p className="-mt-3 mb-4 text-[13px] text-[#9A9998]">{plugin.description}</p>
+            )}
+            <div className="flex items-center gap-2 mb-3 min-h-0 empty:hidden">
+                {notice && <DoneHint>{notice}</DoneHint>}
+                <FormError>{error}</FormError>
             </div>
 
-            {plugin.contents.length > 0 && (
-                <ListBox>
-                    <ListHeader>
-                        <span className="flex-1">Contains</span>
-                        <span className="w-[80px]">Type</span>
-                        <span className="w-4" />
-                    </ListHeader>
+            <div className="mb-6">
+                <FactsBox rows={facts} />
+            </div>
+
+            <ListBox>
+                <ListHeader>
+                    <span className="flex-1">Contains</span>
+                    <span className="w-[120px]">Type</span>
+                </ListHeader>
+                {contents.length === 0 ? (
+                    <EmptyRow>No skills or MCP servers</EmptyRow>
+                ) : (
                     <ListRows>
-                        {plugin.contents.map((item) => (
-                            <ListRow
-                                key={`${item.type}-${item.name}`}
-                                onClick={
-                                    plugin.installed
-                                        ? () => openItem(item.type, item.name)
-                                        : undefined
-                                }
-                            >
+                        {contents.map((item) => (
+                            <ListRow key={item.key}>
                                 <span className="flex-1 min-w-0 truncate font-mono text-[12.5px] text-[#D6D5C9]">
                                     {item.name}
                                 </span>
-                                <span className="w-[80px] text-[12.5px] text-[#7B7A79] capitalize">
-                                    {ITEM_LABEL[item.type][0]}
+                                <span className="w-[120px] shrink-0 text-right md:text-left text-[12.5px] text-[#7B7A79]">
+                                    {item.type}
                                 </span>
-                                {plugin.installed && (
-                                    <ChevronRight className="w-4 h-4 text-[#7B7A79]" />
-                                )}
                             </ListRow>
                         ))}
                     </ListRows>
-                </ListBox>
-            )}
+                )}
+            </ListBox>
 
-            {notice}
             <ConfirmModal
                 isOpen={isUninstalling}
                 title={`Uninstall ${plugin.name}?`}
                 body={
-                    plugin.contents.length > 0
+                    describeContents(plugin)
                         ? `Its ${describeContents(plugin)} are removed too.`
                         : undefined
                 }
                 confirmLabel="Uninstall"
                 onClose={() => setIsUninstalling(false)}
                 onConfirm={() => {
-                    setPluginInstalled(plugin.name, false)
                     setIsUninstalling(false)
-                    toTab('plugins')
+                    void act(
+                        'uninstall',
+                        async () => {
+                            await uninstall(plugin.name)
+                            toTab('plugins')
+                        },
+                        'Could not uninstall the plugin'
+                    )
                 }}
             />
         </div>
     )
 }
 
-const AddFromRepoModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+/** owner/repo, a github.com link or a marketplace name, like `december plugin install` */
+const AddPluginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const { toItem } = useConnectionsNav()
-    const plugins = useConnectionsStore((s) => s.plugins)
-    const addPluginFromRepo = useConnectionsStore((s) => s.addPluginFromRepo)
-    const [repo, setRepo] = React.useState('')
-    const [folder, setFolder] = React.useState('')
+    const { install } = usePlugins()
+    const [source, setSource] = React.useState('')
     const [error, setError] = React.useState<string | null>(null)
     const [isPending, setIsPending] = React.useState(false)
 
-    const handleSubmit = () => {
-        const match = REPO_PATTERN.exec(repo.trim())
-        if (!match) {
-            setError('Enter owner/repo or a GitHub URL')
-            return
-        }
-        const fullName = match[1]
-        const name = fullName.split('/')[1]
-        if (plugins.some((p) => p.name === name && p.installed)) {
-            setError('Already installed')
-            return
-        }
+    const handleSubmit = async () => {
+        const value = source.trim()
+        if (!value || isPending) return
         setError(null)
         setIsPending(true)
-        // demo only: pretend to fetch the repo
-        setTimeout(() => {
-            addPluginFromRepo(folder.trim() ? `${fullName}/${folder.trim()}` : fullName)
+        try {
+            const plugin = await install(value)
+            onClose()
+            toItem('plugins', plugin.name)
+        } catch (failure) {
+            setError(apiErrorMessage(failure, 'Could not install the plugin'))
+        } finally {
             setIsPending(false)
-            toItem('plugins', folder.trim().split('/').pop() || name)
-        }, 900)
+        }
     }
 
     return (
         <Modal
             isOpen
             onClose={onClose}
-            title="Add plugin from GitHub"
+            title="Add plugin"
+            description={RUNS_COMMANDS}
             variant="premium"
             showLogo={false}
+            sheetOnPhone
         >
             <form
                 onSubmit={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    handleSubmit()
+                    void handleSubmit()
                 }}
                 className="flex flex-col gap-4"
             >
                 <div className="flex flex-col gap-1.5">
-                    <label htmlFor="plugin-repo" className={fieldLabelClass}>
-                        Repository
+                    <label htmlFor="plugin-source" className={fieldLabelClass}>
+                        GitHub repository or plugin name
                     </label>
                     <input
-                        id="plugin-repo"
+                        id="plugin-source"
                         autoFocus
-                        value={repo}
+                        value={source}
+                        maxLength={300}
                         placeholder="owner/repo"
-                        onChange={(e) => setRepo(e.target.value)}
-                        className={cn(inputClass, 'font-mono')}
-                    />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                    <label htmlFor="plugin-folder" className={fieldLabelClass}>
-                        Folder (optional)
-                    </label>
-                    <input
-                        id="plugin-folder"
-                        value={folder}
-                        placeholder="plugins/release"
-                        onChange={(e) => setFolder(e.target.value)}
+                        autoCapitalize="off"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        onChange={(e) => setSource(e.target.value)}
                         className={cn(inputClass, 'font-mono')}
                     />
                 </div>
                 <FormError>{error}</FormError>
                 <ModalActions
                     onCancel={onClose}
-                    submitLabel="Add plugin"
-                    submitDisabled={!repo.trim()}
+                    submitLabel="Install"
+                    submitDisabled={!source.trim()}
                     isPending={isPending}
                 />
-            </form>
-        </Modal>
-    )
-}
-
-const UploadZipModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-    const { toItem } = useConnectionsNav()
-    const addPluginFromRepo = useConnectionsStore((s) => s.addPluginFromRepo)
-    const [file, setFile] = React.useState<File | null>(null)
-    const [error, setError] = React.useState<string | null>(null)
-    const inputRef = React.useRef<HTMLInputElement>(null)
-
-    const pick = (picked: File | undefined) => {
-        if (!picked) return
-        if (!picked.name.toLowerCase().endsWith('.zip')) {
-            setError('Choose a .zip file')
-            setFile(null)
-            return
-        }
-        setError(null)
-        setFile(picked)
-    }
-
-    return (
-        <Modal isOpen onClose={onClose} title="Upload plugin" variant="premium" showLogo={false}>
-            <form
-                onSubmit={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    if (!file) return
-                    const name = file.name.replace(/\.zip$/i, '')
-                    addPluginFromRepo(name)
-                    toItem('plugins', name)
-                }}
-                className="flex flex-col gap-4"
-            >
-                <button
-                    type="button"
-                    onClick={() => inputRef.current?.click()}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                        e.preventDefault()
-                        pick(e.dataTransfer.files?.[0])
-                    }}
-                    className="border border-dashed border-[#383736] hover:border-[#4A4948] rounded-xl py-10 flex flex-col items-center justify-center gap-2 bg-[#100E12]/30 transition-colors cursor-pointer"
-                >
-                    <Upload className="w-5 h-5 text-[#7B7A79]" />
-                    <span className="text-[13px] text-[#D6D5C9]">
-                        {file ? file.name : 'Drop a .zip or click to choose'}
-                    </span>
-                </button>
-                <input
-                    ref={inputRef}
-                    type="file"
-                    accept=".zip"
-                    className="hidden"
-                    onChange={(e) => pick(e.target.files?.[0])}
-                />
-                <FormError>{error}</FormError>
-                <ModalActions onCancel={onClose} submitLabel="Upload" submitDisabled={!file} />
             </form>
         </Modal>
     )

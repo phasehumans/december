@@ -7,6 +7,8 @@ import { isValidTimezone } from '../notification/notification.utils'
 
 import type {
     ReceiptData,
+    TransactionItem,
+    TransactionRow,
     UsageBucketSum,
     UsageDay,
     UsageDayBucket,
@@ -92,6 +94,23 @@ export const verifyRazorpayWebhookSignature = (data: {
 
     return crypto.timingSafeEqual(a, b)
 }
+
+// the rate when USD_TO_INR_RATE is not set, or is not a number above zero
+const DEFAULT_USD_TO_INR_RATE = 92.68
+
+/** the INR for one USD that a Razorpay order is charged at */
+export const usdToInrRate = (): number => {
+    const configured = process.env.USD_TO_INR_RATE
+        ? Number(process.env.USD_TO_INR_RATE)
+        : env.USD_TO_INR_RATE
+    return typeof configured === 'number' && Number.isFinite(configured) && configured > 0
+        ? configured
+        : DEFAULT_USD_TO_INR_RATE
+}
+
+/** the INR paise a top-up of USD cents is charged, in whole paise */
+export const toPaise = (amountInCents: number, rate: number): number =>
+    Math.round(amountInCents * rate)
 
 // the one-time free credits a user can request (#624 part 2)
 export const FREE_CREDITS_IN_CENTS = 500
@@ -256,6 +275,26 @@ export const toUsageHours = (buckets: UsageHourBucket[], sums: UsageBucketSum[])
 export const isReceiptPayment = (transaction: { status: string; provider: string }): boolean =>
     transaction.status === 'SUCCESS' &&
     (transaction.provider === 'RAZORPAY' || transaction.provider === 'COINBASE')
+
+const TRANSACTION_KINDS: Record<string, TransactionItem['kind']> = {
+    RAZORPAY: 'payment',
+    COINBASE: 'payment',
+    GRANT: 'grant',
+    ADJUSTMENT: 'adjustment',
+    REFERRAL: 'referral',
+    CODE: 'code',
+}
+
+/** a row of the payments list: what it is, and whether it has a receipt */
+export const toTransactionItem = (row: TransactionRow): TransactionItem => ({
+    id: row.id,
+    createdAt: row.createdAt,
+    amountInCents: row.amountInCents,
+    status: row.status === 'FAILED' ? 'FAILED' : 'SUCCESS',
+    kind: TRANSACTION_KINDS[row.provider] ?? 'adjustment',
+    code: row.provider === 'CODE' ? (row.code ?? 'GIFT') : null,
+    hasReceipt: isReceiptPayment(row),
+})
 
 /** an amount in cents or paise with its currency code. the pdf font has no rupee sign */
 const receiptMoney = (minorUnits: number, currency: string): string => {

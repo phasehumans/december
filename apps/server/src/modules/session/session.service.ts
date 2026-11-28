@@ -2016,6 +2016,7 @@ const continueAtLimit = async (data: ContinueAtLimit) => {
             effort: turn.effort,
             skills: [],
             disabledMcps: turn.disabledMcps,
+            disabledPlugins: turn.disabledPlugins,
             ...(userMessageSequence ? { userMessageSequence } : {}),
         })
     } catch (error) {
