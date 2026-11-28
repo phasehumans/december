@@ -2,42 +2,33 @@
 // the server saves them per user; the worker and the webhook read them with these defaults.
 
 export type AutoReview = 'asked' | 'mine' | 'all'
-export type ReviewCadence = 'once' | 'push'
 export type ReviewReplies = 'all' | 'mention' | 'off'
 
+// "open a pull request" is the prompt box default (User.defaultOpenPullRequest). a session
+// is always archived when its pull request merges, an automatic review runs once for each
+// pull request, on every repository the app can see, and bot comments are never answered
 export interface PullRequestSettingsValues {
     // opening (#637)
     branchPrefix: string
     prDraft: boolean
-    prCreate: 'auto' | 'ask'
     prAuthor: 'december' | 'user'
     commitAuthor: 'both' | 'december'
-    archiveOnMerge: boolean
     // github app (#568)
     githubCommentsEnabled: boolean
     reviewReplies: ReviewReplies
-    replyToBots: boolean
     fixFailedChecks: boolean
     autoReview: AutoReview
-    reviewCadence: ReviewCadence
-    // empty means every repository the app can see
-    reviewRepos: string[]
 }
 
 export const PULL_REQUEST_SETTING_DEFAULTS: PullRequestSettingsValues = {
     branchPrefix: 'december/',
     prDraft: false,
-    prCreate: 'auto',
     prAuthor: 'december',
     commitAuthor: 'both',
-    archiveOnMerge: true,
     githubCommentsEnabled: true,
     reviewReplies: 'mention',
-    replyToBots: false,
     fixFailedChecks: true,
     autoReview: 'asked',
-    reviewCadence: 'once',
-    reviewRepos: [],
 }
 
 const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
@@ -48,41 +39,22 @@ export const toPullRequestSettings = (
     row: Partial<Record<keyof PullRequestSettingsValues, unknown>> | null | undefined
 ): PullRequestSettingsValues => {
     const d = PULL_REQUEST_SETTING_DEFAULTS
-    if (!row) return { ...d, reviewRepos: [] }
+    if (!row) return { ...d }
     return {
         branchPrefix: typeof row.branchPrefix === 'string' ? row.branchPrefix : d.branchPrefix,
         prDraft: typeof row.prDraft === 'boolean' ? row.prDraft : d.prDraft,
-        prCreate: pick(row.prCreate, ['auto', 'ask'] as const, d.prCreate),
         prAuthor: pick(row.prAuthor, ['december', 'user'] as const, d.prAuthor),
         commitAuthor: pick(row.commitAuthor, ['both', 'december'] as const, d.commitAuthor),
-        archiveOnMerge:
-            typeof row.archiveOnMerge === 'boolean' ? row.archiveOnMerge : d.archiveOnMerge,
         githubCommentsEnabled:
             typeof row.githubCommentsEnabled === 'boolean'
                 ? row.githubCommentsEnabled
                 : d.githubCommentsEnabled,
         reviewReplies: pick(row.reviewReplies, ['all', 'mention', 'off'] as const, d.reviewReplies),
-        replyToBots: typeof row.replyToBots === 'boolean' ? row.replyToBots : d.replyToBots,
         fixFailedChecks:
             typeof row.fixFailedChecks === 'boolean' ? row.fixFailedChecks : d.fixFailedChecks,
         autoReview: pick(row.autoReview, ['asked', 'mine', 'all'] as const, d.autoReview),
-        reviewCadence: pick(row.reviewCadence, ['once', 'push'] as const, d.reviewCadence),
-        reviewRepos: Array.isArray(row.reviewRepos)
-            ? row.reviewRepos.filter((r): r is string => typeof r === 'string')
-            : [],
     }
 }
-
-// "create the pull request" (prCreate) and the "open pull request" default of a new session
-// are one stored value: User.defaultOpenPullRequest. 'auto' is on, 'ask' is off. the
-// prCreate column of the settings row is not read or written.
-export const toPrCreate = (
-    defaultOpenPullRequest: boolean
-): PullRequestSettingsValues['prCreate'] => (defaultOpenPullRequest ? 'auto' : 'ask')
-
-export const toDefaultOpenPullRequest = (
-    prCreate: PullRequestSettingsValues['prCreate']
-): boolean => prCreate === 'auto'
 
 /**
  * Is this a branch name git takes (the rules of `git check-ref-format --branch`), made
@@ -141,6 +113,9 @@ export interface GithubRun {
     headSha?: string
     // why December started on its own: an automatic review, a failed check, a review comment
     trigger?: 'comment' | 'auto_review' | 'failed_checks' | 'review_comment'
+    // the pull request comes from another repository: its code is not trusted, so the run
+    // gets no secrets
+    fromFork?: boolean
 }
 
 export const isGithubRun = (value: unknown): value is GithubRun => {

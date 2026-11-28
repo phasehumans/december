@@ -98,7 +98,7 @@ describe('Session configuration and the pull requests list (#632)', () => {
         await prisma.session.deleteMany({ where: { userId: { in: [ownerId, otherId] } } })
         await prisma.user.update({
             where: { id: ownerId },
-            data: { defaultPlanFirst: false, defaultEffort: 'deep', defaultOpenPullRequest: true },
+            data: { defaultPlanFirst: false, defaultOpenPullRequest: true },
         })
     })
 
@@ -138,10 +138,9 @@ describe('Session configuration and the pull requests list (#632)', () => {
                 defaultOpenPullRequest: false,
             })
             expect(saved.status).toBe(200)
-            // the answer also holds the other defaults (#637)
-            expect(saved.body.data).toMatchObject({
+            // "save as default" in the prompt box keeps only these two
+            expect(saved.body.data).toEqual({
                 defaultPlanFirst: true,
-                defaultEffort: 'deep',
                 defaultOpenPullRequest: false,
             })
 
@@ -158,6 +157,22 @@ describe('Session configuration and the pull requests list (#632)', () => {
             })
         })
 
+        it('starts on fast when no effort and no tier are sent', async () => {
+            const res = await as(ownerToken).post('/session', { prompt: 'x' })
+            expect(res.status).toBe(201)
+            expect(res.body.data.session.config).toEqual({
+                planFirst: false,
+                effort: 'fast',
+                openPullRequest: true,
+            })
+        })
+
+        it('an old saved speed of deep no longer applies', async () => {
+            await prisma.user.update({ where: { id: ownerId }, data: { defaultEffort: 'deep' } })
+            const res = await as(ownerToken).post('/session', { prompt: 'x' })
+            expect(res.body.data.session.config.effort).toBe('fast')
+        })
+
         it('takes the credit tier as the effort when no effort is sent', async () => {
             const res = await as(ownerToken).post('/session', { prompt: 'x', tier: 'fast' })
             expect(res.body.data.session.config.effort).toBe('fast')
@@ -168,10 +183,11 @@ describe('Session configuration and the pull requests list (#632)', () => {
             expect(badEffort.status).toBe(400)
             const emptyDefaults = await as(ownerToken).patch('/setting/defaults', {})
             expect(emptyDefaults.status).toBe(400)
-            const badDefault = await as(ownerToken).patch('/setting/defaults', {
-                defaultEffort: 'slow',
+            // the speed is no longer a saved default
+            const removed = await as(ownerToken).patch('/setting/defaults', {
+                defaultEffort: 'fast',
             })
-            expect(badDefault.status).toBe(400)
+            expect(removed.status).toBe(400)
         })
 
         it('keeps plan first and effort sent with a message for the next turns', async () => {

@@ -612,6 +612,107 @@ describe('GitHubApp Module Integration Tests', () => {
         expect(res.headers.location).toContain('/pull-requests?github=requested')
     })
 
+    // V1: the code github sends with an install is the proof; github must list the install
+    // for the user who authorized
+    const withGithubUser = async <T>(
+        installationIds: number[],
+        fn: (calls: string[]) => Promise<T>
+    ): Promise<T> => {
+        const realFetch = globalThis.fetch
+        const calls: string[] = []
+        const json = (body: unknown) =>
+            new Response(JSON.stringify(body), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+            })
+        globalThis.fetch = (async (input: any, init?: RequestInit) => {
+            const url = String(input)
+            if (url === 'https://github.com/login/oauth/access_token') {
+                calls.push(url)
+                const body = JSON.parse(String(init?.body ?? '{}'))
+                return json(body.code === 'good-code' ? { access_token: 'ghu_user' } : {})
+            }
+            if (url === 'https://api.github.com/user') {
+                calls.push(url)
+                return json({ id: 4242001 })
+            }
+            if (url.startsWith('https://api.github.com/user/installations')) {
+                calls.push(url)
+                return json({ installations: installationIds.map((id) => ({ id })) })
+            }
+            return realFetch(input, init)
+        }) as typeof fetch
+        try {
+            return await fn(calls)
+        } finally {
+            globalThis.fetch = realFetch
+        }
+    }
+
+    it('7g. GET /api/v1/githubapp/callback - links a new install when github lists it for the user (302)', async () => {
+        await prisma.githubAppInstallation.deleteMany({ where: { installationId: '66601' } })
+        await prisma.user.update({ where: { id: testUserId }, data: { githubId: null } })
+        try {
+            const res = await withGithubUser([123, 66601], () =>
+                request(app)
+                    .get(
+                        '/api/v1/githubapp/callback?installation_id=66601&setup_action=install&code=good-code&state=%2Fsettings%2Frepositories'
+                    )
+                    .set('x-forwarded-for', getRandomIP())
+                    .set('Authorization', `Bearer ${accessToken}`)
+            )
+
+            expect(res.status).toBe(302)
+            expect(res.headers.location).not.toContain('github=')
+            const installation = await prisma.githubAppInstallation.findUnique({
+                where: { installationId: '66601' },
+            })
+            expect(installation?.userId).toBe(testUserId)
+            const user = await prisma.user.findUnique({ where: { id: testUserId } })
+            expect(user?.githubId).toBe('4242001')
+        } finally {
+            await prisma.githubAppInstallation.deleteMany({ where: { installationId: '66601' } })
+            await prisma.user.update({ where: { id: testUserId }, data: { githubId: null } })
+        }
+    })
+
+    it('7h. GET /api/v1/githubapp/callback - refuses an install github does not list for the user (302)', async () => {
+        await prisma.githubAppInstallation.deleteMany({ where: { installationId: '66602' } })
+        const res = await withGithubUser([123], () =>
+            request(app)
+                .get(
+                    '/api/v1/githubapp/callback?installation_id=66602&setup_action=install&code=good-code&state=%2Fsettings%2Frepositories'
+                )
+                .set('x-forwarded-for', getRandomIP())
+                .set('Authorization', `Bearer ${accessToken}`)
+        )
+
+        expect(res.status).toBe(302)
+        expect(res.headers.location).toContain('github=unverified')
+        const installation = await prisma.githubAppInstallation.findUnique({
+            where: { installationId: '66602' },
+        })
+        expect(installation).toBeNull()
+    })
+
+    it('7i. GET /api/v1/githubapp/callback - a bad code proves nothing (302)', async () => {
+        const res = await withGithubUser([66603], () =>
+            request(app)
+                .get(
+                    '/api/v1/githubapp/callback?installation_id=66603&setup_action=install&code=bad-code&state=%2Fsettings%2Frepositories'
+                )
+                .set('x-forwarded-for', getRandomIP())
+                .set('Authorization', `Bearer ${accessToken}`)
+        )
+
+        expect(res.status).toBe(302)
+        expect(res.headers.location).toContain('github=unverified')
+        const installation = await prisma.githubAppInstallation.findUnique({
+            where: { installationId: '66603' },
+        })
+        expect(installation).toBeNull()
+    })
+
     it('8. GET /api/v1/githubapp/status - returns installation status for authenticated user (200)', async () => {
         const res = await request(app)
             .get('/api/v1/githubapp/status')

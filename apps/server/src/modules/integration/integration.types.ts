@@ -6,11 +6,6 @@ export type ConnectGithub = {
     githubId?: string
 }
 
-export type HandleGitHubOAuth = {
-    code: string
-    userId: string
-}
-
 export type GetGitlabAuthorizeUrl = {
     state: string
 }

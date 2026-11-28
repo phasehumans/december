@@ -104,12 +104,6 @@ export interface RepoDirInput {
     path: string
 }
 
-export interface RepoBranchInput {
-    token: string
-    repoPath: string
-    branch: string
-}
-
 export interface RepoDirEntry {
     name: string
     // from the repository root
@@ -178,11 +172,12 @@ export interface GitProvider {
     listDir: (data: RepoDirInput) => Promise<RepoDirEntry[]>
     // a file at the default branch as utf-8 text. throws like listDir.
     readTextFile: (data: RepoFileInput) => Promise<RepoTextFile>
-    // true when the repository has the branch, false when the host answers 404 (no such
-    // branch, or this token cannot read the repository). throws GitProviderError otherwise.
-    hasBranch: (data: RepoBranchInput) => Promise<boolean>
     refreshToken: (data: RefreshTokenInput) => Promise<TokenSet>
 }
+
+/** a repository list asks the host for at most this many pages of 100: 1,000 repositories */
+export const MAX_REPO_LIST_PAGES = 10
+export const MAX_REPO_LIST_SIZE = MAX_REPO_LIST_PAGES * 100
 
 export class GitProviderError extends Error {
     status: number

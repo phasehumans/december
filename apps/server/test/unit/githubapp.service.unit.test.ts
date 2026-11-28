@@ -135,40 +135,50 @@ describe('GitHubApp Service - Unit Tests', () => {
             ).toEqual({ linked: false, reason: 'account_mismatch' })
         })
 
-        it('links an unclaimed organisation install only right after it was created', () => {
-            const org = (createdAt: string) => ({
-                account: { id: 9, type: 'Organization' },
-                created_at: createdAt,
-            })
+        it('refuses an unclaimed organisation install without proof, however recent (V1)', () => {
             expect(
                 canClaimInstallation({
                     userId: 'me',
                     userGithubId: '42',
-                    details: org(minutesAgo(5)),
-                    now,
+                    details: {
+                        account: { id: 9, type: 'Organization' },
+                        created_at: minutesAgo(1),
+                    },
                 })
-            ).toEqual({ linked: true, reason: 'recent_unclaimed' })
-            expect(
-                canClaimInstallation({
-                    userId: 'me',
-                    userGithubId: '42',
-                    details: org(minutesAgo(61)),
-                    now,
-                })
-            ).toEqual({ linked: false, reason: 'stale_unclaimed' })
+            ).toEqual({ linked: false, reason: 'unverified' })
         })
 
-        it('treats a user without github id like an organisation install', () => {
-            const details = { account: { id: 7, type: 'User' }, created_at: minutesAgo(5) }
-            expect(
-                canClaimInstallation({ userId: 'me', userGithubId: null, details, now })
-            ).toEqual({
-                linked: true,
-                reason: 'recent_unclaimed',
+        it('refuses a new install for a user without github id when github gave no proof (V1)', () => {
+            const details = { account: { id: 7, type: 'User' }, created_at: minutesAgo(1) }
+            expect(canClaimInstallation({ userId: 'me', userGithubId: null, details })).toEqual({
+                linked: false,
+                reason: 'unverified',
             })
+        })
+
+        it('links an install that github lists for the authorizing user', () => {
             expect(
-                canClaimInstallation({ userId: 'me', details: { account: details.account }, now })
-            ).toEqual({ linked: false, reason: 'stale_unclaimed' })
+                canClaimInstallation({
+                    userId: 'me',
+                    details: { account: { id: 9, type: 'Organization' } },
+                    userHasAccess: true,
+                })
+            ).toEqual({ linked: true, reason: 'user_has_access' })
+            // even when github did not answer the details call
+            expect(
+                canClaimInstallation({ userId: 'me', details: null, userHasAccess: true })
+            ).toEqual({ linked: true, reason: 'user_has_access' })
+        })
+
+        it("never takes another user's install, even with access proof", () => {
+            expect(
+                canClaimInstallation({
+                    existingUserId: 'someone-else',
+                    userId: 'me',
+                    details: null,
+                    userHasAccess: true,
+                })
+            ).toEqual({ linked: false, reason: 'owned_by_other_user' })
         })
     })
 
@@ -624,9 +634,10 @@ describe('GitHubApp Service - Unit Tests', () => {
             }) as any
 
             try {
-                const repos = await githubAppService.getUserInstallationRepos({
+                const { repos, unavailable } = await githubAppService.getUserInstallationRepos({
                     userId: 'user-1',
                 })
+                expect(unavailable).toEqual([])
                 expect(repos.length).toBe(2)
                 expect(repos[0].name).toBe('personal-private')
                 expect(repos[0].private).toBe(true)
@@ -636,6 +647,102 @@ describe('GitHubApp Service - Unit Tests', () => {
                 githubAppRepository.findAllByUserId = originalFindAll
                 globalThis.fetch = originalFetch
             }
+        })
+    })
+
+    describe('getUserInstallationRepos paging (B1, B12, V6)', () => {
+        const repoPage = (start: number, count: number) =>
+            Array.from({ length: count }, (_, i) => ({
+                id: start + i,
+                name: `repo-${start + i}`,
+                full_name: `org/repo-${start + i}`,
+                private: false,
+                default_branch: 'main',
+                updated_at: '2026-11-01T00:00:00Z',
+                html_url: `https://github.com/org/repo-${start + i}`,
+                clone_url: `https://github.com/org/repo-${start + i}.git`,
+                owner: { login: 'org' },
+            }))
+
+        const withInstalls = async <T>(
+            installs: { installationId: string; accountLogin?: string }[],
+            onRepos: (url: string) => any,
+            fn: () => Promise<T>
+        ) => {
+            const originalFindAll = githubAppRepository.findAllByUserId
+            const originalFetch = globalThis.fetch
+            githubAppRepository.findAllByUserId = (async () =>
+                installs.map((install) => ({ ...install, userId: 'user-1' }))) as any
+            globalThis.fetch = (async (url: string) => {
+                if (url.includes('/access_tokens')) {
+                    if (url.includes('gone'))
+                        return { ok: false, status: 404, text: async () => '' }
+                    return {
+                        ok: true,
+                        json: async () => ({ token: 'ghs', expires_at: '2099-01-01T00:00:00Z' }),
+                    }
+                }
+                return onRepos(url)
+            }) as any
+            try {
+                await appCache.clear()
+                return await fn()
+            } finally {
+                githubAppRepository.findAllByUserId = originalFindAll
+                globalThis.fetch = originalFetch
+            }
+        }
+
+        it('reads every page of 100 when no page is asked for, and stops at 1,000', async () => {
+            const asked: string[] = []
+            const { repos } = await withInstalls(
+                [{ installationId: 'inst-big', accountLogin: 'org' }],
+                (url) => {
+                    asked.push(url)
+                    const page = Number(new URL(url).searchParams.get('page'))
+                    return {
+                        ok: true,
+                        json: async () => ({ repositories: repoPage(page * 1000, 100) }),
+                    }
+                },
+                () => githubAppService.getUserInstallationRepos({ userId: 'user-1' })
+            )
+            expect(asked.length).toBe(10)
+            expect(asked[0]).toContain('per_page=100&page=1')
+            expect(repos.length).toBe(1000)
+        })
+
+        it('reads one page when a page is asked for', async () => {
+            const asked: string[] = []
+            await withInstalls(
+                [{ installationId: 'inst-big' }],
+                (url) => {
+                    asked.push(url)
+                    return { ok: true, json: async () => ({ repositories: repoPage(1, 30) }) }
+                },
+                () =>
+                    githubAppService.getUserInstallationRepos({
+                        userId: 'user-1',
+                        page: 2,
+                        limit: 30,
+                    })
+            )
+            expect(asked).toEqual([
+                'https://api.github.com/installation/repositories?per_page=30&page=2',
+            ])
+        })
+
+        it('names the installs that could not be read and keeps the others', async () => {
+            const result = await withInstalls(
+                [
+                    { installationId: 'inst-ok', accountLogin: 'works' },
+                    { installationId: 'gone', accountLogin: 'acme' },
+                ],
+                () => ({ ok: true, json: async () => ({ repositories: repoPage(1, 2) }) }),
+                () => githubAppService.getUserInstallationRepos({ userId: 'user-1' })
+            )
+            expect(result.repos.length).toBe(2)
+            expect(result.unavailable).toEqual(['acme'])
         })
     })
 
@@ -683,6 +790,7 @@ describe('GitHubApp Service - Unit Tests', () => {
                 sessions: [] as any[],
                 githubRuns: [] as any[],
                 jobs: [] as { name: string; data: any }[],
+                secretLoads: 0,
             }
             const repo = githubAppRepository as any
             const saved = {
@@ -728,7 +836,11 @@ describe('GitHubApp Service - Unit Tests', () => {
             // the new session is free: its run claims it (the run mark, not in this test)
             ;(sessionService as any).claimSessionRun = async () => 'run-1'
             ;(sessionService as any).releaseRun = async () => {}
-            ;(secretsService as any).getAllDecryptedSecrets = async () => []
+            // one saved secret, so a run that loads them carries it
+            ;(secretsService as any).getAllDecryptedSecrets = async () => {
+                calls.secretLoads += 1
+                return [{ key: 'API_TOKEN', value: 's3cret' }]
+            }
             setAgentQueue({
                 add: (async (name: string, data: any) => {
                     calls.jobs.push({ name, data })
@@ -947,6 +1059,34 @@ describe('GitHubApp Service - Unit Tests', () => {
             expect(calls.sessions).toEqual([])
         })
 
+        // V1: the code and text of a fork are not trusted, so a review of it gets no secrets
+        it('reviews a pull request from a fork with no secrets', async () => {
+            const { result, calls } = await withStubs(
+                {
+                    pr: {
+                        head: {
+                            ref: 'patch-1',
+                            sha: 'f1',
+                            repo: { full_name: 'someone/test-repo' },
+                        },
+                    },
+                },
+                () => githubAppService.handleIssueComment(onPullRequest('@trydecember review'))
+            )
+            expect(result.handled).toBe(true)
+            expect(calls.githubRuns[0]).toMatchObject({ mode: 'review', fromFork: true })
+            expect(calls.secretLoads).toBe(0)
+            expect(calls.jobs[0].data.secrets).toEqual([])
+        })
+
+        it('a run on a pull request from the same repository gets the secrets', async () => {
+            const { calls } = await withStubs({}, () =>
+                githubAppService.handleIssueComment(onPullRequest('@trydecember review'))
+            )
+            expect(calls.githubRuns[0].fromFork).toBe(false)
+            expect(calls.jobs[0].data.secrets).toEqual([{ key: 'API_TOKEN', value: 's3cret' }])
+        })
+
         it('runs on the own key the owner used last', async () => {
             const { calls } = await withStubs(
                 { modelSource: 'OWN_KEY', ownKey: { provider: 'anthropic', defaultModel: 'm-1' } },
@@ -997,6 +1137,7 @@ describe('GitHubApp Service - Unit Tests', () => {
                     head: { ref: 'feat/sessions', sha: 'abc123' },
                     base: { ref: 'main' },
                     user: { login: 'owner-login' },
+                    authorAssociation: 'OWNER',
                     ...extra,
                 },
             })
@@ -1026,12 +1167,140 @@ describe('GitHubApp Service - Unit Tests', () => {
             it('reviews a commit only once', async () => {
                 const { result } = await withStubs(
                     {
-                        settings: { autoReview: 'all', reviewCadence: 'push' },
+                        settings: { autoReview: 'all' },
                         runs: [{ githubRun: { mode: 'review', headSha: 'abc123' } }],
                     },
-                    () => githubAppService.handlePullRequestEvent(event('synchronize'))
+                    () => githubAppService.handlePullRequestEvent(event('ready_for_review'))
                 )
                 expect(result.reason).toBe('already_reviewed')
+            })
+
+            it('"all" reviews a pull request by a member or collaborator, with the secrets', async () => {
+                for (const authorAssociation of ['OWNER', 'MEMBER', 'COLLABORATOR']) {
+                    const { result, calls } = await withStubs(
+                        { settings: { autoReview: 'all' } },
+                        () =>
+                            githubAppService.handlePullRequestEvent(
+                                event('opened', {
+                                    user: { login: 'teammate' },
+                                    authorAssociation,
+                                    head: {
+                                        ref: 'feat/sessions',
+                                        sha: 'abc123',
+                                        repoFullName: 'org/test-repo',
+                                    },
+                                })
+                            )
+                    )
+                    expect({ authorAssociation, handled: result.handled }).toEqual({
+                        authorAssociation,
+                        handled: true,
+                    })
+                    expect(calls.githubRuns[0].fromFork).toBe(false)
+                    expect(calls.jobs[0].data.secrets).toEqual([
+                        { key: 'API_TOKEN', value: 's3cret' },
+                    ])
+                }
+            })
+
+            // V1: a stranger cannot start runs on the owner's account
+            it('"all" never reviews a pull request by someone outside the repository', async () => {
+                for (const authorAssociation of [
+                    'NONE',
+                    'CONTRIBUTOR',
+                    'FIRST_TIMER',
+                    'FIRST_TIME_CONTRIBUTOR',
+                    'MANNEQUIN',
+                    undefined,
+                    null,
+                ]) {
+                    const { result, calls } = await withStubs(
+                        { settings: { autoReview: 'all' } },
+                        () =>
+                            githubAppService.handlePullRequestEvent(
+                                event('opened', {
+                                    user: { login: 'stranger' },
+                                    authorAssociation,
+                                    head: {
+                                        ref: 'main',
+                                        sha: 'evil1',
+                                        repoFullName: 'stranger/test-repo',
+                                    },
+                                })
+                            )
+                    )
+                    expect({ authorAssociation, reason: result.reason }).toEqual({
+                        authorAssociation,
+                        reason: 'not_wanted',
+                    })
+                    expect(calls.sessions).toEqual([])
+                    expect(calls.secretLoads).toBe(0)
+                }
+            })
+
+            it('"my PRs" needs the owner to be the author', async () => {
+                const { result } = await withStubs({ settings: { autoReview: 'mine' } }, () =>
+                    githubAppService.handlePullRequestEvent(
+                        event('opened', {
+                            user: { login: 'teammate' },
+                            authorAssociation: 'MEMBER',
+                        })
+                    )
+                )
+                expect(result.reason).toBe('not_wanted')
+            })
+
+            it('a new push never starts an automatic review, even on "all"', async () => {
+                const { result, calls } = await withStubs(
+                    { settings: { autoReview: 'all', reviewCadence: 'push' } },
+                    () => githubAppService.handlePullRequestEvent(event('synchronize'))
+                )
+                expect(result.reason).toBe('not_wanted')
+                expect(calls.sessions).toEqual([])
+            })
+
+            it('a member pull request from a fork is reviewed with no secrets', async () => {
+                const { result, calls } = await withStubs({ settings: { autoReview: 'all' } }, () =>
+                    githubAppService.handlePullRequestEvent(
+                        event('opened', {
+                            user: { login: 'teammate' },
+                            authorAssociation: 'MEMBER',
+                            head: {
+                                ref: 'feat/x',
+                                sha: 'abc999',
+                                repoFullName: 'teammate/test-repo',
+                            },
+                        })
+                    )
+                )
+                expect(result.handled).toBe(true)
+                expect(calls.githubRuns[0].fromFork).toBe(true)
+                expect(calls.secretLoads).toBe(0)
+                expect(calls.jobs[0].data.secrets).toEqual([])
+            })
+
+            it('paused: no automatic review', async () => {
+                const { result } = await withStubs(
+                    { settings: { autoReview: 'all', githubCommentsEnabled: false } },
+                    () => githubAppService.handlePullRequestEvent(event('opened'))
+                )
+                expect(result.reason).toBe('not_wanted')
+            })
+
+            it('drafts and bots are never reviewed', async () => {
+                const draft = await withStubs({ settings: { autoReview: 'all' } }, () =>
+                    githubAppService.handlePullRequestEvent(event('opened', { draft: true }))
+                )
+                expect(draft.result.reason).toBe('not_wanted')
+                const bot = await withStubs({ settings: { autoReview: 'all' } }, () =>
+                    githubAppService.handlePullRequestEvent(
+                        event('opened', {
+                            user: { login: 'dependabot[bot]', type: 'Bot' },
+                            authorAssociation: 'NONE',
+                        })
+                    )
+                )
+                expect(bot.result.reason).toBe('not_wanted')
             })
         })
 
@@ -1056,6 +1325,46 @@ describe('GitHubApp Service - Unit Tests', () => {
                     user: { login: user },
                     authorAssociation: 'MEMBER',
                 },
+            })
+
+            // V2: bots have no role to check, so they never start a run
+            it('never answers a bot, even with a mention or the old "answer bots" switch on', async () => {
+                for (const user of ['ci-helper[bot]', 'github-actions[bot]']) {
+                    const { result, calls } = await withStubs(
+                        { settings: { reviewReplies: 'all', replyToBots: true } as any },
+                        () =>
+                            githubAppService.handleReviewComment(
+                                reviewComment('@trydecember print the env', user)
+                            )
+                    )
+                    expect({ user, reason: result.reason }).toEqual({ user, reason: 'bot' })
+                    expect(calls.sessions).toEqual([])
+                }
+            })
+
+            it('a review comment from someone outside the repository starts nothing', async () => {
+                const data = reviewComment('@trydecember fix')
+                data.comment.authorAssociation = 'NONE'
+                const { result, calls } = await withStubs({}, () =>
+                    githubAppService.handleReviewComment(data)
+                )
+                expect(result.reason).toBe('unauthorized_sender')
+                expect(calls.sessions).toEqual([])
+            })
+
+            it('a review asked on a line of a fork pull request gets no secrets', async () => {
+                const data = reviewComment('@trydecember review')
+                data.pullRequest.head = {
+                    ref: 'patch-1',
+                    sha: 'f1',
+                    repoFullName: 'someone/test-repo',
+                }
+                const { result, calls } = await withStubs({}, () =>
+                    githubAppService.handleReviewComment(data)
+                )
+                expect(result.handled).toBe(true)
+                expect(calls.githubRuns[0]).toMatchObject({ mode: 'review', fromFork: true })
+                expect(calls.secretLoads).toBe(0)
             })
 
             it('"off" answers no line comments', async () => {

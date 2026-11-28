@@ -102,7 +102,7 @@ export const OnboardingPage: React.FC = () => {
         } catch {
             // Intentionally ignored: the install still works, the user just may land on step 1 again
         }
-        window.location.href = profileAPI.getGithubConnectUrl(profile?.id ?? '')
+        window.location.href = profileAPI.getGithubConnectUrl()
     }
 
     const connectGitlab = async () => {

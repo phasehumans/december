@@ -220,6 +220,7 @@ export const toUsageDays = (buckets: UsageDayBucket[], sums: UsageBucketSum[]): 
             date: bucket.date,
             costInCents: sum?.costInCents ?? 0,
             totalTokens: sum?.totalTokens ?? 0,
+            ownKeyTokens: sum?.ownKeyTokens ?? 0,
         }
     })
 
@@ -234,6 +235,7 @@ export const toUsageHours = (buckets: UsageHourBucket[], sums: UsageBucketSum[])
         hour: (lastHour + 1 + index) % 24,
         costInCents: 0,
         totalTokens: 0,
+        ownKeyTokens: 0,
     }))
     for (const sum of sums) {
         const bucket = buckets[sum.bucket - 1]
@@ -241,6 +243,7 @@ export const toUsageHours = (buckets: UsageHourBucket[], sums: UsageBucketSum[])
         if (row) {
             row.costInCents += sum.costInCents
             row.totalTokens += sum.totalTokens
+            row.ownKeyTokens += sum.ownKeyTokens
         }
     }
     return hours

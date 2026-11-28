@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 
 import { toPullRequestSettings } from '@december/shared'
+import { MAX_REPO_LIST_PAGES, MAX_REPO_LIST_SIZE } from '@december/shared/git'
 import { enqueueJob } from '@december/shared/queue'
 
 import { env } from '../../env'
@@ -47,6 +48,8 @@ import type {
     HandleIssueComment,
     HandlePullRequestEvent,
     HandleReviewComment,
+    InstallationAccess,
+    InstallationRepoList,
     InstallationStatusResponse,
     NotifyGithubActivity,
     ProcessInstallation,
@@ -56,6 +59,7 @@ import type {
     RunModelChoice,
     StartGithubRun,
     StartGithubRunResult,
+    VerifyInstallationAccess,
     VerifySignature,
 } from './githubapp.types'
 import type { FailedCheckRun, GithubRun, PullRequestInfo } from '@december/shared'
@@ -84,8 +88,75 @@ const processInstallation = async (data: ProcessInstallation) => {
     return installation
 }
 
+const GITHUB_API_HEADERS = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'December-App',
+}
+
+// V1: the code github sends with an install (the app asks the user to authorize it during the
+// install) is swapped for a user token, and github lists the installs that user can see.
+// Only a listed install counts as proof. Any failure is "no proof"
+const verifyInstallationAccess = async (
+    data: VerifyInstallationAccess
+): Promise<InstallationAccess> => {
+    const { code, installationId } = data
+    const none: InstallationAccess = { hasAccess: false, githubId: null }
+    if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) {
+        console.warn(
+            '[githubapp] cannot check an install code: GITHUB_CLIENT_ID/SECRET are not set'
+        )
+        return none
+    }
+
+    try {
+        const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                client_id: env.GITHUB_CLIENT_ID,
+                client_secret: env.GITHUB_CLIENT_SECRET,
+                code,
+            }),
+            signal: AbortSignal.timeout(5000),
+        })
+        const tokenData = (await tokenResponse.json()) as { access_token?: string }
+        const token = tokenData.access_token
+        if (!token) return none
+
+        const auth = { ...GITHUB_API_HEADERS, Authorization: `Bearer ${token}` }
+        const userResponse = await fetch('https://api.github.com/user', {
+            headers: auth,
+            signal: AbortSignal.timeout(5000),
+        })
+        const githubUser = userResponse.ok ? ((await userResponse.json()) as { id?: number }) : {}
+        const githubId = githubUser.id != null ? String(githubUser.id) : null
+
+        for (let page = 1; page <= MAX_REPO_LIST_PAGES; page++) {
+            const response = await fetch(
+                `https://api.github.com/user/installations?per_page=100&page=${page}`,
+                { headers: auth, signal: AbortSignal.timeout(5000) }
+            )
+            if (!response.ok) break
+            const json = (await response.json()) as { installations?: { id?: number }[] }
+            const installations = json.installations ?? []
+            if (installations.some((item) => String(item.id) === installationId)) {
+                return { hasAccess: true, githubId }
+            }
+            if (installations.length < 100) break
+        }
+        return { hasAccess: false, githubId }
+    } catch (error) {
+        console.error(
+            '[githubapp] install code check failed:',
+            error instanceof Error ? error.message : error
+        )
+        return none
+    }
+}
+
 const claimInstallation = async (data: ClaimInstallation): Promise<ClaimInstallationResult> => {
-    const { installationId, userId } = data
+    const { installationId, userId, code } = data
 
     const user = await githubAppRepository.findUserGithubId(userId)
     if (!user || user.isDeleted) {
@@ -102,12 +173,15 @@ const claimInstallation = async (data: ClaimInstallation): Promise<ClaimInstalla
 
     // only ask github when the database alone cannot decide
     const details = existingOwner ? null : await getInstallationDetails(installationId)
+    const access =
+        !existingOwner && code ? await verifyInstallationAccess({ code, installationId }) : null
 
     const decision = canClaimInstallation({
         existingUserId: existingOwner,
         userId,
         userGithubId: user.githubId,
         details,
+        userHasAccess: access?.hasAccess,
     })
 
     if (!decision.linked) {
@@ -115,6 +189,11 @@ const claimInstallation = async (data: ClaimInstallation): Promise<ClaimInstalla
             `[githubapp] refused to link installation ${installationId} to user ${userId}: ${decision.reason}`
         )
         return decision
+    }
+
+    // the proven github id lets the webhook link this user's next installs by itself
+    if (access?.hasAccess && access.githubId && !user.githubId) {
+        await githubAppRepository.saveUserGithubId({ userId, githubId: access.githubId })
     }
 
     await githubAppRepository.upsertInstallation({
@@ -250,7 +329,7 @@ const getUserInstallationToken = async (data: GetUserInstallationToken): Promise
 
 const getUserInstallationRepos = async (
     data: GetUserInstallationRepos
-): Promise<GithubInstallationRepo[]> => {
+): Promise<InstallationRepoList> => {
     const { userId, page: requestedPage, limit: requestedLimit, search } = data
     let installations = await githubAppRepository.findAllByUserId(userId)
 
@@ -259,24 +338,28 @@ const getUserInstallationRepos = async (
         if (single) {
             installations = [single]
         } else {
-            return []
+            return { repos: [], unavailable: [] }
         }
     }
 
     const allRepos: GithubInstallationRepo[] = []
     const seenRepoIds = new Set<number>()
+    // installs that could not be read (removed or suspended on github): the page names them
+    const unavailable: string[] = []
+    const query = search?.toLowerCase()
 
     for (const installation of installations) {
+        const label = installation.accountLogin || `install ${installation.installationId}`
         try {
             const { token } = await getInstallationAccessToken({
                 installationId: installation.installationId,
             })
 
-            let page = requestedPage || 1
+            const firstPage = requestedPage || 1
+            let page = firstPage
             const perPage = requestedLimit ? Math.min(requestedLimit, 100) : 100
-            let hasMore = true
 
-            while (hasMore) {
+            for (;;) {
                 const response = await fetch(
                     `https://api.github.com/installation/repositories?per_page=${perPage}&page=${page}`,
                     {
@@ -291,6 +374,7 @@ const getUserInstallationRepos = async (
                 )
 
                 if (!response.ok) {
+                    if (page === firstPage) unavailable.push(label)
                     break
                 }
 
@@ -299,9 +383,9 @@ const getUserInstallationRepos = async (
 
                 for (const repo of repositories) {
                     if (
-                        search &&
-                        !repo.name.toLowerCase().includes(search.toLowerCase()) &&
-                        !repo.full_name?.toLowerCase().includes(search.toLowerCase())
+                        query &&
+                        !repo.name?.toLowerCase().includes(query) &&
+                        !repo.full_name?.toLowerCase().includes(query)
                     ) {
                         continue
                     }
@@ -328,18 +412,20 @@ const getUserInstallationRepos = async (
                     }
                 }
 
-                if (repositories.length < perPage || requestedPage !== undefined) {
-                    hasMore = false
-                } else {
-                    page++
-                }
+                // one page when one was asked for, else every page up to the cap (B1, V6)
+                if (repositories.length < perPage || requestedPage !== undefined) break
+                if (page - firstPage + 1 >= MAX_REPO_LIST_PAGES) break
+                if (allRepos.length >= MAX_REPO_LIST_SIZE) break
+                page++
             }
         } catch {
-            // Intentionally swallowed: continue to next installation if one fails
+            // the install token could not be made: the install is gone or suspended
+            unavailable.push(label)
         }
+        if (allRepos.length >= MAX_REPO_LIST_SIZE) break
     }
 
-    return allRepos
+    return { repos: allRepos.slice(0, MAX_REPO_LIST_SIZE), unavailable }
 }
 
 const getUserInstallationStatus = async (
@@ -456,14 +542,18 @@ const startGithubRun = async (data: StartGithubRun): Promise<StartGithubRunResul
     await githubAppRepository.setSessionGithubRun(session.id, { ...run })
 
     let secrets: Array<{ key: string; value: string }> = []
-    try {
-        // "all repositories" secrets plus the ones of the repository of this run
-        secrets = await secretsService.getAllDecryptedSecrets({
-            userId,
-            repoFullName: run.repoFullName,
-        })
-    } catch (err) {
-        console.warn('[GitHubApp Service] could not load secrets for a github run:', err)
+    // the code of a pull request from a fork is not trusted: it can read the environment,
+    // and its text can tell the agent to print it. such a run gets no secrets
+    if (!run.fromFork) {
+        try {
+            // "all repositories" secrets plus the ones of the repository of this run
+            secrets = await secretsService.getAllDecryptedSecrets({
+                userId,
+                repoFullName: run.repoFullName,
+            })
+        } catch (err) {
+            console.warn('[GitHubApp Service] could not load secrets for a github run:', err)
+        }
     }
 
     // one run for a session: the run of this new session claims it like any other run
@@ -649,6 +739,7 @@ const handleIssueComment = async (data: HandleIssueComment): Promise<HandleGithu
             baseRef: pr.baseRef,
             headRef: pr.headRef,
             headSha: pr.headSha,
+            fromFork: isFork,
         },
         body: pr.body,
         // "@trydecember review" alone has no extra request
@@ -689,8 +780,8 @@ const handlePullRequestEvent = async (
         draft: Boolean(pullRequest.draft),
         authorLogin: pullRequest.user.login,
         authorType: pullRequest.user.type,
+        authorAssociation: pullRequest.authorAssociation,
         ownerGithubLogin,
-        repoFullName: repository.fullName,
     })
     if (!wanted) return { handled: false, reason: 'not_wanted' }
 
@@ -707,6 +798,9 @@ const handlePullRequestEvent = async (
         headRef: pullRequest.head.ref,
         headSha: pullRequest.head.sha,
         trigger: 'auto_review',
+        fromFork:
+            Boolean(pullRequest.head.repoFullName) &&
+            pullRequest.head.repoFullName!.toLowerCase() !== repository.fullName.toLowerCase(),
     }
     if (run.headSha && (await hasReviewedCommit({ userId: owner.userId, run }))) {
         return { handled: false, reason: 'already_reviewed' }
@@ -743,8 +837,11 @@ const handleReviewComment = async (data: HandleReviewComment): Promise<HandleGit
         return { handled: false, reason: 'off' }
     }
 
-    const isBot = isBotAuthor(comment.user.login, comment.user.type)
-    if (isBot && !settings.replyToBots) return { handled: false, reason: 'bot' }
+    // bots are never answered: they have no role in the repository to check, and two bots
+    // can answer each other without end
+    if (isBotAuthor(comment.user.login, comment.user.type)) {
+        return { handled: false, reason: 'bot' }
+    }
 
     const command = parseBotCommand(comment.body)
     if (!command.isMentioned) {
@@ -759,8 +856,8 @@ const handleReviewComment = async (data: HandleReviewComment): Promise<HandleGit
         })
         if (prOwner !== owner.userId) return { handled: false, reason: 'not_december_pull_request' }
     }
-    // bots have no author association; people must be collaborators
-    if (!isBot && !isAuthorizedGithubSender(comment.authorAssociation)) {
+    // people must be owners, members or collaborators
+    if (!isAuthorizedGithubSender(comment.authorAssociation)) {
         return { handled: false, reason: 'unauthorized_sender' }
     }
 
@@ -810,6 +907,7 @@ const handleReviewComment = async (data: HandleReviewComment): Promise<HandleGit
             headRef: pullRequest.head.ref,
             headSha: pullRequest.head.sha,
             trigger: 'review_comment',
+            fromFork: isFork,
         },
         body: pullRequest.body || '',
         instruction: command.isMentioned ? command.instruction : comment.body,

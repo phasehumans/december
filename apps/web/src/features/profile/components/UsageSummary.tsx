@@ -1,7 +1,16 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 
+import type { ChartLine } from '@/features/admin/components/AdminCharts'
 import type { UsageDay, UsageHour, UsageTotals } from '@/features/billing/api/billing'
 
+import {
+    CHART_COLORS,
+    ChartBox,
+    DualAxisLineChart,
+    compactNumber,
+} from '@/features/admin/components/AdminCharts'
+import { ListArt, listActionButtonClass } from '@/features/sessions/components/ListParts'
 import { formatTokenCount, formatUsd } from '@/shared/lib/format'
 
 /** "Mar 9" for 2026-03-09. the date is a day of the calendar, so no time zone moves it */
@@ -25,27 +34,75 @@ const Tile: React.FC<{ label: string; value: string }> = ({ label, value }) => (
     </div>
 )
 
+/** the lines of the empty chart: flat at zero, so the axes and dates still draw */
+const emptyLines = (count: number): ChartLine[] => [
+    {
+        key: 'tokens',
+        label: 'Tokens',
+        color: CHART_COLORS.blue,
+        values: Array.from({ length: count }, () => 0),
+        axis: 'left',
+    },
+    {
+        key: 'spent',
+        label: 'Spent',
+        color: CHART_COLORS.amber,
+        values: Array.from({ length: count }, () => 0),
+        axis: 'right',
+    },
+]
+
 /**
- * Three numbers and a bar chart above the usage table (N5-B). The server sends all of it
- * for the whole range (issue 638): the totals, a cost for each day, and a cost for each
- * hour when the range is one day.
+ * Three numbers and a chart above the usage table (N5-B), in the style of the Analytics
+ * chart on the admin page. The server sends all of it for the whole range (issue 638): the
+ * totals, the sums for each day, and the sums for each hour when the range is one day.
+ * Tokens are on the left axis, so runs on own keys show too, and spend is on the right.
  */
 export const UsageSummary: React.FC<{
     totals: UsageTotals
     days: UsageDay[]
     hours?: UsageHour[]
-}> = ({ totals, days, hours }) => {
+    /** the range of the chart, as its title says it: "Last 30 days" */
+    title: string
+}> = ({ totals, days, hours, title }) => {
     const chart = React.useMemo(() => {
-        const bars = hours
-            ? hours.map((row) => ({ label: hourLabel(row.hour), cents: row.costInCents }))
-            : days.map((row) => ({ label: dayLabel(row.date), cents: row.costInCents }))
-        const max = Math.max(...bars.map((bar) => bar.cents), 1)
-        return { bars, max, isDay: Boolean(hours) }
+        const rows = hours
+            ? hours.map((row) => ({ ...row, label: hourLabel(row.hour) }))
+            : days.map((row) => ({ ...row, label: dayLabel(row.date) }))
+        const ownKey = rows.map((row) => Math.min(row.ownKeyTokens ?? 0, row.totalTokens))
+        const credits = rows.map((row, index) => row.totalTokens - (ownKey[index] ?? 0))
+        const lines: ChartLine[] = []
+        // a source with no tokens in the range has no line: a flat zero says nothing
+        if (credits.some((value) => value > 0)) {
+            lines.push({
+                key: 'credits',
+                label: 'Credits tokens',
+                color: CHART_COLORS.blue,
+                values: credits,
+                axis: 'left',
+            })
+        }
+        if (ownKey.some((value) => value > 0)) {
+            lines.push({
+                key: 'own-key',
+                label: 'Your keys tokens',
+                color: CHART_COLORS.green,
+                values: ownKey,
+                axis: 'left',
+            })
+        }
+        lines.push({
+            key: 'spent',
+            label: 'Spent',
+            color: CHART_COLORS.amber,
+            values: rows.map((row) => row.costInCents),
+            axis: 'right',
+        })
+        return { labels: rows.map((row) => row.label), lines }
     }, [days, hours])
 
-    const first = chart.bars[0]
-    const middle = chart.bars[Math.floor(chart.bars.length / 2)]
-    const last = chart.bars[chart.bars.length - 1]
+    const navigate = useNavigate()
+    const isEmpty = totals.totalTokens <= 0
 
     return (
         <div className="flex flex-col gap-4">
@@ -58,47 +115,51 @@ export const UsageSummary: React.FC<{
                 <Tile label="Sessions" value={String(totals.sessions)} />
             </div>
 
-            {/* one series, bars start at zero, each bar names its time and amount on hover or focus.
-                no chart when nothing was spent: an empty plot says nothing */}
-            {totals.costInCents > 0 && chart.bars.length > 0 && (
-                <div
-                    role="img"
-                    aria-label={`Spend for each ${chart.isDay ? 'hour' : 'day'}. Total ${formatUsd(totals.costInCents)}.`}
-                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 text-[10.5px] text-[#7B7A79] tabular-nums"
-                >
-                    <div className="flex flex-col justify-between text-right h-16">
-                        <span>{formatUsd(chart.max)}</span>
-                        <span>$0</span>
-                    </div>
-                    <div className="flex items-end gap-[2px] h-16 border-b border-[#383736]">
-                        {chart.bars.map((bar, index) => (
-                            <div
-                                key={index}
-                                tabIndex={0}
-                                className="group relative flex-1 h-full flex items-end outline-none"
-                            >
-                                <div
-                                    className="w-full rounded-t-[3px] bg-[#87B2F4] group-hover:bg-[#A3C7FF] group-focus:bg-[#A3C7FF]"
-                                    style={{ height: `${(bar.cents / chart.max) * 100}%` }}
+            {chart.labels.length > 0 &&
+                (isEmpty ? (
+                    <ChartBox title={title}>
+                        {/* nothing ran: the empty chart, dimmed, with a drawing and a way to start */}
+                        <div className="relative">
+                            <div aria-hidden="true" className="pointer-events-none opacity-30">
+                                <DualAxisLineChart
+                                    labels={chart.labels}
+                                    lines={emptyLines(chart.labels.length)}
+                                    formatLeft={(tokens) => formatTokenCount(tokens)}
+                                    formatRight={(cents) => `$${compactNumber(cents / 100)}`}
+                                    minLeft={1000}
+                                    minRight={100}
+                                    height={250}
                                 />
-                                <span
-                                    className={`pointer-events-none absolute bottom-full mb-1 hidden group-hover:block group-focus:block whitespace-nowrap rounded-md border border-[#282828] bg-[#1F1F1F] px-1.5 py-0.5 text-[10.5px] text-[#EDEDEF] z-10 ${
-                                        index < chart.bars.length / 2 ? 'left-0' : 'right-0'
-                                    }`}
-                                >
-                                    {bar.label} · {formatUsd(bar.cents)}
-                                </span>
                             </div>
-                        ))}
-                    </div>
-                    <span />
-                    <div className="flex justify-between">
-                        <span>{first?.label ?? ''}</span>
-                        <span>{middle?.label ?? ''}</span>
-                        <span>{last?.label ?? ''}</span>
-                    </div>
-                </div>
-            )}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                                <div className="mb-3 h-[105px] w-[120px] text-[#8A8987]">
+                                    <ListArt kind="usage" strokePx={2.2} widthPx={120} />
+                                </div>
+                                <span className="text-[14px] font-medium text-[#D6D5C9]">
+                                    No usage in this period
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/')}
+                                    className={`mt-3 bg-[#191919] ${listActionButtonClass}`}
+                                >
+                                    Start a session
+                                </button>
+                            </div>
+                        </div>
+                    </ChartBox>
+                ) : (
+                    <ChartBox title={title}>
+                        <DualAxisLineChart
+                            labels={chart.labels}
+                            lines={chart.lines}
+                            formatLeft={(tokens) => formatTokenCount(tokens)}
+                            formatRight={(cents) => `$${compactNumber(cents / 100)}`}
+                            minRight={100}
+                            height={200}
+                        />
+                    </ChartBox>
+                ))}
         </div>
     )
 }

@@ -5,9 +5,12 @@ import bcrypt from 'bcrypt'
 import { redisClient } from '../../config/redis'
 import { env } from '../../env'
 import { AppError } from '../../shared/appError'
+import { deletePrefix, projectPrefix, sessionPrefix } from '../../shared/project-storage'
+import { attachmentService } from '../attachment/attachment.service'
 import { auditService } from '../audit/audit.service'
 import { billingService } from '../billing/billing.service'
 import { notificationService } from '../notification/notification.service'
+import { sessionService } from '../session/session.service'
 
 import { sessionCache } from './auth.cache'
 import { authRepository } from './auth.repository'
@@ -19,6 +22,7 @@ import {
     hashRefreshToken,
     TOKEN_GRACE_PERIOD_MS,
     describeUserAgent,
+    ACCOUNT_PURGE_AFTER_MS,
 } from './auth.utils'
 
 import type {
@@ -38,6 +42,7 @@ import type {
     GetDeviceStatus,
     GetDeviceStatusResult,
     PurgeSessions,
+    PurgeDeletedAccounts,
     ListSignedInSessions,
     RevokeSignedInSession,
     SignedInSession,
@@ -599,6 +604,9 @@ const deleteAccount = async (data: DeleteAccount) => {
         throw new AppError('user account is already deleted', 409)
     }
 
+    // first, so no run keeps working on the user's repositories after the account is gone.
+    // when a stop cannot be queued, nothing is deleted and the user can try again
+    await sessionService.stopAllSessions({ userId })
     await authRepository.deleteAccount(userId)
     await sessionCache.invalidateUser(userId)
     await removeSignedOutPush({ userId })
@@ -784,6 +792,38 @@ const purgeExpiredAndRevokedSessions = async (_data: PurgeSessions = {}) => {
     return authRepository.purgeExpiredAndRevokedSessions()
 }
 
+/**
+ * The daily purge: an account deleted more than 90 days ago goes for good, with its stored
+ * files. Its payment rows stay with no user. After the purge the email can sign up again.
+ * An account that fails stays for the next run and does not stop the others.
+ */
+const purgeDeletedAccounts = async (data: PurgeDeletedAccounts) => {
+    const { now = new Date(), limit = 100 } = data
+
+    const before = new Date(now.getTime() - ACCOUNT_PURGE_AFTER_MS)
+    const accounts = await authRepository.findAccountsToPurge(before, limit)
+
+    let purged = 0
+    for (const account of accounts) {
+        try {
+            const sessionIds = account.sessions.map((session) => session.id)
+            await attachmentService.deleteSessionFiles({ sessionIds })
+            for (const sessionId of sessionIds) {
+                await deletePrefix(sessionPrefix(sessionId))
+            }
+            for (const project of account.projects) {
+                await deletePrefix(projectPrefix(project.id))
+            }
+            const { count } = await authRepository.purgeAccount(account.id)
+            purged += count
+        } catch (error) {
+            console.error(`[Auth] could not purge deleted account ${account.id}:`, error)
+        }
+    }
+
+    return { purged }
+}
+
 export const authService = {
     startEmailAuth,
     verifyEmailAuth,
@@ -800,4 +840,5 @@ export const authService = {
     verifyUserCode,
     getDeviceStatus,
     purgeExpiredAndRevokedSessions,
+    purgeDeletedAccounts,
 }

@@ -13,10 +13,14 @@ const SOURCES = [
 ] as const
 
 /**
- * The source a new prompt starts with: December credits or the user's own keys.
- * A real setting, saved to the account. The API keys page shows it, and so does Defaults.
+ * The source a new prompt and a run from GitHub start with: December credits (the default)
+ * or the user's own keys. Saved to the account; the API keys page shows it, and the prompt
+ * box can still switch for one prompt.
  */
-export const ModelSourceControl: React.FC = () => {
+export const ModelSourceControl: React.FC<{
+    // the error of the last change, or null when it saved; the row shows it
+    onErrorChange?: (message: string | null) => void
+}> = ({ onErrorChange }) => {
     const { data } = useByokList(true)
     const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: profileAPI.getProfile })
     const { updateModelSource } = useByokMutations()
@@ -33,7 +37,17 @@ export const ModelSourceControl: React.FC = () => {
                     role="radio"
                     aria-checked={defaultSource === value}
                     disabled={updateModelSource.isPending || (value === 'OWN_KEY' && !hasKeys)}
-                    onClick={() => updateModelSource.mutate(value)}
+                    onClick={() =>
+                        updateModelSource.mutate(value, {
+                            onSuccess: () => onErrorChange?.(null),
+                            onError: (error) =>
+                                onErrorChange?.(
+                                    error instanceof Error && error.message
+                                        ? error.message
+                                        : 'Could not save'
+                                ),
+                        })
+                    }
                     className={cn(
                         segmentClass(defaultSource === value),
                         'disabled:opacity-40 disabled:cursor-default'

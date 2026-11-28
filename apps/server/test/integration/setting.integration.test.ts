@@ -213,18 +213,16 @@ describe('Setting Module Integration Tests', () => {
             githubCommentsEnabled: true,
             autoReview: 'asked',
             reviewReplies: 'mention',
-            reviewRepos: [],
         })
 
         const saved = await request(app)
             .patch('/api/v1/setting/pull-requests')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('X-Forwarded-For', getRandomIP())
-            .send({ autoReview: 'mine', reviewRepos: ['Acme/Web'], githubCommentsEnabled: false })
+            .send({ autoReview: 'mine', githubCommentsEnabled: false })
         expect(saved.status).toBe(200)
         expect(saved.body.data).toMatchObject({
             autoReview: 'mine',
-            reviewRepos: ['acme/web'],
             githubCommentsEnabled: false,
             fixFailedChecks: true,
         })
@@ -237,11 +235,7 @@ describe('Setting Module Integration Tests', () => {
     })
 
     it('pull request settings: unknown fields and bad values are refused (400)', async () => {
-        for (const body of [
-            { autoReview: 'always' },
-            { slackWebhook: 'x' },
-            { reviewRepos: ['no-slash'] },
-        ]) {
+        for (const body of [{ autoReview: 'always' }, { slackWebhook: 'x' }, {}]) {
             const res = await request(app)
                 .patch('/api/v1/setting/pull-requests')
                 .set('Authorization', `Bearer ${accessToken}`)

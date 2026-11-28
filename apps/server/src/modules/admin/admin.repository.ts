@@ -294,13 +294,8 @@ const findUserDetails = async (userId: string) => {
             notifyPush: true,
             timezone: true,
             defaultModelSource: true,
-            defaultOwnKeyProvider: true,
-            defaultOwnKeyModel: true,
             defaultPlanFirst: true,
-            defaultEffort: true,
             defaultOpenPullRequest: true,
-            defaultRepository: true,
-            defaultBaseBranch: true,
             idleStopMinutes: true,
             archiveAfterDays: true,
             lowBalanceAlertCents: true,
@@ -357,7 +352,6 @@ const findUserDetails = async (userId: string) => {
         wallet,
         creditRequest,
         feedback,
-        lastExport,
     ] = await Promise.all([
         prisma.authSession.findMany({
             where: { userId, isRevoked: false, expiresAt: { gt: new Date() } },
@@ -466,11 +460,6 @@ const findUserDetails = async (userId: string) => {
             orderBy: { createdAt: 'desc' },
             take: 50,
         }),
-        prisma.dataExport.findFirst({
-            where: { userId },
-            select: { status: true, createdAt: true },
-            orderBy: { createdAt: 'desc' },
-        }),
     ])
 
     // D11: what an admin did to this user or to their credit request
@@ -530,7 +519,6 @@ const findUserDetails = async (userId: string) => {
         wallet,
         creditRequest,
         feedback,
-        lastExport,
         adminHistory,
     }
 }

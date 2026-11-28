@@ -191,11 +191,6 @@ const Card: React.FC<{ user: AdminUserDetails }> = ({ user }) => {
                         {account.onboardingDoneAt && ` · ${shortDate(account.onboardingDoneAt)}`}
                     </Field>
                     <Field label="Time zone">{account.timezone}</Field>
-                    <Field label="Data export">
-                        {account.lastExport
-                            ? `${account.lastExport.status.toLowerCase()} · ${shortDate(account.lastExport.createdAt)}`
-                            : 'Never'}
-                    </Field>
                 </Block>
 
                 <Block title="Notifications">
@@ -212,14 +207,8 @@ const Card: React.FC<{ user: AdminUserDetails }> = ({ user }) => {
                     <Field label="Runs on">
                         {defaults.modelSource === 'OWN_KEY' ? 'Own key' : 'Credits'}
                     </Field>
-                    {defaults.ownKeyModel && (
-                        <Field label="Own key model">{defaults.ownKeyModel}</Field>
-                    )}
                     <Field label="Plan first">{yesNo(defaults.planFirst)}</Field>
-                    <Field label="Effort">{defaults.effort}</Field>
                     <Field label="Open a PR">{yesNo(defaults.openPullRequest)}</Field>
-                    <Field label="Repository">{defaults.repository}</Field>
-                    <Field label="Base branch">{defaults.baseBranch}</Field>
                     <Field label="Blocked tools">{defaults.blockedTools}</Field>
                 </Block>
 

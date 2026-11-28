@@ -1,18 +1,8 @@
-import crypto from 'crypto'
-
 import { DEFAULT_IDLE_STOP_MINUTES, IDLE_STOP_MINUTES } from '@december/shared'
-
-import { env } from '../../env'
 
 import { preferencesSchema } from './setting.schema'
 
-import type {
-    DataExportState,
-    DataExportStatus,
-    OnboardingStep,
-    Preferences,
-    SandboxSettings,
-} from './setting.types'
+import type { OnboardingStep, Preferences, SandboxSettings } from './setting.types'
 
 export const sanitizeMarkdown = (str: string): string => {
     return str
@@ -38,59 +28,6 @@ export const toPreferences = (value: unknown): Partial<Preferences> | null => {
         if (parsed.success) Object.assign(saved, parsed.data)
     }
     return Object.keys(saved).length > 0 ? saved : null
-}
-
-/** one export a day (#636) */
-export const DATA_EXPORT_COOLDOWN_MS = 24 * 60 * 60 * 1000
-/** the emailed link works this long */
-export const DATA_EXPORT_LINK_MS = 7 * 24 * 60 * 60 * 1000
-
-export const dataExportFileKey = (userId: string, exportId: string) =>
-    `exports/${userId}/${exportId}.zip`
-
-const dataExportSecret = () =>
-    `data-export:${process.env.ACCESS_TOKEN_SECRET ?? env.ACCESS_TOKEN_SECRET}`
-
-/** the token in the emailed link. it only opens this one export, and only until it expires */
-export const createDataExportToken = (exportId: string): string =>
-    crypto.createHmac('sha256', dataExportSecret()).update(exportId).digest('hex')
-
-export const isValidDataExportToken = (exportId: string, token: string): boolean => {
-    const expected = Buffer.from(createDataExportToken(exportId), 'utf8')
-    const given = Buffer.from(token, 'utf8')
-    return expected.length === given.length && crypto.timingSafeEqual(expected, given)
-}
-
-export const buildDataExportUrl = (exportId: string): string => {
-    const serverUrl = (process.env.SERVER_URL ?? env.SERVER_URL).replace(/\/+$/, '')
-    const query = new URLSearchParams({ t: createDataExportToken(exportId) })
-    return `${serverUrl}/api/v1/setting/export/${exportId}/download?${query.toString()}`
-}
-
-export const toDataExportState = (data: {
-    id: string
-    status: string
-    createdAt: Date
-    expiresAt: Date | null
-}): DataExportState => ({
-    id: data.id,
-    status: data.status as DataExportStatus,
-    createdAt: data.createdAt,
-    expiresAt: data.expiresAt,
-    nextAllowedAt:
-        data.status === 'FAILED'
-            ? data.createdAt
-            : new Date(data.createdAt.getTime() + DATA_EXPORT_COOLDOWN_MS),
-})
-
-/** "0001-fix-the-login-page.json": the order the sessions were made in, then the title */
-export const dataExportSessionFileName = (index: number, title: string | null): string => {
-    const slug = (title ?? 'session')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 60)
-    return `sessions/${String(index + 1).padStart(4, '0')}-${slug || 'session'}.json`
 }
 
 const ARCHIVE_AFTER_DAYS = [7, 30] as const

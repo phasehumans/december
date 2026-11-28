@@ -43,23 +43,24 @@ In December Cloud, open **Settings**, then **Pull requests**.
 
 These settings control how December opens a pull request from any session:
 
-| Setting                                          | What it does                                                                                                           |
-| :----------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------- |
-| Branch name starts with                          | The start of each branch name. The default is `december/`.                                                             |
-| Open as                                          | **Draft** or **Ready**. The default is **Ready**.                                                                      |
-| Create the pull request                          | **When the work is done**, or **When I ask**. With **When I ask**, December pushes a branch and opens no pull request. |
-| Author                                           | **December** opens the pull request as the December GitHub App. **You** opens it with your GitHub account.             |
-| Commit author                                    | **You and December**: you are the author, and December is the co-author. **December**: December is the author.         |
-| Archive the session when the pull request merges | December archives the session after the merge.                                                                         |
+| Setting                 | What it does                                                                                                   |
+| :---------------------- | :------------------------------------------------------------------------------------------------------------- |
+| Branch name starts with | The start of each branch name. The default is `december/`.                                                     |
+| Open as                 | **Draft** or **Ready**. The default is **Ready**.                                                              |
+| Author                  | **December** opens the pull request as the December GitHub App. **You** opens it with your GitHub account.     |
+| Commit author           | **You and December**: you are the author, and December is the co-author. **December**: December is the author. |
+
+To push a branch and open no pull request, turn off **Open a pull request** in the prompt box menu. When a pull request merges, December archives its session.
 
 These settings control what December does from GitHub:
 
-| Setting                                     | What it does                                                                                                                                                                         |
-| :------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Work from GitHub comments                   | Turn it off to pause all runs from GitHub comments.                                                                                                                                  |
-| Review pull requests                        | **When asked**: only on `@trydecember review`. **My PRs**: also your new pull requests. **All**: also all new pull requests. Draft pull requests are not reviewed without a request. |
-| Review again                                | **Once**, or **On every push** to the pull request.                                                                                                                                  |
-| Repositories                                | The repositories that December reviews without a request.                                                                                                                            |
-| Answer review comments                      | **All**: every review comment on December pull requests. **Only @trydecember**: comments that mention December, on any pull request. **Off**: no review comments.                    |
-| Answer comments from bots                   | Also answer review comments that bots write.                                                                                                                                         |
-| Fix failed checks on December pull requests | When a check fails on a December pull request, December pushes a fix.                                                                                                                |
+| Setting                                     | What it does                                                                                                                                                                                        |
+| :------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Work from GitHub comments                   | Turn it off to pause all runs from GitHub: replies, reviews and check fixes.                                                                                                                        |
+| Review pull requests                        | **When asked**: only on `@trydecember review`. **My PRs**: also your new pull requests. **All**: also the new pull requests of the owners, members and collaborators of the repository.            |
+| Answer review comments                      | **All**: every review comment on December pull requests. **Only @trydecember**: comments that mention December, on any pull request. **Off**: no review comments.                                   |
+| Fix failed checks on December pull requests | When a check fails on a December pull request, December pushes a fix.                                                                                                                               |
+
+December reviews a pull request one time, when it opens or when it is ready for review. To review it again after a push, comment `@trydecember review`. December does not review draft pull requests without a request.
+
+December only runs for the owners, members and collaborators of a repository. It does not answer comments from bots. A run on a pull request from a fork gets none of your secrets.

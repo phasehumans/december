@@ -85,7 +85,7 @@ describe('usePromptInputController - repository and branch onboarding', () => {
             provider: undefined,
             billingSource: 'CREDITS',
             // the session configuration goes with the prompt (#632)
-            runConfig: { planFirst: false, effort: 'deep', openPullRequest: true },
+            runConfig: { planFirst: false, effort: 'fast', openPullRequest: true },
         })
     })
 

@@ -4,20 +4,11 @@ import React from 'react'
 import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
 import { SettingsRow, SettingsSection, outlineButtonClass } from './SettingsUi'
 
-import { profileAPI, type DataExport } from '@/features/profile/api/profile'
+import { profileAPI } from '@/features/profile/api/profile'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { formatRelativeTime } from '@/shared/lib/relativeTime'
 
 const sessionsQueryKey = ['auth', 'sessions'] as const
-const exportQueryKey = ['setting', 'export'] as const
-
-/** the grey line under "Export my data", from the latest export */
-const exportHint = (latest: DataExport | null | undefined, error: string | null) => {
-    if (error) return error
-    if (!latest || new Date(latest.nextAllowedAt).getTime() <= Date.now()) return undefined
-    if (latest.status === 'PENDING') return 'Preparing. We will email you a link'
-    return 'Link sent to your email. One export a day'
-}
 
 const errorMessage = (error: unknown, fallback: string) =>
     error instanceof Error && error.message ? error.message : fallback
@@ -29,8 +20,7 @@ interface AccountSectionsProps {
 }
 
 /**
- * The lower part of the Account page: devices (N6), data (N9) and support access (N16),
- * all on the server (#636).
+ * The lower part of the Account page: devices (N6) and data (N9), on the server (#636).
  */
 export const AccountSections: React.FC<AccountSectionsProps> = ({
     onSignOut,
@@ -47,18 +37,8 @@ export const AccountSections: React.FC<AccountSectionsProps> = ({
         mutationFn: profileAPI.revokeSignedInSession,
         onSettled: () => queryClient.invalidateQueries({ queryKey: sessionsQueryKey }),
     })
-
-    const { data: exportState } = useQuery({
-        queryKey: exportQueryKey,
-        queryFn: profileAPI.getDataExport,
-    })
-    const latestExport = exportState?.export
-    const exportBlocked =
-        Boolean(latestExport) && new Date(latestExport!.nextAllowedAt).getTime() > Date.now()
-    const requestExport = useMutation({
-        mutationFn: profileAPI.requestDataExport,
-        onSuccess: (result) => queryClient.setQueryData(exportQueryKey, result),
-    })
+    // the device whose sign out failed shows the error under its name
+    const failedRevokeId = revoke.isError ? revoke.variables : undefined
 
     const [confirmDeleteSessions, setConfirmDeleteSessions] = React.useState(false)
     const deleteSessions = useMutation({
@@ -78,9 +58,11 @@ export const AccountSections: React.FC<AccountSectionsProps> = ({
                         key={session.id}
                         label={session.label}
                         hint={
-                            session.isCurrent
-                                ? 'This device'
-                                : `Active ${formatRelativeTime(session.lastActiveAt)}`
+                            session.id === failedRevokeId
+                                ? errorMessage(revoke.error, 'Could not sign out this device')
+                                : session.isCurrent
+                                  ? 'This device'
+                                  : `Active ${formatRelativeTime(session.lastActiveAt)}`
                         }
                     >
                         <button
@@ -108,25 +90,7 @@ export const AccountSections: React.FC<AccountSectionsProps> = ({
                 </div>
             </SettingsSection>
 
-            <SettingsSection title="Data" description="Export or delete what December keeps.">
-                <SettingsRow
-                    label="Export my data"
-                    hint={exportHint(
-                        latestExport,
-                        requestExport.error
-                            ? errorMessage(requestExport.error, 'Could not start the export')
-                            : null
-                    )}
-                >
-                    <button
-                        type="button"
-                        disabled={exportBlocked || requestExport.isPending}
-                        onClick={() => requestExport.mutate()}
-                        className={`${outlineButtonClass} disabled:opacity-50 disabled:cursor-default`}
-                    >
-                        {exportBlocked ? 'Requested' : 'Export'}
-                    </button>
-                </SettingsRow>
+            <SettingsSection title="Data" description="Delete what December keeps.">
                 <SettingsRow
                     label="Delete all sessions"
                     hint={

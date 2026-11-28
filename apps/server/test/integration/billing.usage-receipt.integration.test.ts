@@ -191,6 +191,23 @@ describe('GET /billing/credits/history: totals and days', () => {
             })
         })
 
+        it('sends only the fields the usage list shows', async () => {
+            const res = await get(token, `/billing/credits/history?${range}`)
+
+            expect(res.status).toBe(200)
+            for (const event of res.body.data.events) {
+                expect(event).not.toHaveProperty('externalRequestId')
+                expect(event).not.toHaveProperty('chatId')
+                expect(event).not.toHaveProperty('userId')
+            }
+        })
+
+        it('rejects an offset past the cap', async () => {
+            const res = await get(token, `/billing/credits/history?${range}&offset=100001`)
+
+            expect(res.status).toBe(400)
+        })
+
         it('rejects a billingSource that is not known', async () => {
             const res = await get(token, `/billing/credits/history?${range}&billingSource=FREE`)
 
@@ -201,9 +218,9 @@ describe('GET /billing/credits/history: totals and days', () => {
             const res = await get(token, `/billing/credits/history?${range}`)
 
             expect(res.body.data.days).toEqual([
-                { date: '2026-03-10', costInCents: 50, totalTokens: 1500 },
-                { date: '2026-03-11', costInCents: 0, totalTokens: 0 },
-                { date: '2026-03-12', costInCents: 5, totalTokens: 750 },
+                { date: '2026-03-10', costInCents: 50, totalTokens: 1500, ownKeyTokens: 0 },
+                { date: '2026-03-11', costInCents: 0, totalTokens: 0, ownKeyTokens: 0 },
+                { date: '2026-03-12', costInCents: 5, totalTokens: 750, ownKeyTokens: 700 },
             ])
         })
 
@@ -211,9 +228,9 @@ describe('GET /billing/credits/history: totals and days', () => {
             const res = await get(token, `/billing/credits/history?${range}&billingSource=OWN_KEY`)
 
             expect(res.body.data.days).toEqual([
-                { date: '2026-03-10', costInCents: 0, totalTokens: 0 },
-                { date: '2026-03-11', costInCents: 0, totalTokens: 0 },
-                { date: '2026-03-12', costInCents: 0, totalTokens: 700 },
+                { date: '2026-03-10', costInCents: 0, totalTokens: 0, ownKeyTokens: 0 },
+                { date: '2026-03-11', costInCents: 0, totalTokens: 0, ownKeyTokens: 0 },
+                { date: '2026-03-12', costInCents: 0, totalTokens: 700, ownKeyTokens: 700 },
             ])
         })
 
@@ -268,8 +285,8 @@ describe('GET /billing/credits/history: totals and days', () => {
 
             expect(res.status).toBe(200)
             expect(res.body.data.days).toEqual([
-                { date: '2026-03-10', costInCents: 10, totalTokens: 100 },
-                { date: '2026-03-11', costInCents: 10, totalTokens: 100 },
+                { date: '2026-03-10', costInCents: 10, totalTokens: 100, ownKeyTokens: 0 },
+                { date: '2026-03-11', costInCents: 10, totalTokens: 100, ownKeyTokens: 0 },
             ])
         })
 
@@ -277,8 +294,8 @@ describe('GET /billing/credits/history: totals and days', () => {
             const res = await get(utcToken, `/billing/credits/history?${twoDays}`)
 
             expect(res.body.data.days).toEqual([
-                { date: '2026-03-10', costInCents: 17, totalTokens: 170 },
-                { date: '2026-03-11', costInCents: 3, totalTokens: 30 },
+                { date: '2026-03-10', costInCents: 17, totalTokens: 170, ownKeyTokens: 0 },
+                { date: '2026-03-11', costInCents: 3, totalTokens: 30, ownKeyTokens: 0 },
             ])
         })
 
@@ -290,8 +307,8 @@ describe('GET /billing/credits/history: totals and days', () => {
 
             expect(res.status).toBe(200)
             expect(res.body.data.days).toEqual([
-                { date: '2026-03-10', costInCents: 10, totalTokens: 100 },
-                { date: '2026-03-11', costInCents: 10, totalTokens: 100 },
+                { date: '2026-03-10', costInCents: 10, totalTokens: 100, ownKeyTokens: 0 },
+                { date: '2026-03-11', costInCents: 10, totalTokens: 100, ownKeyTokens: 0 },
             ])
         })
 
@@ -301,8 +318,8 @@ describe('GET /billing/credits/history: totals and days', () => {
 
             expect(res.status).toBe(200)
             expect(res.body.data.days).toEqual([
-                { date: '2026-03-10', costInCents: 10, totalTokens: 100 },
-                { date: '2026-03-11', costInCents: 10, totalTokens: 100 },
+                { date: '2026-03-10', costInCents: 10, totalTokens: 100, ownKeyTokens: 0 },
+                { date: '2026-03-11', costInCents: 10, totalTokens: 100, ownKeyTokens: 0 },
             ])
         })
 
@@ -320,12 +337,12 @@ describe('GET /billing/credits/history: totals and days', () => {
                 23,
             ])
             // 00:01 in India
-            expect(hours[0]).toEqual({ hour: 0, costInCents: 7, totalTokens: 70 })
+            expect(hours[0]).toEqual({ hour: 0, costInCents: 7, totalTokens: 70, ownKeyTokens: 0 })
             // 09:45 in India
-            expect(hours[9]).toEqual({ hour: 9, costInCents: 3, totalTokens: 30 })
+            expect(hours[9]).toEqual({ hour: 9, costInCents: 3, totalTokens: 30, ownKeyTokens: 0 })
             expect(hours.filter((row) => row.costInCents === 0)).toHaveLength(22)
             expect(res.body.data.days).toEqual([
-                { date: '2026-03-11', costInCents: 10, totalTokens: 100 },
+                { date: '2026-03-11', costInCents: 10, totalTokens: 100, ownKeyTokens: 0 },
             ])
         })
 
@@ -341,9 +358,14 @@ describe('GET /billing/credits/history: totals and days', () => {
             expect(hours[0]?.hour).toBe(15)
             expect(hours[23]?.hour).toBe(14)
             // 23:59 on 10 March, then 00:01 and 09:45 on 11 March
-            expect(hours[8]).toEqual({ hour: 23, costInCents: 10, totalTokens: 100 })
-            expect(hours[9]).toEqual({ hour: 0, costInCents: 7, totalTokens: 70 })
-            expect(hours[18]).toEqual({ hour: 9, costInCents: 3, totalTokens: 30 })
+            expect(hours[8]).toEqual({
+                hour: 23,
+                costInCents: 10,
+                totalTokens: 100,
+                ownKeyTokens: 0,
+            })
+            expect(hours[9]).toEqual({ hour: 0, costInCents: 7, totalTokens: 70, ownKeyTokens: 0 })
+            expect(hours[18]).toEqual({ hour: 9, costInCents: 3, totalTokens: 30, ownKeyTokens: 0 })
         })
     })
 

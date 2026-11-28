@@ -23,7 +23,8 @@ export const verifyRazorpayPaymentSchema = z
 
 export const creditsHistoryQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(100).default(25),
-    offset: z.coerce.number().int().min(0).default(0),
+    // a cap keeps a huge offset from making the database walk every row
+    offset: z.coerce.number().int().min(0).max(100000).default(0),
     periodStart: z.string().refine(isDate, { message: 'periodStart must be a date' }).optional(),
     periodEnd: z.string().refine(isDate, { message: 'periodEnd must be a date' }).optional(),
     // the "all, credits, your keys" control. no value is all

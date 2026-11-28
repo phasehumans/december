@@ -303,11 +303,11 @@ describe('slash menu on Home', () => {
         press('Enter')
         expect(list().getByText('Fast')).not.toBeNull()
         expect(list().getByText('Deep')).not.toBeNull()
-        // Deep is the default, so it is the selected row. Up moves to Fast
-        press('ArrowUp')
+        // Fast is the default, so it is the selected row. Down moves to Deep
+        press('ArrowDown')
         press('Enter')
         // the switch in the footer follows. a speed is not a model: the server picks that
-        expect(screen.getByRole('radio', { name: 'Fast' }).getAttribute('aria-checked')).toBe(
+        expect(screen.getByRole('radio', { name: 'Deep' }).getAttribute('aria-checked')).toBe(
             'true'
         )
         expect(onModelChange).not.toHaveBeenCalled()
@@ -518,13 +518,13 @@ describe('slash menu on Home', () => {
 
         // the command is typed after the prompt and its choices are open
         expect(box().value).toBe('fix the tests /effort')
-        expect(list().getByText('Fast')).not.toBeNull()
-        const deep = list().getByText('Deep').closest('[role="option"]')
+        expect(list().getByText('Deep')).not.toBeNull()
+        const fast = list().getByText('Fast').closest('[role="option"]')
         // the current value is the selected row
-        expect(deep?.getAttribute('aria-selected')).toBe('true')
+        expect(fast?.getAttribute('aria-selected')).toBe('true')
 
         // a pick takes the command out of the prompt again
-        fireEvent.click(list().getByText('Fast'))
+        fireEvent.click(list().getByText('Deep'))
         expect(box().value).toBe('fix the tests ')
         expect(screen.queryByRole('listbox')).toBeNull()
     })
@@ -644,9 +644,9 @@ describe('skills and MCP servers from the server', () => {
             branch: undefined,
             gitRef: undefined,
             issueNumber: undefined,
-            tier: 'deep',
+            tier: 'fast',
             planFirst: false,
-            effort: 'deep',
+            effort: 'fast',
             openPullRequest: true,
             disabledMcps: ['linear'],
         })
@@ -655,9 +655,9 @@ describe('skills and MCP servers from the server', () => {
             projectId: 'session-new',
             prompt: 'write the notes for 2.4',
             billingSource: 'CREDITS',
-            tier: 'deep',
+            tier: 'fast',
             planFirst: false,
-            effort: 'deep',
+            effort: 'fast',
             skills: ['ship-notes'],
             disabledMcps: ['linear'],
         })
@@ -685,9 +685,9 @@ describe('skills and MCP servers from the server', () => {
             projectId: 'session-1',
             prompt: 'now the notes',
             billingSource: 'CREDITS',
-            tier: 'deep',
+            tier: 'fast',
             planFirst: false,
-            effort: 'deep',
+            effort: 'fast',
             skills: ['ship-notes'],
         })
     })
@@ -882,8 +882,8 @@ describe('model control', () => {
             // the footer has no switch: only the text
             expect(screen.queryByRole('radiogroup', { name: 'Speed' })).toBeNull()
             expect(screen.queryByRole('radiogroup', { name: 'Model source' })).toBeNull()
-            const text = screen.getByRole('button', { name: 'Speed: Deep' })
-            expect(text.textContent).toBe('Deep')
+            const text = screen.getByRole('button', { name: 'Speed: Fast' })
+            expect(text.textContent).toBe('Fast')
 
             fireEvent.click(text)
             const sheet = within(screen.getByRole('dialog', { name: 'Configuration' }))

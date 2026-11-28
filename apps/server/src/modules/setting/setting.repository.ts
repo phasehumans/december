@@ -65,12 +65,7 @@ async function updateSessionDefaults(
     id: string,
     data: {
         defaultPlanFirst?: boolean
-        defaultEffort?: string
         defaultOpenPullRequest?: boolean
-        defaultOwnKeyProvider?: string | null
-        defaultOwnKeyModel?: string | null
-        defaultRepository?: string
-        defaultBaseBranch?: string
     }
 ) {
     return prisma.user.update({
@@ -78,12 +73,7 @@ async function updateSessionDefaults(
         data,
         select: {
             defaultPlanFirst: true,
-            defaultEffort: true,
             defaultOpenPullRequest: true,
-            defaultOwnKeyProvider: true,
-            defaultOwnKeyModel: true,
-            defaultRepository: true,
-            defaultBaseBranch: true,
         },
     })
 }
@@ -98,6 +88,10 @@ async function updateToolDenyRules(id: string, toolDenyRules: string[]) {
         data: { toolDenyRules },
         select: { toolDenyRules: true },
     })
+}
+
+async function countProviderCredentials(userId: string) {
+    return prisma.providerCredential.count({ where: { userId } })
 }
 
 async function updateModelSource(id: string, defaultModelSource: 'CREDITS' | 'OWN_KEY') {
@@ -125,14 +119,6 @@ async function updatePreferences(id: string, preferences: Prisma.InputJsonValue)
 
 async function findPullRequestSettings(userId: string) {
     return prisma.pullRequestSettings.findUnique({ where: { userId } })
-}
-
-// "create the pull request" on the pull requests page is this value (#637)
-async function findOpenPullRequestDefault(userId: string) {
-    return prisma.user.findUnique({
-        where: { id: userId },
-        select: { defaultOpenPullRequest: true },
-    })
 }
 
 async function upsertPullRequestSettings(
@@ -278,153 +264,8 @@ async function disableProductUpdates(id: string) {
     })
 }
 
-// data export (#636)
-
-async function findLatestDataExport(userId: string) {
-    return prisma.dataExport.findFirst({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-    })
-}
-
-async function createDataExport(userId: string) {
-    return prisma.dataExport.create({ data: { userId } })
-}
-
-async function deleteDataExport(id: string) {
-    return prisma.dataExport.delete({ where: { id } })
-}
-
-async function findDataExport(id: string) {
-    return prisma.dataExport.findUnique({
-        where: { id },
-        include: {
-            user: { select: { id: true, isDeleted: true } },
-        },
-    })
-}
-
-// an attempt failed and the queue tries again: the row stays PENDING for that next attempt
-async function markDataExportRetrying(id: string, error: string) {
-    return prisma.dataExport.update({
-        where: { id },
-        data: { status: 'PENDING', completedAt: null, error: error.slice(0, 500) },
-    })
-}
-
-async function markDataExportReady(
-    id: string,
-    data: { fileKey: string; sizeBytes: number; expiresAt: Date }
-) {
-    return prisma.dataExport.update({
-        where: { id },
-        data: { ...data, status: 'READY', completedAt: new Date(), error: null },
-    })
-}
-
-async function markDataExportFailed(id: string, error: string) {
-    return prisma.dataExport.update({
-        where: { id },
-        data: { status: 'FAILED', completedAt: new Date(), error: error.slice(0, 500) },
-    })
-}
-
-async function findUserForDataExport(id: string) {
-    return prisma.user.findUnique({
-        where: { id },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            createdAt: true,
-            githubUsername: true,
-            defaultModelSource: true,
-            defaultPlanFirst: true,
-            defaultEffort: true,
-            defaultOpenPullRequest: true,
-            notifyProductUpdates: true,
-            notifySecurityAlerts: true,
-            preferences: true,
-        },
-    })
-}
-
-async function findSessionIdsForDataExport(userId: string) {
-    return prisma.session.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'asc' },
-        select: { id: true },
-    })
-}
-
-// what the user made: the session and its messages, not sandbox or billing internals
-async function findSessionForDataExport(id: string) {
-    return prisma.session.findUnique({
-        where: { id },
-        select: {
-            id: true,
-            title: true,
-            description: true,
-            type: true,
-            status: true,
-            isArchived: true,
-            tags: true,
-            gitProvider: true,
-            repoUrl: true,
-            githubRepoOwner: true,
-            githubRepoName: true,
-            branch: true,
-            prNumber: true,
-            prUrl: true,
-            prState: true,
-            prTitle: true,
-            createdAt: true,
-            updatedAt: true,
-            messages: {
-                orderBy: { sequence: 'asc' },
-                select: {
-                    role: true,
-                    content: true,
-                    status: true,
-                    sequence: true,
-                    blocks: true,
-                    createdAt: true,
-                },
-            },
-        },
-    })
-}
-
-// exports whose link ended, and exports that never finished
-async function findStaleDataExports(now: Date, staleBefore: Date) {
-    return prisma.dataExport.findMany({
-        where: {
-            OR: [
-                { expiresAt: { lt: now } },
-                { status: { not: 'READY' }, createdAt: { lt: staleBefore } },
-            ],
-        },
-        select: { id: true, fileKey: true },
-    })
-}
-
-async function deleteDataExports(ids: string[]) {
-    return prisma.dataExport.deleteMany({ where: { id: { in: ids } } })
-}
-
 export const settingRepository = {
-    findLatestDataExport,
-    createDataExport,
-    deleteDataExport,
-    findDataExport,
-    markDataExportReady,
-    markDataExportRetrying,
-    markDataExportFailed,
-    findUserForDataExport,
-    findSessionIdsForDataExport,
-    findSessionForDataExport,
-    findStaleDataExports,
-    deleteDataExports,
+    countProviderCredentials,
     disableProductUpdates,
     findUserByIdForInfo,
     countGithubInstallations,
@@ -440,7 +281,6 @@ export const settingRepository = {
     findPreferences,
     updatePreferences,
     findPullRequestSettings,
-    findOpenPullRequestDefault,
     upsertPullRequestSettings,
     findSandboxSettings,
     updateSandboxSettings,

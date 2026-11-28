@@ -1,8 +1,9 @@
 import { ArrowUpRight, Eye, EyeOff, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 
+import { ModelSourceControl } from './ModelSourceControl'
 import { PAGE_SUBTITLES, blueButtonClass, listEmptyClass } from './settingsStyles'
-import { SettingsPage, SettingsSection } from './SettingsUi'
+import { SettingsPage, SettingsRow, SettingsSection } from './SettingsUi'
 
 import type { ByokCredential, ByokProvider } from '../api/byok'
 
@@ -36,6 +37,7 @@ export const ProfileModelKeysSettings: React.FC = () => {
     const [showKey, setShowKey] = useState(false)
     const [formError, setFormError] = useState<string | null>(null)
     const [rowError, setRowError] = useState<string | null>(null)
+    const [sourceError, setSourceError] = useState<string | null>(null)
 
     // phones: the + in the top bar opens the Add key dialog (P3)
     useSettingsTopBarAction('Add key', () => setIsAddOpen(true))
@@ -100,7 +102,16 @@ export const ProfileModelKeysSettings: React.FC = () => {
     return (
         <>
             <SettingsPage title="API keys" subtitle={PAGE_SUBTITLES.yourKeys}>
-                {/* the model source row lives on the Defaults page (N2-B) */}
+                {/* new sessions start on credits; runs from GitHub have no prompt box */}
+                <SettingsSection
+                    title="Model source"
+                    description="What new sessions and runs from GitHub start on."
+                >
+                    <SettingsRow label="Start on" hint={sourceError ?? undefined}>
+                        <ModelSourceControl onErrorChange={setSourceError} />
+                    </SettingsRow>
+                </SettingsSection>
+
                 <SettingsSection
                     title="Saved keys"
                     description="Keys December can run on."

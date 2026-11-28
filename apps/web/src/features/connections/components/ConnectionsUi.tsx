@@ -408,11 +408,13 @@ export function ChoiceGroup<T extends string>({
     value,
     onChange,
     label,
+    disabled,
 }: {
     options: { value: T; label: React.ReactNode }[]
     value: T
     onChange: (value: T) => void
     label: string
+    disabled?: boolean
 }) {
     return (
         <div
@@ -426,9 +428,10 @@ export function ChoiceGroup<T extends string>({
                     type="button"
                     role="radio"
                     aria-checked={value === option.value}
+                    disabled={disabled}
                     onClick={() => onChange(option.value)}
                     className={cn(
-                        'px-2.5 py-1 text-[12px] font-medium rounded-md transition-all whitespace-nowrap cursor-pointer',
+                        'px-2.5 py-1 text-[12px] font-medium rounded-md transition-all whitespace-nowrap cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
                         value === option.value
                             ? 'bg-[#282828] text-white shadow-sm'
                             : 'text-[#8F8E8D] hover:text-[#D6D5C9]'

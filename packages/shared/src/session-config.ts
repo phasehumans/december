@@ -16,7 +16,8 @@ export interface SessionRunConfig {
 
 export const DEFAULT_SESSION_RUN_CONFIG: SessionRunConfig = {
     planFirst: false,
-    effort: 'deep',
+    // a new session starts on fast; the prompt box switches to deep
+    effort: 'fast',
     openPullRequest: true,
 }
 

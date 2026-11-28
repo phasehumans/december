@@ -135,8 +135,11 @@ async function findUserByIdForDeleteCheck(id: string) {
 
 async function deleteAccount(userId: string) {
     return prisma.$transaction([
-        // deletion is a soft delete, but saved api keys are always removed for real
+        // deletion is a soft delete, but saved api keys, secrets and mcp server headers are
+        // always removed for real
         prisma.providerCredential.deleteMany({ where: { userId } }),
+        prisma.secret.deleteMany({ where: { userId } }),
+        prisma.userMcpServer.deleteMany({ where: { userId } }),
         // git hosts are let go, so a new account can connect the same github or gitlab
         prisma.gitConnection.deleteMany({ where: { userId } }),
         prisma.githubAppInstallation.updateMany({ where: { userId }, data: { userId: null } }),
@@ -194,6 +197,25 @@ async function deleteDeviceCode(id: string) {
     return prisma.deviceCode.delete({
         where: { id },
     })
+}
+
+// accounts deleted before the cutoff, with the sessions and projects that have files
+async function findAccountsToPurge(before: Date, take: number) {
+    return prisma.user.findMany({
+        where: { isDeleted: true, deletedAt: { lt: before } },
+        select: {
+            id: true,
+            sessions: { select: { id: true } },
+            projects: { select: { id: true } },
+        },
+        orderBy: { deletedAt: 'asc' },
+        take,
+    })
+}
+
+// the user row and every row that cascades from it. payment rows stay with userId null
+async function purgeAccount(userId: string) {
+    return prisma.user.deleteMany({ where: { id: userId, isDeleted: true } })
 }
 
 async function purgeExpiredAndRevokedSessions() {
@@ -271,4 +293,6 @@ export const authRepository = {
     deleteDeviceCode,
     findActiveDeviceSession,
     purgeExpiredAndRevokedSessions,
+    findAccountsToPurge,
+    purgeAccount,
 }

@@ -6,6 +6,7 @@ import { Modal } from '@/shared/components/ui/Modal'
 interface ProfileSignOutAllSessionsModalProps {
     isOpen: boolean
     isPending?: boolean
+    errorMessage?: string
     onClose: () => void
     onConfirm: () => void
 }
@@ -13,6 +14,7 @@ interface ProfileSignOutAllSessionsModalProps {
 export const ProfileSignOutAllSessionsModal: React.FC<ProfileSignOutAllSessionsModalProps> = ({
     isOpen,
     isPending,
+    errorMessage,
     onClose,
     onConfirm,
 }) => {
@@ -21,7 +23,7 @@ export const ProfileSignOutAllSessionsModal: React.FC<ProfileSignOutAllSessionsM
             isOpen={isOpen}
             onClose={onClose}
             title="Sign out everywhere"
-            description="You sign out on every device and browser."
+            description={errorMessage ?? 'You sign out on every device and browser.'}
             variant="premium"
             showLogo={false}
             sheetOnPhone

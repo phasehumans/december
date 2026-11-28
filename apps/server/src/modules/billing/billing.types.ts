@@ -66,6 +66,8 @@ export type UsageBucketSum = {
     bucket: number
     costInCents: number
     totalTokens: number
+    // the part of totalTokens that ran on the user's own provider keys
+    ownKeyTokens: number
 }
 
 /** one bar of the usage chart for a range of more than one day */
@@ -73,6 +75,7 @@ export type UsageDay = {
     date: string
     costInCents: number
     totalTokens: number
+    ownKeyTokens: number
 }
 
 /** one bar of the usage chart for a one-day range */
@@ -80,6 +83,7 @@ export type UsageHour = {
     hour: number
     costInCents: number
     totalTokens: number
+    ownKeyTokens: number
 }
 
 export type AddCredits = {

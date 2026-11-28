@@ -1,7 +1,6 @@
 import { prisma } from '@december/database'
 import {
     DEFAULT_SESSION_RUN_CONFIG,
-    isSessionEffort,
     joinRepoFullName,
     readSessionRunConfig,
     readSessionSwitches,
@@ -20,6 +19,7 @@ import { appCache } from '../../shared/cache'
 import { claimOnce, setFlag, takeFlag } from '../../shared/claim-once'
 import { escapeLike } from '../../shared/escape-like'
 import {
+    deletePrefix,
     sessionPrefix,
     sessionWorkspaceKey,
     sessionWorkspacePrefix,
@@ -85,6 +85,9 @@ import type {
     GetSessionMessages,
     DeleteSession,
     DeleteAllSessions,
+    StopAllSessions,
+    PurgeExpiredSessions,
+    QueueSandboxStops,
     EndSessionRuns,
     DisconnectSession,
     ProxyPreview,
@@ -409,32 +412,11 @@ const createSession = async (data: CreateSession) => {
 }
 
 /**
- * The model of a new session on the user's own key. A request with no model takes the
- * user's default own-key model (#637) when the user still has a key for that provider and
- * the key serves the model. Without a usable default the check is the same as before: the
- * request must name a provider with a saved key, and no model is saved.
+ * The model of a new session on the user's own key: the request must name a provider with
+ * a saved key. A request with no model saves none, and the run uses the key's default.
  */
 const resolveOwnKeyModel = async (data: ResolveOwnKeyModel): Promise<OwnKeyModel> => {
     const { userId, provider, model } = data
-
-    if (!model) {
-        const saved = await sessionRepository.findUserRunDefaults(userId)
-        const defaultProvider = saved?.defaultOwnKeyProvider
-        const defaultModel = saved?.defaultOwnKeyModel
-        if (defaultProvider && defaultModel && (!provider || provider === defaultProvider)) {
-            const isUsable = await byokService
-                .assertOwnKeyUsable({ userId, provider: defaultProvider, model: defaultModel })
-                .then(
-                    () => true,
-                    (error: unknown) => {
-                        // the key is gone or no longer serves the model: no default
-                        if (error instanceof AppError) return false
-                        throw error
-                    }
-                )
-            if (isUsable) return { provider: defaultProvider, model: defaultModel }
-        }
-    }
 
     await byokService.assertOwnKeyUsable({ userId, provider, model })
     return model ? { provider, model } : {}
@@ -477,11 +459,11 @@ const getUserRunDefaults = async (data: GetUserRunDefaults): Promise<SessionRunC
     const { userId } = data
     const user = await sessionRepository.findUserRunDefaults(userId)
     if (!user) return DEFAULT_SESSION_RUN_CONFIG
+    // plan first and open pull request are saved from the prompt box ("save as default");
+    // the speed has no saved default, a new session starts on fast
     return {
         planFirst: user.defaultPlanFirst,
-        effort: isSessionEffort(user.defaultEffort)
-            ? user.defaultEffort
-            : DEFAULT_SESSION_RUN_CONFIG.effort,
+        effort: DEFAULT_SESSION_RUN_CONFIG.effort,
         openPullRequest: user.defaultOpenPullRequest,
     }
 }
@@ -1115,6 +1097,87 @@ const endSessionRuns = async (data: EndSessionRuns) => {
 const LIVE_SANDBOX_STATUSES = new Set(['STARTING', 'RUNNING', 'PAUSED'])
 
 // every session of the user (#636): stop the sandboxes first, then delete
+// queues a stop for each live sandbox of these sessions. throws when a stop cannot be queued
+const queueSandboxStops = async (data: QueueSandboxStops) => {
+    const { sessions } = data
+    // a row without a sandbox status is from before that column: stop it to be safe
+    const withSandbox = sessions.filter(
+        (session) =>
+            session.vmId &&
+            (session.sandboxStatus === null || LIVE_SANDBOX_STATUSES.has(session.sandboxStatus))
+    )
+    for (const session of withSandbox) {
+        await enqueueJob('sandbox_control', {
+            taskType: 'sandbox_control',
+            action: 'stop',
+            sessionId: session.id,
+            sandboxId: session.vmId,
+        })
+    }
+    return withSandbox.length
+}
+
+/**
+ * Stops every run and live sandbox of a user and keeps the sessions. Delete account uses
+ * it, so nothing runs or costs money after the account is gone.
+ */
+const stopAllSessions = async (data: StopAllSessions) => {
+    const { userId } = data
+
+    const sessions = await sessionRepository.findSessionsForDeleteAll(userId)
+    if (sessions.length === 0) {
+        return { sandboxesStopped: 0 }
+    }
+
+    let sandboxesStopped: number
+    try {
+        sandboxesStopped = await queueSandboxStops({ sessions })
+    } catch (error) {
+        console.error('[Session] could not queue sandbox stops:', error)
+        throw new AppError('could not stop the sandboxes. try again', 503)
+    }
+
+    await endSessionRuns({ sessionIds: sessions.map((session) => session.id) })
+    return { sandboxesStopped }
+}
+
+/**
+ * The daily sweep: sessions not changed for 30 days go, with every file they keep in
+ * storage (the workspace, the assets and the files sent with prompts are all under
+ * sessions/<id>/). A session whose files cannot be removed stays for the next day.
+ */
+const purgeExpiredSessions = async (data: PurgeExpiredSessions) => {
+    const { before, batchSize = 200 } = data
+
+    let deleted = 0
+    // ids that failed this run: the next batch skips them, so the loop ends
+    const failed = new Set<string>()
+    for (;;) {
+        const ids = (
+            await sessionRepository.findSessionIdsUpdatedBefore(before, batchSize + failed.size)
+        ).filter((id) => !failed.has(id))
+        if (ids.length === 0) break
+
+        const removed: string[] = []
+        for (const sessionId of ids) {
+            try {
+                await deletePrefix(sessionPrefix(sessionId))
+                removed.push(sessionId)
+            } catch (error) {
+                failed.add(sessionId)
+                console.warn(`[Session] could not remove the files of session ${sessionId}:`, error)
+            }
+        }
+        if (removed.length === 0) break
+        const { count } = await sessionRepository.deleteSessionsUpdatedBefore({
+            sessionIds: removed,
+            before,
+        })
+        deleted += count
+    }
+    return { deleted, failed: failed.size }
+}
+
 const deleteAllSessions = async (data: DeleteAllSessions) => {
     const { userId } = data
 
@@ -1123,21 +1186,9 @@ const deleteAllSessions = async (data: DeleteAllSessions) => {
         return { deleted: 0, sandboxesStopped: 0 }
     }
 
-    // a row without a sandbox status is from before that column: stop it to be safe
-    const withSandbox = sessions.filter(
-        (session) =>
-            session.vmId &&
-            (session.sandboxStatus === null || LIVE_SANDBOX_STATUSES.has(session.sandboxStatus))
-    )
+    let sandboxesStopped: number
     try {
-        for (const session of withSandbox) {
-            await enqueueJob('sandbox_control', {
-                taskType: 'sandbox_control',
-                action: 'stop',
-                sessionId: session.id,
-                sandboxId: session.vmId,
-            })
-        }
+        sandboxesStopped = await queueSandboxStops({ sessions })
     } catch (error) {
         // nothing is deleted while a sandbox may still run and cost money
         console.error('[Session] could not queue sandbox stops:', error)
@@ -1151,7 +1202,7 @@ const deleteAllSessions = async (data: DeleteAllSessions) => {
     const { count } = await sessionRepository.deleteSessionsByIds({ userId, sessionIds })
     await invalidateUserRecentSessions(userId)
 
-    return { deleted: count, sandboxesStopped: withSandbox.length }
+    return { deleted: count, sandboxesStopped }
 }
 
 const deleteSession = async (data: DeleteSession) => {
@@ -2321,6 +2372,8 @@ export const sessionService = {
     updateSessionTags,
     deleteSession,
     deleteAllSessions,
+    stopAllSessions,
+    purgeExpiredSessions,
     disconnectSession,
     proxyPreview,
     streamSearchResponse,

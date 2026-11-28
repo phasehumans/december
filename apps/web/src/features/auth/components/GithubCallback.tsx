@@ -6,6 +6,7 @@ import { AuthPageShell } from './AuthPageShell'
 import { authAPI } from '@/features/auth/api/auth'
 import { githubOAuth } from '@/features/auth/githubOAuth'
 import { LogoLoader } from '@/shared/components/ui/LogoLoader'
+import { getApiBaseUrl } from '@/shared/config/env'
 import { clearPersistedQueryCache } from '@/shared/lib/query-cache'
 
 export const GithubCallback = () => {
@@ -20,6 +21,19 @@ export const GithubCallback = () => {
         hasStarted.current = true
 
         const urlParams = new URLSearchParams(window.location.search)
+
+        // an install of the GitHub App with user authorization (V1) comes back to this page
+        // too: the server's install callback checks the code and links the install
+        if (urlParams.has('installation_id')) {
+            const query = new URLSearchParams()
+            for (const key of ['installation_id', 'setup_action', 'state', 'code']) {
+                const value = urlParams.get(key)
+                if (value) query.set(key, value)
+            }
+            window.location.replace(`${getApiBaseUrl()}/githubapp/callback?${query.toString()}`)
+            return
+        }
+
         const code = urlParams.get('code')
         const error = urlParams.get('error')
         const errorDescription = urlParams.get('error_description')

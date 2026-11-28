@@ -18,7 +18,6 @@ import type {
     DeleteSessionFiles,
     GetSessionAttachments,
     PromptAttachment,
-    PurgeExpiredSessionFiles,
     RemoveAttachment,
     UploadAttachment,
 } from './attachment.types'
@@ -162,19 +161,10 @@ const deleteSessionFiles = async (data: DeleteSessionFiles) => {
     }
 }
 
-/** the daily sweep: the files of the sessions it deletes next */
-const purgeExpiredSessionFiles = async (data: PurgeExpiredSessionFiles) => {
-    const { before } = data
-    const sessionIds = await attachmentRepository.findSessionIdsWithFilesBefore(before)
-    await deleteSessionFiles({ sessionIds })
-    return { sessions: sessionIds.length }
-}
-
 export const attachmentService = {
     uploadAttachment,
     removeAttachment,
     attachToPrompt,
     getSessionAttachments,
     deleteSessionFiles,
-    purgeExpiredSessionFiles,
 }

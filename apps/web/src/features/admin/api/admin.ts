@@ -60,16 +60,11 @@ export interface AdminUserDetails {
         notifyPush: boolean
         productEmails: boolean
         securityAlerts: boolean
-        lastExport: { status: string; createdAt: string } | null
     }
     defaults: {
         modelSource: 'CREDITS' | 'OWN_KEY'
-        ownKeyModel: string | null
         planFirst: boolean
-        effort: string
         openPullRequest: boolean
-        repository: string
-        baseBranch: string
         idleStopMinutes: number
         archiveAfterDays: number | null
         lowBalanceAlertCents: number | null
@@ -204,8 +199,8 @@ export interface AdminCreditLedger {
         kind: string
         reason: string | null
         createdAt: string
-        userId: string
-        email: string
+        userId: string | null
+        email: string | null
     }>
 }
 
@@ -270,7 +265,7 @@ export interface AdminAnalytics {
         skills: number
         mcp: number
         planFirst: number
-        fast: number
+        deep: number
     }
     // A6
     models: Array<{ model: string; calls: number; cents: number; ownKeyCalls: number }>

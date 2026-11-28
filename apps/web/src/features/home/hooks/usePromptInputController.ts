@@ -3,8 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { KeyRound, Folder } from 'lucide-react'
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
 
-import { hasDefaultRepository, useRepoStartValues } from './useRepoStartValues'
-
 import type { BillingSource, Speed } from '@/features/home/model-selection'
 import type { SlashPickOption } from '@/features/home/slash/useSlashMenu'
 import type { PromptInputSubmitOptions, UploadedAttachment } from '@/features/home/types'
@@ -313,16 +311,8 @@ export const usePromptInputController = ({
         if (!byokData) return
         const store = useModelSelection.getState()
         const credentials = byokData.credentials
-        // the model of the account for own keys (#637) when its key is still saved, else
-        // the default model of the first key
-        const saved = credentials.find(
-            (c) =>
-                c.provider === defaultsProfile?.defaultOwnKeyProvider &&
-                c.models.includes(defaultsProfile?.defaultOwnKeyModel ?? '')
-        )
-        const first = saved
-            ? { provider: saved.provider, defaultModel: defaultsProfile?.defaultOwnKeyModel ?? '' }
-            : credentials[0]
+        // "your keys" starts on the default model of the first key
+        const first = credentials[0]
 
         if (
             selectedSource === 'OWN_KEY' &&
@@ -333,11 +323,6 @@ export const usePromptInputController = ({
             setSelectedSource('CREDITS')
             store.reset()
             return
-        }
-
-        // on credits, the switch to "Your keys" starts on the model of the account
-        if (saved && first && !initialModel) {
-            store.applyDefaultOwnKey({ model: first.defaultModel, provider: first.provider })
         }
 
         if (
@@ -366,16 +351,7 @@ export const usePromptInputController = ({
             planFirst: defaultsProfile.defaultPlanFirst,
             openPullRequest: defaultsProfile.defaultOpenPullRequest,
         })
-        // the speed of the account (#637), until the user picks one in a prompt box
-        if (defaultsProfile.defaultEffort) {
-            useModelSelection.getState().applyDefaultSpeed(defaultsProfile.defaultEffort)
-        }
     }, [defaultsProfile])
-
-    // the default repository of the account (#637) starts in the box of a new session
-    const repoStartedRef = useRef(false)
-    const startRepository = mode !== 'chat' ? defaultsProfile?.defaultRepository : undefined
-    const needsRepoList = hasDefaultRepository(startRepository) && selectedRepos.length === 0
 
     const isControlled = value !== undefined
     const input = isControlled ? value : internalInput
@@ -405,7 +381,6 @@ export const usePromptInputController = ({
             if (!prefill) return
             if (prefill.prompt !== undefined) handleInputChange(prefill.prompt)
             if (prefill.repo) {
-                repoStartedRef.current = true
                 setSelectedRepos([prefill.repo])
                 setSelectedBranch(prefill.branch || prefill.repo.defaultBranch || 'main')
             }
@@ -597,9 +572,7 @@ export const usePromptInputController = ({
         profile?.githubAppInstall || profile?.githubConnected || quickInfo?.githubConnected
     )
 
-    const githubConnectUrl = profile?.id
-        ? profileAPI.getGithubConnectUrl(profile.id)
-        : profileAPI.getGithubConnectUrl('')
+    const githubConnectUrl = profileAPI.getGithubConnectUrl()
 
     const {
         repos,
@@ -607,19 +580,12 @@ export const usePromptInputController = ({
         isGitlabConnected,
         isGitlabReady,
     } = useConnectedRepos({
-        enabled: (isReposTriggered || needsRepoList) && !!isAuthenticated,
+        enabled: isReposTriggered && !!isAuthenticated,
         isGithubConnected: hasGithub,
     })
-    const { startBranchFor } = useRepoStartValues({
-        enabled: mode !== 'chat' && !!isAuthenticated,
-        defaultRepository: startRepository,
-        defaultBaseBranch: defaultsProfile?.defaultBaseBranch,
-        repos,
-        selectedCount: selectedRepos.length,
-        startedRef: repoStartedRef,
-        setSelectedRepos,
-        setSelectedBranch,
-    })
+    // a picked repository starts on its default branch; the branch picker changes it
+    const startBranchFor = (repo: { defaultBranch?: string | null }) =>
+        setSelectedBranch(repo.defaultBranch || 'main')
     // without GitHub, wait for the GitLab answer so "Connect GitHub" does not flash
     const isReposLoading = isRepoListLoading || (!hasGithub && isReposTriggered && !isGitlabReady)
     // any connected git host can list repos; the "Connect GitHub" hint shows only without one

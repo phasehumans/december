@@ -751,7 +751,7 @@ describe('Pull requests page server', () => {
             expect(saved?.githubRepoId).toBeNull()
         })
 
-        it('a merge found here archives the session, unless the user turned that off', async () => {
+        it('a merge found here archives the session, even with the old switch off', async () => {
             const row = await stale()
             answer = async () =>
                 hostPr(row.prNumber as number, { merged_at: '2026-04-01T10:00:00Z' })
@@ -760,15 +760,16 @@ describe('Pull requests page server', () => {
                 true
             )
 
+            // the switch was removed: a value saved before it went changes nothing
             await prisma.pullRequestSettings.create({
                 data: { userId: ownerId, archiveOnMerge: false },
             })
-            const kept = await stale()
+            const next = await stale()
             answer = async () =>
-                hostPr(kept.prNumber as number, { merged_at: '2026-04-01T10:00:00Z' })
+                hostPr(next.prNumber as number, { merged_at: '2026-04-01T10:00:00Z' })
             await list()
-            expect((await prisma.session.findUnique({ where: { id: kept.id } }))?.isArchived).toBe(
-                false
+            expect((await prisma.session.findUnique({ where: { id: next.id } }))?.isArchived).toBe(
+                true
             )
         })
 

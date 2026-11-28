@@ -9,7 +9,7 @@ if (!globalThis.document) {
 
 // load react-dom and the app only after the dom exists, or react skips its input events
 const { render, cleanup, waitFor, fireEvent, within } = await import('@testing-library/react')
-const { MemoryRouter } = await import('react-router-dom')
+const { MemoryRouter, Route, Routes } = await import('react-router-dom')
 const { ProfileUsageSettings } =
     await import('../src/features/profile/components/ProfileUsageSettings')
 const { setConnectionsDemo } = await import('../src/features/connections/lib/connectionsDemo')
@@ -151,36 +151,40 @@ describe('usage page: totals', () => {
 })
 
 describe('usage page: chart', () => {
-    test('shows one bar for each day the server sends', async () => {
+    /** hovers the point of a chart and returns the text of the hover box */
+    const hoverPoint = (chart: Element, index: number) => {
+        const targets = chart.querySelectorAll('rect[fill="transparent"]')
+        fireEvent.mouseEnter(targets[index] as Element)
+    }
+
+    test('draws the analytics chart with a point for each day the server sends', async () => {
         historyFor = () => ({
             events: page(1),
             total: 1,
             limit: 10,
             offset: 0,
             periods: [],
-            totals: { costInCents: 80, totalTokens: 100, sessions: 1 },
+            totals: { costInCents: 80, totalTokens: 1100, sessions: 1 },
             days: [
-                { date: '2026-03-09', costInCents: 0, totalTokens: 0 },
-                { date: '2026-03-10', costInCents: 10, totalTokens: 50 },
-                { date: '2026-03-11', costInCents: 70, totalTokens: 50 },
+                { date: '2026-03-09', costInCents: 0, totalTokens: 0, ownKeyTokens: 0 },
+                { date: '2026-03-10', costInCents: 10, totalTokens: 1050, ownKeyTokens: 1000 },
+                { date: '2026-03-11', costInCents: 70, totalTokens: 50, ownKeyTokens: 0 },
             ],
         })
 
         const view = renderUsage()
+        await view.findByText('Last 30 days')
         const chart = await view.findByRole('img', {
-            name: 'Spend for each day. Total $0.80.',
+            name: 'Credits tokens, Your keys tokens, Spent over 3 days',
         })
+        expect(chart.querySelectorAll('polyline')).toHaveLength(3)
 
-        const bars = chart.querySelectorAll('[tabindex="0"]')
-        expect(bars).toHaveLength(3)
-        expect(bars[0]?.textContent).toBe('Mar 9 · $0.00')
-        expect(bars[1]?.textContent).toBe('Mar 10 · $0.10')
-        expect(bars[2]?.textContent).toBe('Mar 11 · $0.70')
-        // the largest day is the full height, and a day with no spend has no height
-        const heightOf = (bar: Element | undefined) =>
-            (bar?.firstElementChild as HTMLElement | null)?.style.height
-        expect(heightOf(bars[0])).toBe('0%')
-        expect(heightOf(bars[2])).toBe('100%')
+        hoverPoint(chart, 1)
+        const box = await view.findByRole('status')
+        expect(box.textContent).toContain('Mar 10')
+        expect(box.textContent).toContain('Credits tokens50')
+        expect(box.textContent).toContain('Your keys tokens1k')
+        expect(box.textContent).toContain('Spent$0.1')
     })
 
     test('shows the hours in place of the days for the one-day range', async () => {
@@ -188,14 +192,12 @@ describe('usage page: chart', () => {
             hour: (15 + index) % 24,
             costInCents: 0,
             totalTokens: 0,
+            ownKeyTokens: 0,
         }))
         // 9 in the morning is the 19th row when the rows start at 15
-        hours[18] = { hour: 9, costInCents: 3, totalTokens: 30 }
+        hours[18] = { hour: 9, costInCents: 3, totalTokens: 30, ownKeyTokens: 0 }
         historyFor = (query) => {
-            const oneDay =
-                Date.parse(query.get('periodEnd') ?? '') -
-                    Date.parse(query.get('periodStart') ?? '') <=
-                DAY_MS
+            const oneDay = Date.now() - Date.parse(query.get('periodStart') ?? '') <= DAY_MS
             return {
                 events: page(1),
                 total: 1,
@@ -203,26 +205,24 @@ describe('usage page: chart', () => {
                 offset: 0,
                 periods: [],
                 totals: { costInCents: 3, totalTokens: 30, sessions: 1 },
-                days: [{ date: '2026-03-11', costInCents: 3, totalTokens: 30 }],
+                days: [{ date: '2026-03-11', costInCents: 3, totalTokens: 30, ownKeyTokens: 0 }],
                 ...(oneDay ? { hours } : {}),
             }
         }
 
         const view = renderUsage()
-        await view.findByRole('img', { name: 'Spend for each day. Total $0.03.' })
+        await view.findByRole('img', { name: 'Credits tokens, Spent over 1 days' })
         fireEvent.click(view.getByRole('radio', { name: '1d' }))
 
-        const chart = await view.findByRole('img', {
-            name: 'Spend for each hour. Total $0.03.',
-        })
-        const bars = chart.querySelectorAll('[tabindex="0"]')
-        expect(bars).toHaveLength(24)
-        expect(bars[0]?.textContent).toBe('3 PM · $0.00')
-        expect(bars[18]?.textContent).toBe('9 AM · $0.03')
-        expect(bars[23]?.textContent).toBe('2 PM · $0.00')
+        await view.findByText('Last 24 hours')
+        const chart = await view.findByRole('img', { name: 'Credits tokens, Spent over 24 days' })
+        hoverPoint(chart, 18)
+        const box = await view.findByRole('status')
+        expect(box.textContent).toContain('9 AM')
+        expect(box.textContent).toContain('Credits tokens30')
     })
 
-    test('shows no chart when nothing was spent', async () => {
+    test('shows the chart for runs on own keys only, with no credits line', async () => {
         historyFor = () => ({
             events: [usageEvent('k1', 'OWN_KEY')],
             total: 1,
@@ -230,14 +230,49 @@ describe('usage page: chart', () => {
             offset: 0,
             periods: [],
             totals: { costInCents: 0, totalTokens: 100, sessions: 1 },
-            days: [{ date: '2026-03-11', costInCents: 0, totalTokens: 100 }],
+            days: [{ date: '2026-03-11', costInCents: 0, totalTokens: 100, ownKeyTokens: 100 }],
         })
 
         const view = renderUsage()
         await view.findAllByText('run k1')
 
+        expect(
+            await view.findByRole('img', { name: 'Your keys tokens, Spent over 1 days' })
+        ).toBeTruthy()
+    })
+
+    test('shows the empty chart with a drawing and a start button when nothing ran', async () => {
+        historyFor = () => ({
+            events: [],
+            total: 0,
+            limit: 10,
+            offset: 0,
+            periods: [],
+            totals: { costInCents: 0, totalTokens: 0, sessions: 0 },
+            days: [{ date: '2026-03-11', costInCents: 0, totalTokens: 0, ownKeyTokens: 0 }],
+        })
+
+        const view = render(
+            <QueryClientProvider
+                client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+            >
+                <MemoryRouter initialEntries={['/settings/usage']}>
+                    <Routes>
+                        <Route path="/settings/usage" element={<ProfileUsageSettings />} />
+                        <Route path="/" element={<div>home page</div>} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
+        )
+        // one message: the empty table is not drawn under the empty chart
+        expect(await view.findAllByText('No usage in this period')).toHaveLength(1)
+        expect(view.getByText('Last 30 days')).toBeTruthy()
+        // the empty plot is a picture only: no hover, not read out
         expect(view.queryByRole('img')).toBeNull()
         expect(view.getByText('Spent', { selector: 'span' })).toBeTruthy()
+
+        fireEvent.click(view.getByRole('button', { name: 'Start a session' }))
+        await view.findByText('home page')
     })
 })
 
@@ -248,13 +283,13 @@ describe('usage page: requests', () => {
 
         const query = lastCall()
         const start = new Date(query.get('periodStart') ?? '')
-        const end = new Date(query.get('periodEnd') ?? '')
+        // no end: the server ends the range at the time of each fetch, so new usage shows
+        expect(query.get('periodEnd')).toBeNull()
         // today and the 29 days before it: the range starts at a midnight of the browser
         expect([start.getHours(), start.getMinutes(), start.getSeconds()]).toEqual([0, 0, 0])
-        const today = new Date(end)
+        const today = new Date()
         today.setHours(0, 0, 0, 0)
         expect(Math.round((today.getTime() - start.getTime()) / DAY_MS)).toBe(29)
-        expect(Math.abs(end.getTime() - Date.now())).toBeLessThan(60 * 1000)
         expect(query.get('timezone')).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone)
         expect(query.get('billingSource')).toBeNull()
         expect(query.get('limit')).toBe('10')
@@ -269,56 +304,22 @@ describe('usage page: requests', () => {
 
         const query = lastCall()
         const start = new Date(query.get('periodStart') ?? '')
-        const end = new Date(query.get('periodEnd') ?? '')
+        expect(query.get('periodEnd')).toBeNull()
         expect([start.getMinutes(), start.getSeconds(), start.getMilliseconds()]).toEqual([0, 0, 0])
-        const length = end.getTime() - start.getTime()
+        const length = Date.now() - start.getTime()
         expect(length).toBeGreaterThanOrEqual(23 * HOUR_MS)
         expect(length).toBeLessThan(24 * HOUR_MS)
     })
 
-    test('a normal user sees the "paid with" control, and it sends billingSource', async () => {
+    test('has no "paid with" control and never sends billingSource', async () => {
         const view = renderUsage()
         await waitFor(() => expect(historyCalls.length).toBe(1))
 
-        const control = view.getByRole('radiogroup', { name: 'Paid with' })
-        fireEvent.click(within(control).getByRole('radio', { name: 'Your keys' }))
-        await waitFor(() => expect(lastCall().get('billingSource')).toBe('OWN_KEY'))
-
-        fireEvent.click(within(control).getByRole('radio', { name: 'Credits' }))
-        await waitFor(() => expect(lastCall().get('billingSource')).toBe('CREDITS'))
-
-        const before = historyCalls.length
-        fireEvent.click(within(control).getByRole('radio', { name: 'All' }))
-        // "All" was loaded first: the page shows it again with no billingSource
-        await waitFor(() =>
-            expect(
-                within(control).getByRole('radio', { name: 'All' }).getAttribute('aria-checked')
-            ).toBe('true')
-        )
-        expect(historyCalls.slice(before).every((call) => !call.has('billingSource'))).toBe(true)
-    })
-
-    test('the "paid with" control goes back to the first page', async () => {
-        historyFor = (query) => ({
-            events: page(10, query.get('billingSource') ?? 'all'),
-            total: 25,
-            limit: 10,
-            offset: Number(query.get('offset')),
-            periods: [],
-            totals: { costInCents: 250, totalTokens: 2500, sessions: 2 },
-            days: [],
-        })
-
-        const view = renderUsage()
-        await view.findByText('1 of 3')
-        fireEvent.click(view.getByRole('button', { name: 'Next page' }))
-        await view.findByText('2 of 3')
-
-        fireEvent.click(view.getByRole('radio', { name: 'Your keys' }))
-
-        await waitFor(() => expect(lastCall().get('billingSource')).toBe('OWN_KEY'))
-        expect(lastCall().get('offset')).toBe('0')
-        await view.findByText('1 of 3')
+        expect(view.queryByRole('radiogroup', { name: 'Paid with' })).toBeNull()
+        expect(view.queryByRole('radio', { name: 'Your keys' })).toBeNull()
+        fireEvent.click(view.getByRole('radio', { name: '7d' }))
+        await waitFor(() => expect(historyCalls.length).toBe(2))
+        expect(historyCalls.every((call) => !call.has('billingSource'))).toBe(true)
     })
 })
 

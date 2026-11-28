@@ -40,11 +40,6 @@ export type DeleteSessionFiles = {
     sessionIds: string[]
 }
 
-export type PurgeExpiredSessionFiles = {
-    /** sessions last changed before this date are about to be deleted */
-    before: Date
-}
-
 export type ResolveAttachmentType = {
     /** the safe name */
     name: string

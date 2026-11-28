@@ -186,8 +186,8 @@ export async function handleAutonomousTaskBranchAndPr(options: {
             },
         })
         // "open pull request" off (#632): commit and push the branch, open no pull request.
-        // a session with no saved value follows the user's default, which is also "create
-        // the pull request" on the pull requests settings page (#637)
+        // a session with no saved value follows the user's default ("Set as default" in the
+        // prompt box)
         const { openPullRequest } = readSessionRunConfig(session?.settings?.config, {
             ...DEFAULT_SESSION_RUN_CONFIG,
             openPullRequest: session?.user?.defaultOpenPullRequest ?? true,

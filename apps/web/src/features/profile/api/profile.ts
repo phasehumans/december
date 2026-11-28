@@ -22,23 +22,13 @@ export type Profile = {
     notifyLevel?: NotifyLevel
     notifyPush?: boolean
     timezone?: string
-    memories?: string | null
-    rules?: string | null
-    avatarUrl?: string | null
     creditBalance?: number
     onboardingCompletedAt?: string | null
     canvasWaitlist?: boolean
     defaultModelSource?: 'CREDITS' | 'OWN_KEY'
-    // defaults for a new session (#632)
+    // "save as default" in the prompt box (#632)
     defaultPlanFirst?: boolean
-    defaultEffort?: 'fast' | 'deep'
     defaultOpenPullRequest?: boolean
-    // more defaults for a new session (#637): the model of the user's own key, the
-    // repository ('last-used' or a full name) and the base branch ('default' or a name)
-    defaultOwnKeyProvider?: string | null
-    defaultOwnKeyModel?: string | null
-    defaultRepository?: string
-    defaultBaseBranch?: string
     // preferences saved on the account (#636), null when none are saved
     preferences?: Partial<AccountPreferences> | null
 }
@@ -59,15 +49,6 @@ export type SignedInSession = {
     isCurrent: boolean
 }
 
-// the latest data export (#636). the link to the file goes out by email
-export type DataExport = {
-    id: string
-    status: 'PENDING' | 'READY' | 'FAILED'
-    createdAt: string
-    expiresAt: string | null
-    nextAllowedAt: string
-}
-
 type BackendProfile = Profile
 type BackendProject = { id: string; name: string; [key: string]: any }
 
@@ -83,10 +64,6 @@ type BackendQuickInfo = {
 
 type UpdateNameInput = {
     name: string
-}
-
-type UpdateAvatarUrlInput = {
-    avatarUrl: string
 }
 
 export type NotifyLevel = 'ALL' | 'IMPORTANT' | 'NONE'
@@ -121,13 +98,6 @@ const updateName = (data: UpdateNameInput) => {
     })
 }
 
-const updateAvatarUrl = (data: UpdateAvatarUrlInput) => {
-    return apiRequest<BackendProfile>('/setting/avatar', {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-    })
-}
-
 const updateModelSource = (defaultModelSource: 'CREDITS' | 'OWN_KEY') => {
     return apiRequest<{ defaultModelSource: 'CREDITS' | 'OWN_KEY' }>('/setting/model-source', {
         method: 'PATCH',
@@ -137,12 +107,7 @@ const updateModelSource = (defaultModelSource: 'CREDITS' | 'OWN_KEY') => {
 
 export type SessionDefaults = {
     defaultPlanFirst: boolean
-    defaultEffort: 'fast' | 'deep'
     defaultOpenPullRequest: boolean
-    defaultOwnKeyProvider: string | null
-    defaultOwnKeyModel: string | null
-    defaultRepository: string
-    defaultBaseBranch: string
 }
 
 // /permissions (#632): tool calls the agent may never make in cloud sessions
@@ -165,17 +130,12 @@ const updateSessionDefaults = (defaults: Partial<SessionDefaults>) => {
 export type PullRequestSettings = {
     branchPrefix: string
     prDraft: boolean
-    prCreate: 'auto' | 'ask'
     prAuthor: 'december' | 'user'
     commitAuthor: 'both' | 'december'
-    archiveOnMerge: boolean
     githubCommentsEnabled: boolean
     reviewReplies: 'all' | 'mention' | 'off'
-    replyToBots: boolean
     fixFailedChecks: boolean
     autoReview: 'asked' | 'mine' | 'all'
-    reviewCadence: 'once' | 'push'
-    reviewRepos: string[]
 }
 
 const getPullRequestSettings = () => {
@@ -260,44 +220,11 @@ const unsubscribePush = (endpoint: string) => {
     })
 }
 
-const getDataExport = () => {
-    return apiRequest<{ export: DataExport | null }>('/setting/export')
-}
-
-const requestDataExport = () => {
-    return apiRequest<{ export: DataExport }>('/setting/export', { method: 'POST' })
-}
-
 const deleteAccount = () => {
     return apiRequest<void>('/auth/account', {
         method: 'DELETE',
     })
 }
-
-// --- memories ---
-
-type UpdateMemoriesInput = {
-    memories: string
-}
-
-const getMemories = () => {
-    return apiRequest<{ memories: string | null }>('/setting/memories')
-}
-
-const updateMemories = (data: UpdateMemoriesInput) => {
-    return apiRequest<{ memories: string | null }>('/setting/memories', {
-        method: 'POST',
-        body: JSON.stringify(data),
-    })
-}
-
-const deleteMemories = () => {
-    return apiRequest<void>('/setting/memories', {
-        method: 'DELETE',
-    })
-}
-
-// --- rules ---
 
 // --- integrations ---
 
@@ -320,9 +247,31 @@ export type GithubRepo = {
     provider?: 'GITHUB' | 'GITLAB'
 }
 
-const getGithubRepos = () => {
-    return apiRequest<GithubRepo[]>('/platform/github/repos')
+/** the repositories of one git host (B1, B12): all of them, up to 1,000 */
+export type RepoList = {
+    repos: GithubRepo[]
+    /** github accounts whose install could not be read (removed or suspended) */
+    unavailable: string[]
+    /** true when the host has more than 1,000 */
+    truncated: boolean
 }
+
+/**
+ * Reads a repository list from the server or the query cache. An older server, a cache saved
+ * before the list had its own fields and a test can all give a plain array.
+ */
+export const toRepoList = (data: unknown): RepoList => {
+    if (Array.isArray(data))
+        return { repos: data as GithubRepo[], unavailable: [], truncated: false }
+    const list = data as Partial<RepoList> | null | undefined
+    return {
+        repos: Array.isArray(list?.repos) ? list.repos : [],
+        unavailable: Array.isArray(list?.unavailable) ? list.unavailable : [],
+        truncated: Boolean(list?.truncated),
+    }
+}
+
+const getGithubRepos = async () => toRepoList(await apiRequest<unknown>('/platform/github/repos'))
 
 export type GitlabStatus = {
     /** false until the server has the GitLab app (#645) */
@@ -331,24 +280,9 @@ export type GitlabStatus = {
     username: string | null
 }
 
-// does the repository have this branch (#637). the prompt box asks before it starts on the
-// default base branch
-const checkRepoBranch = (data: {
-    repository: string
-    branch: string
-    provider?: 'GITHUB' | 'GITLAB'
-}) => {
-    const params = new URLSearchParams({
-        repository: data.repository,
-        branch: data.branch,
-        provider: data.provider ?? 'GITHUB',
-    })
-    return apiRequest<{ exists: boolean }>(`/platform/repos/branch?${params}`)
-}
-
 const getGitlabStatus = () => apiRequest<GitlabStatus>('/integrations/gitlab')
 
-const getGitlabRepos = () => apiRequest<GithubRepo[]>('/platform/gitlab/repos')
+const getGitlabRepos = async () => toRepoList(await apiRequest<unknown>('/platform/gitlab/repos'))
 
 const disconnectGitlab = () =>
     apiRequest<void>('/integrations/gitlab', {
@@ -365,7 +299,7 @@ const getGitlabConnectUrl = (returnPath?: string) => {
     return `${getApiBaseUrl()}/integrations/gitlab/start?redirect=${encodeURIComponent(path)}`
 }
 
-const getGithubConnectUrl = (userId: string) => {
+const getGithubConnectUrl = () => {
     const origin =
         typeof window !== 'undefined' && window.location.origin && window.location.origin !== 'null'
             ? window.location.origin
@@ -376,8 +310,8 @@ const getGithubConnectUrl = (userId: string) => {
             : '/settings/repositories'
     const redirectPath = origin ? `${origin}${currentPath}` : currentPath
     const appName = getGithubAppName() || 'trydecember'
-    const stateVal = userId ? `${userId}|${redirectPath}` : redirectPath
-    return `https://github.com/apps/${appName}/installations/new?state=${encodeURIComponent(stateVal)}`
+    // only the page to come back to: the server takes the user from the sign-in cookie (V5)
+    return `https://github.com/apps/${appName}/installations/new?state=${encodeURIComponent(redirectPath)}`
 }
 
 const submitFeedback = (data: { rating: 'sad' | 'neutral' | 'happy' | null; feedback: string }) => {
@@ -407,7 +341,6 @@ const syncGithubRepo = (projectId: string, data: { commitMessage?: string }) => 
 export const profileAPI = {
     getProfile,
     updateName,
-    updateAvatarUrl,
     updateNotifications,
     updateModelSource,
     updateSessionDefaults,
@@ -421,18 +354,12 @@ export const profileAPI = {
     listSignedInSessions,
     revokeSignedInSession,
     updatePreferences,
-    getDataExport,
-    requestDataExport,
     getPushKey,
     getPushStatus,
     subscribePush,
     unsubscribePush,
     deleteAccount,
-    getMemories,
-    updateMemories,
-    deleteMemories,
     getGithubRepos,
-    checkRepoBranch,
     getGithubConnectUrl,
     getGitlabStatus,
     getGitlabRepos,

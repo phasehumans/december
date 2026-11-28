@@ -237,7 +237,19 @@ export const billingRepository = {
             orderBy: {
                 createdAt: 'desc',
             },
-            include: {
+            // only what the usage list shows: request ids, chat ids and periods stay on the server
+            select: {
+                id: true,
+                model: true,
+                inputTokens: true,
+                outputTokens: true,
+                totalTokens: true,
+                costInCents: true,
+                billingSource: true,
+                metadata: true,
+                periodStart: true,
+                periodEnd: true,
+                createdAt: true,
                 session: {
                     select: {
                         title: true,
@@ -278,7 +290,8 @@ export const billingRepository = {
         return prisma.$queryRaw<UsageBucketSum[]>`
             SELECT width_bucket("createdAt", ${thresholds}::timestamp[])::int AS "bucket",
                    COALESCE(SUM("costInCents") FILTER (WHERE "billingSource" = 'CREDITS'), 0)::float8 AS "costInCents",
-                   COALESCE(SUM("totalTokens"), 0)::float8 AS "totalTokens"
+                   COALESCE(SUM("totalTokens"), 0)::float8 AS "totalTokens",
+                   COALESCE(SUM("totalTokens") FILTER (WHERE "billingSource" = 'OWN_KEY'), 0)::float8 AS "ownKeyTokens"
             FROM "UsageEvent"
             WHERE ${usageConditions(filter)}
             GROUP BY 1

@@ -303,7 +303,7 @@ describe('admin page', () => {
                     skills: 1,
                     mcp: 0,
                     planFirst: 2,
-                    fast: 1,
+                    deep: 1,
                 },
                 models: [{ model: 'claude-x', calls: 40, cents: 250, ownKeyCalls: 10 }],
                 keyProviders: [{ provider: 'openai', users: 1 }],

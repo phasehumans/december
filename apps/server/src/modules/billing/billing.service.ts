@@ -251,12 +251,12 @@ const verifyRazorpayPayment = async (data: VerifyRazorpayPayment) => {
         throw new AppError('transaction order not found', 404)
     }
 
-    if (transaction.userId !== userId) {
+    if (!transaction.userId || transaction.userId !== userId) {
         throw new AppError('unauthorized to verify this transaction', 403)
     }
 
     const { alreadyProcessed, user: paidUser } = await completePaidTopUp({
-        transaction,
+        transaction: { ...transaction, userId: transaction.userId },
         paymentId: razorpay_payment_id,
         source: 'verify',
     })
@@ -364,7 +364,7 @@ const getReceipt = async (data: GetReceipt) => {
 
     // one answer for no transaction, the transaction of another user and a row that is not
     // a payment (pending, failed, free credits, a credit change): an id tells nothing
-    if (!transaction || transaction.userId !== userId || !isReceiptPayment(transaction)) {
+    if (!transaction?.user || transaction.userId !== userId || !isReceiptPayment(transaction)) {
         throw new AppError('receipt not found', 404)
     }
 
@@ -446,9 +446,13 @@ const handleRazorpayWebhook = async (data: HandleRazorpayWebhook) => {
         if (!transaction) {
             return { received: true, status: 'order_not_found' }
         }
+        // the order of an account the 90-day purge deleted: nobody to credit
+        if (!transaction.userId) {
+            return { received: true, status: 'account_purged' }
+        }
 
         const { alreadyProcessed, user } = await completePaidTopUp({
-            transaction,
+            transaction: { ...transaction, userId: transaction.userId },
             paymentId,
             source: 'webhook',
         })

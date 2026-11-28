@@ -97,7 +97,6 @@ describe('mobile menu sheet', () => {
 
         for (const label of [
             'Account',
-            'Defaults',
             'Repositories',
             'Pull requests',
             'Sandbox',
@@ -110,6 +109,8 @@ describe('mobile menu sheet', () => {
         ]) {
             expect(screen.getByText(label)).toBeDefined()
         }
+        // the Defaults page is removed
+        expect(screen.queryByText('Defaults')).toBeNull()
         // team accounts are off, so the list has no Members row
         expect(screen.queryByText('Members')).toBeNull()
         expect(screen.queryByText('Sign out')).toBeNull()
@@ -118,6 +119,31 @@ describe('mobile menu sheet', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'Back' }))
         expect(screen.getByText('Super Crew')).toBeDefined()
+    })
+
+    test('the Settings level has Changelog, Privacy and Terms like the desktop sidebar', () => {
+        useAppStore.setState({ isMobileSidebarOpen: true, mobileSheetStart: 'settings' })
+        const opened: string[] = []
+        const savedOpen = window.open
+        window.open = ((url: string) => {
+            opened.push(url)
+            return null
+        }) as any
+        try {
+            wrap(<MobileMenuSheet {...props} />)
+            for (const label of ['Changelog', 'Privacy Policy', 'Terms of Service']) {
+                const row = screen.getAllByRole('button').find((b) => b.textContent === label)
+                expect(row).toBeDefined()
+                fireEvent.click(row!)
+            }
+            expect(opened.map((url) => new URL(url).pathname)).toEqual([
+                '/docs/changelog',
+                '/privacy',
+                '/terms',
+            ])
+        } finally {
+            window.open = savedOpen
+        }
     })
 
     test('a settings page reopens the sheet on the Settings level', () => {

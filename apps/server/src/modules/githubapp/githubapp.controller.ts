@@ -3,6 +3,7 @@ import { AppError } from '../../shared/appError'
 import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
+import { listInstallationReposQuerySchema } from './githubapp.schema'
 import { githubAppService } from './githubapp.service'
 import {
     resolveInstallReturnUrl,
@@ -47,7 +48,15 @@ const handleCallback = asyncHandler(async (req: Request, res: Response) => {
     }
 
     const setupAction = req.query.setup_action as string | undefined
-    const localCallback = toLocalCallbackUrl({ returnUrl, installationId, setupAction, state })
+    // the user authorization code github adds to an install (V1): the proof the user can see it
+    const code = typeof req.query.code === 'string' ? req.query.code : undefined
+    const localCallback = toLocalCallbackUrl({
+        returnUrl,
+        installationId,
+        setupAction,
+        state,
+        code,
+    })
     if (localCallback) {
         return res.redirect(localCallback)
     }
@@ -58,6 +67,7 @@ const handleCallback = asyncHandler(async (req: Request, res: Response) => {
         const result = await githubAppService.claimInstallation({
             installationId: installationId.toString(),
             userId,
+            code,
         })
         problem = toInstallProblem(result)
     } else if (installationId) {
@@ -171,6 +181,7 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
                         login: payload.pull_request?.user?.login || '',
                         type: payload.pull_request?.user?.type,
                     },
+                    authorAssociation: payload.pull_request?.author_association || 'NONE',
                 },
             })
         }
@@ -252,11 +263,15 @@ const getRepos = asyncHandler(async (req: Request, res: Response) => {
         throw new AppError('Unauthorized', 401)
     }
 
-    const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined
-    const search = (req.query.search as string) || undefined
+    const { page, limit, search } = listInstallationReposQuerySchema.parse(req.query)
 
-    const repos = await githubAppService.getUserInstallationRepos({ userId, page, limit, search })
+    // the cli reads a plain list here
+    const { repos } = await githubAppService.getUserInstallationRepos({
+        userId,
+        page,
+        limit,
+        search,
+    })
     return sendSuccess(res, 'repositories retrieved successfully', repos)
 })
 

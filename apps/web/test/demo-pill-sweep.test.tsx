@@ -18,8 +18,6 @@ const { ChatPromptInput } = await import('../src/features/chat/components/ChatPr
 const { HomeTabs } = await import('../src/features/home/components/HomeTabs')
 const { ProfileBillingSettings } =
     await import('../src/features/profile/components/ProfileBillingSettings')
-const { ProfileDefaultsSettings } =
-    await import('../src/features/profile/components/ProfileDefaultsSettings')
 const { ProfileMembersSettings } =
     await import('../src/features/profile/components/ProfileMembersSettings')
 const { ProfileModelKeysSettings } =
@@ -254,26 +252,6 @@ describe('with the preview flag on, each part on sample values shows the Demo pi
         expect(count('Demo')).toBe(rows.length)
     })
 
-    test('defaults: a model for each step', async () => {
-        page(<ProfileDefaultsSettings />)
-        await screen.findByRole('switch', { name: 'Plan first' })
-
-        const heading = screen.getByText('Model for each step')
-        expect(screen.getByRole('combobox', { name: 'Model for the plan step' })).toBeDefined()
-        expect(count('Demo')).toBe(1)
-        // the pill is in the heading of that section
-        const pill = screen.getByText('Demo')
-        expect(
-            heading.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING
-        ).toBeTruthy()
-        expect(
-            pill.compareDocumentPosition(
-                screen.getByRole('combobox', { name: 'Model for the plan step' })
-            ) & Node.DOCUMENT_POSITION_FOLLOWING
-        ).toBeTruthy()
-        expect(writes()).toEqual([])
-    })
-
     test('sandbox: machine size', async () => {
         page(<ProfileSandboxSettings />)
         await screen.findByRole('radio', { name: '10 min' })
@@ -374,15 +352,6 @@ describe('with the preview flag off, the same parts show nothing or "Soon"', () 
         }
     })
 
-    test('defaults: no model for each step', async () => {
-        page(<ProfileDefaultsSettings />)
-        await screen.findByRole('switch', { name: 'Plan first' })
-
-        expect(shows('Model for each step')).toBe(false)
-        expect(shows('Demo')).toBe(false)
-        expect(shows('Soon')).toBe(false)
-    })
-
     test('sandbox: no machine size', async () => {
         page(<ProfileSandboxSettings />)
         await screen.findByRole('radio', { name: '10 min' })
@@ -421,15 +390,14 @@ describe('with the preview flag off, the same parts show nothing or "Soon"', () 
 })
 
 describe('parts that are connected to the server have no preview gate', () => {
-    // the model source row lives on the Defaults page for every user: the API keys page
-    // does not show a second one, with the flag on or off
+    // the model source row lives on the API keys page for every user, with no pill
     for (const flag of [false, true]) {
-        test(`api keys page, flag ${flag ? 'on' : 'off'}: saved keys only, no pill`, async () => {
+        test(`api keys page, flag ${flag ? 'on' : 'off'}: model source and keys, no pill`, async () => {
             setConnectionsDemo(flag)
             page(<ProfileModelKeysSettings />)
             await screen.findByText('Saved keys')
 
-            expect(shows('Model source')).toBe(false)
+            expect(shows('Model source')).toBe(true)
             expect(shows('Demo')).toBe(false)
             expect(shows('Soon')).toBe(false)
         })

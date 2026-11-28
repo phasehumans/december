@@ -101,10 +101,14 @@ describe('sandbox settings page (#637)', () => {
         spyOn(profileAPI, 'getProfile').mockImplementation(
             async () => ({ id: 'user-1', githubConnected: true }) as any
         )
-        spyOn(profileAPI, 'getGithubRepos').mockImplementation(async () => [
-            { id: 1, fullName: 'Acme/Web', defaultBranch: 'main' } as any,
-            { id: 2, fullName: 'acme/api', defaultBranch: 'main' } as any,
-        ])
+        spyOn(profileAPI, 'getGithubRepos').mockImplementation(async () => ({
+            repos: [
+                { id: 1, fullName: 'Acme/Web', defaultBranch: 'main' } as any,
+                { id: 2, fullName: 'acme/api', defaultBranch: 'main' } as any,
+            ],
+            unavailable: [],
+            truncated: false,
+        }))
         spyOn(profileAPI, 'getGitlabStatus').mockImplementation(async () => ({
             available: false,
             connected: false,

@@ -16,6 +16,15 @@ export type GithubRepo = GitRepo
 
 export type GitlabRepo = GitRepo
 
+/** the repositories of one git host, as the settings page and the prompt box read them */
+export type RepoList = {
+    repos: GitRepo[]
+    /** github accounts whose install could not be read (removed or suspended) */
+    unavailable: string[]
+    /** true when the host has more than the cap (1,000) */
+    truncated: boolean
+}
+
 export type ListGitlabRepos = {
     userId: string
     page?: number
@@ -46,12 +55,4 @@ export type ResolveRepoToken = {
     userId: string
     gitProvider: 'GITHUB' | 'GITLAB'
     owner?: string
-}
-
-export type CheckRepoBranch = {
-    userId: string
-    gitProvider: 'GITHUB' | 'GITLAB'
-    // the full name of the repository: owner/name, or a gitlab group path
-    repository: string
-    branch: string
 }

@@ -1,6 +1,11 @@
 import { createIssueComment } from '../utils/github'
 
-import { GitProviderError, PULL_REQUEST_READ_TIMEOUT_MS, decodeRepoFile } from './types'
+import {
+    GitProviderError,
+    MAX_REPO_LIST_PAGES,
+    PULL_REQUEST_READ_TIMEOUT_MS,
+    decodeRepoFile,
+} from './types'
 
 import type { CiStatus, GitProvider, GitRepo, PullRequest, RepoDirEntry, TokenSet } from './types'
 
@@ -103,7 +108,9 @@ const listRepos: GitProvider['listRepos'] = async (data) => {
                 : pageRepos
         )
 
+        // one page when one was asked for, else every page up to the cap
         if (pageRepos.length < perPage || requestedPage !== undefined) break
+        if (page - (requestedPage || 1) + 1 >= MAX_REPO_LIST_PAGES) break
         page++
     }
 
@@ -225,20 +232,6 @@ const readTextFile: GitProvider['readTextFile'] = async (data) => {
     return decodeRepoFile(String(body.content ?? ''), maxBytes)
 }
 
-const hasBranch: GitProvider['hasBranch'] = async (data) => {
-    const { token, repoPath, branch } = data
-    // every part of the branch name is encoded, the slashes stay
-    const name = branch.split('/').map(encodeURIComponent).join('/')
-    const res = await fetch(`${API}/repos/${repoPath}/branches/${name}`, {
-        headers: headers(token),
-    })
-    if (res.status === 404) return false
-    if (!res.ok) {
-        throw new GitProviderError(`Failed to read the branch ${branch}`, res.status)
-    }
-    return true
-}
-
 // for github app user tokens that expire; classic oauth tokens never need it
 const refreshToken: GitProvider['refreshToken'] = async (data) => {
     const { refreshToken: token, clientId, clientSecret } = data
@@ -293,6 +286,5 @@ export const githubProvider: GitProvider = {
     comment,
     listDir,
     readTextFile,
-    hasBranch,
     refreshToken,
 }

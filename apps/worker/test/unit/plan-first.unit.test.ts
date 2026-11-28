@@ -12,17 +12,18 @@ describe('plan first and the session run config (#632)', () => {
     })
 
     it('reads the saved config and falls back for missing or bad fields', () => {
+        // a missing or bad speed falls back to fast, the start value of a new session
         expect(readSessionRunConfig(null)).toEqual({
             planFirst: false,
-            effort: 'deep',
+            effort: 'fast',
             openPullRequest: true,
         })
         expect(
             readSessionRunConfig({ planFirst: true, effort: 'max', openPullRequest: 'no' })
-        ).toEqual({ planFirst: true, effort: 'deep', openPullRequest: true })
-        expect(readSessionRunConfig({ effort: 'fast', openPullRequest: false })).toEqual({
+        ).toEqual({ planFirst: true, effort: 'fast', openPullRequest: true })
+        expect(readSessionRunConfig({ effort: 'deep', openPullRequest: false })).toEqual({
             planFirst: false,
-            effort: 'fast',
+            effort: 'deep',
             openPullRequest: false,
         })
     })

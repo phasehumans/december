@@ -12,6 +12,12 @@ const CONNECT_ERRORS: Record<string, string> = {
     requested: 'GitHub sent your request to the organization owner to approve.',
 }
 
+/** true when GitHub sent the install to an organization owner to approve: a note, not an error */
+export const isGithubConnectRequested = (): boolean => {
+    if (typeof window === 'undefined') return false
+    return new URLSearchParams(window.location.search).get('github') === 'requested'
+}
+
 /** why the last GitHub connect failed, from the page address; null when it did not */
 export const readGithubConnectError = (): string | null => {
     if (typeof window === 'undefined') return null
@@ -47,7 +53,7 @@ export const useGithubConnection = (enabled: boolean) => {
     return {
         isReady,
         isConnected,
-        connectUrl: profileAPI.getGithubConnectUrl(profile.data?.id || ''),
+        connectUrl: profileAPI.getGithubConnectUrl(),
         /** why the last connect failed, from the page address; null when it did not */
         connectError,
     }

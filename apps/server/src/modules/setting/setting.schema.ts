@@ -6,6 +6,7 @@ import { isValidTimezone } from '../notification/notification.utils'
 export const updateNameSchema = z.object({
     name: z
         .string({ message: 'name is required' })
+        .trim()
         .min(3, 'name must be at least 3 characters')
         .max(20, 'name must be at most 20 characters'),
 })
@@ -39,9 +40,16 @@ export const updateOnboardingSchema = z.object({
     }),
 })
 
+// the same limit as the box in the web app
+export const FEEDBACK_MAX_LENGTH = 5000
+
 export const submitFeedbackSchema = z.object({
     rating: z.enum(['sad', 'neutral', 'happy']).nullable(),
-    feedback: z.string({ message: 'feedback is required' }).min(1, 'feedback cannot be empty'),
+    feedback: z
+        .string({ message: 'feedback is required' })
+        .trim()
+        .min(1, 'feedback cannot be empty')
+        .max(FEEDBACK_MAX_LENGTH, `feedback must be at most ${FEEDBACK_MAX_LENGTH} characters`),
 })
 
 export const updateModelSourceSchema = z.object({
@@ -50,47 +58,18 @@ export const updateModelSourceSchema = z.object({
     }),
 })
 
-// defaults for a new session (#632, #637). every field is optional: the page saves one row
-// at a time
+// "save as default" in the prompt box (#632): plan first and open pull request. both are
+// optional, at least one is sent
 export const updateSessionDefaultsSchema = z
     .object({
         defaultPlanFirst: z.boolean(),
-        defaultEffort: z.enum(['fast', 'deep'], {
-            message: 'defaultEffort must be fast or deep',
-        }),
         defaultOpenPullRequest: z.boolean(),
-        // the model a new session uses on the user's own key. null for both: no default
-        defaultOwnKeyProvider: z.string().trim().min(1).max(64).nullable(),
-        defaultOwnKeyModel: z.string().trim().min(1).max(200).nullable(),
-        // 'last-used', or the full name of a repository (owner/name, or a gitlab group path)
-        defaultRepository: z
-            .string()
-            .trim()
-            .max(200, 'defaultRepository must be at most 200 characters')
-            .regex(
-                /^(last-used|[\w.-]+(\/[\w.-]+)+)$/,
-                'defaultRepository must be last-used or owner/name'
-            ),
-        // 'default' (the default branch of the repository), or a branch name
-        defaultBaseBranch: z
-            .string()
-            .trim()
-            .min(1, 'defaultBaseBranch cannot be empty')
-            .max(100, 'defaultBaseBranch must be at most 100 characters')
-            .regex(/^[\w./-]+$/, 'defaultBaseBranch has characters git does not allow'),
     })
     .partial()
+    .strict()
     .refine((value) => Object.keys(value).length > 0, {
         message: 'send at least one default',
     })
-    .refine(
-        (value) =>
-            (value.defaultOwnKeyProvider === undefined && value.defaultOwnKeyModel === undefined) ||
-            (typeof value.defaultOwnKeyProvider === 'string' &&
-                typeof value.defaultOwnKeyModel === 'string') ||
-            (value.defaultOwnKeyProvider === null && value.defaultOwnKeyModel === null),
-        { message: 'send defaultOwnKeyProvider and defaultOwnKeyModel together' }
-    )
 
 // /permissions for cloud sessions (#632): tool calls the agent may never make
 export const updateToolDenyRulesSchema = z.object({
@@ -112,27 +91,18 @@ export const updatePullRequestSettingsSchema = z
                 message: 'branchPrefix does not give a branch name git allows',
             }),
         prDraft: z.boolean(),
-        prCreate: z.enum(['auto', 'ask']),
         prAuthor: z.enum(['december', 'user']),
         commitAuthor: z.enum(['both', 'december']),
-        archiveOnMerge: z.boolean(),
         githubCommentsEnabled: z.boolean(),
         reviewReplies: z.enum(['all', 'mention', 'off']),
-        replyToBots: z.boolean(),
         fixFailedChecks: z.boolean(),
         autoReview: z.enum(['asked', 'mine', 'all']),
-        reviewCadence: z.enum(['once', 'push']),
-        reviewRepos: z
-            .array(
-                z
-                    .string()
-                    .trim()
-                    .regex(/^[\w.-]+\/[\w.-]+$/, 'reviewRepos must be owner/name')
-            )
-            .max(100),
     })
     .partial()
     .strict()
+    .refine((value) => Object.keys(value).length > 0, {
+        message: 'send at least one setting',
+    })
 
 export const unsubscribeQuerySchema = z.object({
     u: z.string().trim().min(1).max(100),
@@ -155,11 +125,6 @@ export const updatePreferencesSchema = preferencesSchema.refine(
     (value) => Object.keys(value).length > 0,
     { message: 'send at least one preference' }
 )
-
-export const dataExportDownloadSchema = z.object({
-    id: z.string().uuid('export id is not valid'),
-    t: z.string().trim().min(1).max(200),
-})
 
 // sandbox settings (#637). every field is optional: the page saves one row at a time
 export const updateSandboxSettingsSchema = z

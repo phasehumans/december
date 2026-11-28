@@ -20,7 +20,7 @@ export const ProfileDeleteAccountModal: React.FC<ProfileDeleteAccountModalProps>
     onClose,
     onConfirm,
     title = 'Delete account',
-    description = 'Your account and all its data are deleted after 90 days. You cannot undo this.',
+    description = 'Your account and its data are deleted after 90 days. You cannot undo this.',
     submitLabel = 'Delete account',
 }) => {
     const [confirmText, setConfirmText] = useState('')

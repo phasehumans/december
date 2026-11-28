@@ -242,6 +242,91 @@ describe('API keys settings page', () => {
         expect(saveSpy).toHaveBeenCalledWith('groq', 'gsk_bad_key')
     })
 
+    it('shows the model source, on December credits by default', async () => {
+        spies.push(
+            spyOn(byokAPI, 'list').mockImplementation(async () => ({
+                providers: PROVIDERS,
+                credentials: [],
+            }))
+        )
+        renderWithClient(<ProfileModelKeysSettings />)
+
+        expect(await screen.findByText('Model source')).toBeDefined()
+        const credits = await screen.findByRole('radio', { name: 'December credits' })
+        await waitFor(() => expect(credits.getAttribute('aria-checked')).toBe('true'))
+        // no key saved: "Your keys" cannot be picked
+        const yourKeys = screen.getByRole('radio', { name: 'Your keys' }) as HTMLButtonElement
+        expect(yourKeys.getAttribute('aria-checked')).toBe('false')
+        expect(yourKeys.disabled).toBe(true)
+    })
+
+    it('switches the model source to your keys when a key is saved, and back', async () => {
+        let source: 'CREDITS' | 'OWN_KEY' = 'CREDITS'
+        spies.pop()!.mockRestore()
+        spies.push(
+            spyOn(profileAPI, 'getProfile').mockImplementation(
+                async () => ({ id: 'u1', defaultModelSource: source }) as any
+            ),
+            spyOn(byokAPI, 'list').mockImplementation(async () => ({
+                providers: PROVIDERS,
+                credentials: [GROQ],
+            }))
+        )
+        const updateSpy = spyOn(profileAPI, 'updateModelSource').mockImplementation(
+            async (next) => {
+                source = next
+                return { defaultModelSource: next }
+            }
+        )
+        spies.push(updateSpy)
+        renderWithClient(<ProfileModelKeysSettings />)
+
+        const yourKeys = (await screen.findByRole('radio', {
+            name: 'Your keys',
+        })) as HTMLButtonElement
+        await waitFor(() => expect(yourKeys.disabled).toBe(false))
+        fireEvent.click(yourKeys)
+        await waitFor(() => expect(updateSpy).toHaveBeenCalledWith('OWN_KEY'))
+        await waitFor(() =>
+            expect(
+                screen.getByRole('radio', { name: 'Your keys' }).getAttribute('aria-checked')
+            ).toBe('true')
+        )
+
+        fireEvent.click(screen.getByRole('radio', { name: 'December credits' }))
+        await waitFor(() => expect(updateSpy).toHaveBeenCalledWith('CREDITS'))
+        await waitFor(() =>
+            expect(
+                screen.getByRole('radio', { name: 'December credits' }).getAttribute('aria-checked')
+            ).toBe('true')
+        )
+    })
+
+    it('shows the error of a model source change under the row', async () => {
+        spies.push(
+            spyOn(byokAPI, 'list').mockImplementation(async () => ({
+                providers: PROVIDERS,
+                credentials: [GROQ],
+            })),
+            spyOn(profileAPI, 'updateModelSource').mockImplementation(async () => {
+                throw new Error('add an API key before you switch to your keys')
+            })
+        )
+        renderWithClient(<ProfileModelKeysSettings />)
+
+        const yourKeys = (await screen.findByRole('radio', {
+            name: 'Your keys',
+        })) as HTMLButtonElement
+        await waitFor(() => expect(yourKeys.disabled).toBe(false))
+        fireEvent.click(yourKeys)
+        expect(
+            await screen.findByText('add an API key before you switch to your keys')
+        ).toBeDefined()
+        expect(
+            screen.getByRole('radio', { name: 'December credits' }).getAttribute('aria-checked')
+        ).toBe('true')
+    })
+
     it('explains the watsonx key format', async () => {
         spies.push(
             spyOn(byokAPI, 'list').mockImplementation(async () => ({

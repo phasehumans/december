@@ -126,6 +126,12 @@ export type CachedSessionData = {
 
 export type PurgeSessions = Record<string, never>
 
+export type PurgeDeletedAccounts = {
+    now?: Date
+    // the most accounts one run purges; the next day's run takes the rest
+    limit?: number
+}
+
 export type ListSignedInSessions = {
     userId: string
     currentSessionId: string

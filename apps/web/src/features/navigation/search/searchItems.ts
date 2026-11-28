@@ -70,12 +70,6 @@ export const SETTINGS_PAGES: { id: string; label: string; path: string; keywords
         ],
     },
     {
-        id: 'defaults',
-        label: 'Defaults',
-        path: '/settings/defaults',
-        keywords: ['plan first', 'speed', 'effort', 'pull request', 'default'],
-    },
-    {
         id: 'repositories',
         label: 'Repositories',
         path: '/settings/repositories',
@@ -168,7 +162,18 @@ export const SETTINGS_PAGES: { id: string; label: string; path: string; keywords
         id: 'models',
         label: 'API keys',
         path: '/settings/models',
-        keywords: ['model', 'byok', 'own key', 'your keys', 'provider', 'openai', 'anthropic'],
+        keywords: [
+            'model',
+            'model source',
+            'credits',
+            'wallet',
+            'byok',
+            'own key',
+            'your keys',
+            'provider',
+            'openai',
+            'anthropic',
+        ],
     },
     {
         id: 'billing',

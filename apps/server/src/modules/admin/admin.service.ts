@@ -321,19 +321,11 @@ const getUser = async (data: GetUser) => {
             notifyPush: user.notifyPush,
             productEmails: user.notifyProductUpdates,
             securityAlerts: user.notifySecurityAlerts,
-            lastExport: details.lastExport,
         },
         defaults: {
             modelSource: user.defaultModelSource,
-            ownKeyModel: user.defaultOwnKeyProvider
-                ? `${user.defaultOwnKeyProvider}${user.defaultOwnKeyModel ? ` / ${user.defaultOwnKeyModel}` : ''}`
-                : null,
             planFirst: user.defaultPlanFirst,
-            effort: user.defaultEffort,
             openPullRequest: user.defaultOpenPullRequest,
-            // repository names stay private: only whether one is fixed
-            repository: user.defaultRepository === 'last-used' ? 'last used' : 'a fixed repo',
-            baseBranch: user.defaultBaseBranch === 'default' ? 'default' : 'a fixed branch',
             idleStopMinutes: user.idleStopMinutes,
             archiveAfterDays: user.archiveAfterDays,
             lowBalanceAlertCents: user.lowBalanceAlertCents,
@@ -536,8 +528,9 @@ const listCreditLedger = async (data: ListCreditLedger) => {
                 kind: row.provider === 'GRANT' ? 'free credits' : 'by hand',
                 reason: typeof metadata.reason === 'string' ? metadata.reason : null,
                 createdAt: row.createdAt,
-                userId: row.user.id,
-                email: row.user.email,
+                // null when the 90-day purge deleted the account; the row stays
+                userId: row.user?.id ?? null,
+                email: row.user?.email ?? null,
             }
         }),
     }

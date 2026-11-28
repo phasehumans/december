@@ -1,4 +1,9 @@
-import { GitProviderError, PULL_REQUEST_READ_TIMEOUT_MS, decodeRepoFile } from './types'
+import {
+    GitProviderError,
+    MAX_REPO_LIST_PAGES,
+    PULL_REQUEST_READ_TIMEOUT_MS,
+    decodeRepoFile,
+} from './types'
 
 import type {
     CiStatus,
@@ -143,7 +148,9 @@ const listRepos: GitProvider['listRepos'] = async (data) => {
         const pageProjects = (await response.json()) as any[]
         projects = projects.concat(pageProjects)
 
+        // one page when one was asked for, else every page up to the cap
         if (pageProjects.length < perPage || requestedPage !== undefined) break
+        if (page - (requestedPage || 1) + 1 >= MAX_REPO_LIST_PAGES) break
         page++
     }
 
@@ -284,19 +291,6 @@ const readTextFile: GitProvider['readTextFile'] = async (data) => {
     return decodeRepoFile(String(body.content ?? ''), maxBytes)
 }
 
-const hasBranch: GitProvider['hasBranch'] = async (data) => {
-    const { token, repoPath, branch } = data
-    const res = await fetch(
-        `${projectUrl(repoPath)}/repository/branches/${encodeURIComponent(branch)}`,
-        { headers: headers(token) }
-    )
-    if (res.status === 404) return false
-    if (!res.ok) {
-        throw new GitProviderError(`Failed to read the branch ${branch}`, res.status)
-    }
-    return true
-}
-
 const refreshToken: GitProvider['refreshToken'] = async (data) => {
     const { refreshToken: token, clientId, clientSecret, redirectUri } = data
     return requestToken(
@@ -339,7 +333,6 @@ export const gitlabProvider: GitProvider = {
     comment,
     listDir,
     readTextFile,
-    hasBranch,
     refreshToken,
 }
 

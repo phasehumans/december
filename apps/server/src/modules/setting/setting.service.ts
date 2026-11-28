@@ -1,24 +1,13 @@
-import { toDefaultOpenPullRequest, toPrCreate, toPullRequestSettings } from '@december/shared'
+import { toPullRequestSettings } from '@december/shared'
 
 import { AppError } from '../../shared/appError'
 import { appCache } from '../../shared/cache'
-import { deleteObject, getBinaryFile, putBinaryFile } from '../../shared/project-storage'
-import { buildZip, type ZipEntry } from '../../shared/zip'
 import { getAdminPath, isAdminEmail, isValidUnsubscribeToken } from '../admin/admin.utils'
-import { byokService } from '../byok/byok.service'
 import { notificationService } from '../notification/notification.service'
 import { sessionService } from '../session/session.service'
 
-import { enqueueDataExport } from './setting.queue'
 import { settingRepository } from './setting.repository'
 import {
-    DATA_EXPORT_COOLDOWN_MS,
-    DATA_EXPORT_LINK_MS,
-    buildDataExportUrl,
-    dataExportFileKey,
-    dataExportSessionFileName,
-    isValidDataExportToken,
-    toDataExportState,
     toOnboardingStep,
     toPreferences,
     toSandboxSettings,
@@ -47,12 +36,7 @@ export const settingSelect = {
     onboardingCompletedAt: true,
     defaultModelSource: true,
     defaultPlanFirst: true,
-    defaultEffort: true,
     defaultOpenPullRequest: true,
-    defaultOwnKeyProvider: true,
-    defaultOwnKeyModel: true,
-    defaultRepository: true,
-    defaultBaseBranch: true,
     preferences: true,
 }
 
@@ -74,12 +58,6 @@ import type {
     GetPullRequestSettings,
     UpdatePullRequestSettings,
     UpdatePreferences,
-    RequestDataExport,
-    GetDataExport,
-    ProcessDataExport,
-    TellDataExportFailed,
-    DownloadDataExport,
-    PurgeDataExports,
     GetSandboxSettings,
     UpdateSandboxSettings,
     UpdateSetupCommands,
@@ -183,6 +161,14 @@ const updateModelSource = async (data: UpdateModelSource) => {
         throw new AppError('user not found', 404)
     }
 
+    // the same rule as the page: "your keys" needs a saved key
+    if (
+        defaultModelSource === 'OWN_KEY' &&
+        (await settingRepository.countProviderCredentials(userId)) === 0
+    ) {
+        throw new AppError('add an API key before you switch to your keys', 400)
+    }
+
     const updatedUser = await settingRepository.updateModelSource(userId, defaultModelSource)
     await invalidateUserSettingCache(userId)
 
@@ -190,27 +176,17 @@ const updateModelSource = async (data: UpdateModelSource) => {
 }
 
 const updateSessionDefaults = async (data: UpdateSessionDefaults) => {
-    const { userId, defaultOwnKeyProvider, defaultOwnKeyModel, ...otherDefaults } = data
+    const { userId, defaultPlanFirst, defaultOpenPullRequest } = data
 
     const existingUser = await settingRepository.findUserByIdForExistCheck(userId)
     if (!existingUser) {
         throw new AppError('user not found', 404)
     }
 
-    // a default model must be one a saved key of the user serves
-    if (defaultOwnKeyProvider && defaultOwnKeyModel) {
-        await byokService.assertOwnKeyUsable({
-            userId,
-            provider: defaultOwnKeyProvider,
-            model: defaultOwnKeyModel,
-        })
-    }
-
     // a field left out is undefined here, and keeps its value
     const updated = await settingRepository.updateSessionDefaults(userId, {
-        ...otherDefaults,
-        defaultOwnKeyProvider,
-        defaultOwnKeyModel,
+        defaultPlanFirst,
+        defaultOpenPullRequest,
     })
     await invalidateUserSettingCache(userId)
 
@@ -231,187 +207,6 @@ const updatePreferences = async (data: UpdatePreferences) => {
     await invalidateUserSettingCache(userId)
 
     return { preferences: toPreferences(updated.preferences) }
-}
-
-// data export (#636)
-
-const getDataExport = async (data: GetDataExport) => {
-    const { userId } = data
-    const latest = await settingRepository.findLatestDataExport(userId)
-    return { export: latest ? toDataExportState(latest) : null }
-}
-
-// one a day. the zip is built in the background, then a link is emailed
-const requestDataExport = async (data: RequestDataExport) => {
-    const { userId } = data
-
-    const latest = await settingRepository.findLatestDataExport(userId)
-    // a failed export does not count, so the user can ask again right away
-    if (
-        latest &&
-        latest.status !== 'FAILED' &&
-        Date.now() - latest.createdAt.getTime() < DATA_EXPORT_COOLDOWN_MS
-    ) {
-        throw new AppError('you can export your data once a day', 429)
-    }
-
-    const created = await settingRepository.createDataExport(userId)
-    try {
-        await enqueueDataExport({ exportId: created.id })
-    } catch (error) {
-        // no job means no file: remove the row so the user can try again now
-        console.error('[Setting] could not queue the data export:', error)
-        await settingRepository.deleteDataExport(created.id)
-        throw new AppError('could not start the export, try again in a few minutes', 503)
-    }
-
-    return { export: toDataExportState(created) }
-}
-
-// the last attempt failed: the inbox tells the user (no email)
-const tellDataExportFailed = async (data: TellDataExportFailed) => {
-    const { userId } = data
-    try {
-        await notificationService.sendNotificationToUser({
-            userId,
-            title: 'Your data export failed',
-            message: 'We could not build your data export. You can ask for it again now.',
-            type: 'ERROR',
-            link: '/settings/account',
-        })
-    } catch (error) {
-        // the export is marked failed in any case, and the user can ask again
-        console.error('[Setting] could not tell the user about the failed export:', error)
-    }
-}
-
-/**
- * The background job: a json file per session in a zip, stored, then a link in the inbox.
- * The queue runs a failed job again. Only when the last attempt fails is the export
- * failed and the user told.
- */
-const processDataExport = async (data: ProcessDataExport) => {
-    const { exportId, isLastAttempt = true } = data
-
-    const record = await settingRepository.findDataExport(exportId)
-    if (!record || record.status !== 'PENDING') return { status: record?.status ?? 'MISSING' }
-
-    try {
-        const user = await settingRepository.findUserForDataExport(record.userId)
-        if (!user || record.user.isDeleted) {
-            await settingRepository.markDataExportFailed(exportId, 'account deleted')
-            return { status: 'FAILED' }
-        }
-
-        const exportedAt = new Date()
-        const entries: ZipEntry[] = [
-            {
-                name: 'account.json',
-                content: JSON.stringify(
-                    {
-                        ...user,
-                        preferences: toPreferences(user.preferences),
-                        exportedAt,
-                    },
-                    null,
-                    2
-                ),
-            },
-        ]
-
-        const sessionIds = await settingRepository.findSessionIdsForDataExport(record.userId)
-        for (const [index, { id }] of sessionIds.entries()) {
-            const session = await settingRepository.findSessionForDataExport(id)
-            if (!session) continue
-            entries.push({
-                name: dataExportSessionFileName(index, session.title),
-                content: JSON.stringify(session, null, 2),
-            })
-        }
-
-        const zip = buildZip(entries, exportedAt)
-        const fileKey = dataExportFileKey(record.userId, exportId)
-        await putBinaryFile({ key: fileKey, content: zip, contentType: 'application/zip' })
-
-        const expiresAt = new Date(Date.now() + DATA_EXPORT_LINK_MS)
-        await settingRepository.markDataExportReady(exportId, {
-            fileKey,
-            sizeBytes: zip.length,
-            expiresAt,
-        })
-
-        const until = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-        const downloadUrl = buildDataExportUrl(exportId)
-        // the inbox has the link (no email); the Account page shows it too
-        try {
-            await notificationService.sendNotificationToUser({
-                userId: record.userId,
-                title: 'Your data export is ready',
-                message: `Download your data as a zip. The link works until ${until}.`,
-                type: 'SUCCESS',
-                link: downloadUrl,
-            })
-        } catch (error) {
-            // the file is ready: the Account page still shows the download link
-            console.error('[Setting] could not write the inbox notice of the export:', error)
-        }
-
-        return { status: 'READY', sessions: sessionIds.length, sizeBytes: zip.length }
-    } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        if (!isLastAttempt) {
-            // the row stays PENDING, so the next attempt of the queue does the work again
-            await settingRepository.markDataExportRetrying(exportId, message)
-            throw error
-        }
-        await settingRepository.markDataExportFailed(exportId, message)
-        await tellDataExportFailed({ userId: record.userId })
-        throw error
-    }
-}
-
-// the emailed link: no sign in, the token opens only this export until it expires
-const downloadDataExport = async (data: DownloadDataExport) => {
-    const { exportId, token } = data
-
-    if (!isValidDataExportToken(exportId, token)) {
-        throw new AppError('this download link is not valid', 404)
-    }
-    const record = await settingRepository.findDataExport(exportId)
-    if (!record || record.status !== 'READY' || !record.fileKey || record.user.isDeleted) {
-        throw new AppError('this download link is not valid', 404)
-    }
-    if (!record.expiresAt || record.expiresAt.getTime() <= Date.now()) {
-        throw new AppError('this download link has expired', 410)
-    }
-
-    const file = await getBinaryFile(record.fileKey)
-    if (!file) {
-        throw new AppError('this download link has expired', 410)
-    }
-
-    const day = record.createdAt.toISOString().slice(0, 10)
-    return { body: file.body, fileName: `december-export-${day}.zip` }
-}
-
-// the daily sweep: files whose link ended, and exports that never finished
-const purgeDataExports = async (data: PurgeDataExports) => {
-    const { now = new Date() } = data
-    const stale = await settingRepository.findStaleDataExports(
-        now,
-        new Date(now.getTime() - DATA_EXPORT_LINK_MS)
-    )
-    for (const item of stale) {
-        if (!item.fileKey) continue
-        await deleteObject(item.fileKey).catch((error: unknown) => {
-            // Intentionally swallowed: the row goes anyway; a missing file is the goal
-            console.warn('[Setting] could not delete export file', item.fileKey, error)
-        })
-    }
-    if (stale.length > 0) {
-        await settingRepository.deleteDataExports(stale.map((item) => item.id))
-    }
-    return { deleted: stale.length }
 }
 
 const getToolDenyRules = async (data: GetToolDenyRules) => {
@@ -543,40 +338,18 @@ const submitFeedback = async (data: SubmitFeedback) => {
     return { id: created.id }
 }
 
-// a user with no saved row gets every default. "create the pull request" is the user's
-// "open pull request" default (#632, #637): one stored value for this page and the prompt box
+// a user with no saved row gets every default. "open a pull request" is not here: the
+// prompt box keeps it ("Set as default")
 const getPullRequestSettings = async (data: GetPullRequestSettings) => {
     const { userId } = data
-    const [row, user] = await Promise.all([
-        settingRepository.findPullRequestSettings(userId),
-        settingRepository.findOpenPullRequestDefault(userId),
-    ])
-    return {
-        ...toPullRequestSettings(row),
-        prCreate: toPrCreate(user?.defaultOpenPullRequest ?? true),
-    }
+    const row = await settingRepository.findPullRequestSettings(userId)
+    return toPullRequestSettings(row)
 }
 
 const updatePullRequestSettings = async (data: UpdatePullRequestSettings) => {
     const { userId, settings } = data
-    const { prCreate, ...rowSettings } = settings
-    const reviewRepos = rowSettings.reviewRepos
-        ? Array.from(new Set(rowSettings.reviewRepos.map((r) => r.toLowerCase())))
-        : undefined
-
-    // saved on the user, where the session defaults and the profile read it
-    if (prCreate !== undefined) {
-        await settingRepository.updateSessionDefaults(userId, {
-            defaultOpenPullRequest: toDefaultOpenPullRequest(prCreate),
-        })
-        await invalidateUserSettingCache(userId)
-    }
-
-    if (Object.keys(rowSettings).length > 0) {
-        await settingRepository.upsertPullRequestSettings(userId, {
-            ...rowSettings,
-            ...(reviewRepos ? { reviewRepos } : {}),
-        })
+    if (Object.keys(settings).length > 0) {
+        await settingRepository.upsertPullRequestSettings(userId, settings)
     }
     return getPullRequestSettings({ userId })
 }
@@ -635,11 +408,6 @@ export const settingService = {
     getToolDenyRules,
     updateToolDenyRules,
     updatePreferences,
-    getDataExport,
-    requestDataExport,
-    processDataExport,
-    downloadDataExport,
-    purgeDataExports,
     getOnboarding,
     updateOnboarding,
     completeOnboarding,

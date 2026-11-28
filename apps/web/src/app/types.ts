@@ -10,7 +10,6 @@ export type ProfileTab =
     | 'Usage'
     | 'Secrets'
     | 'Models'
-    | 'Defaults'
     | 'PullRequests'
     | 'Sandbox'
     | 'Members'
@@ -27,7 +26,6 @@ const profileTabToSlug: Record<string, string> = {
     Usage: 'usage',
     Secrets: 'secrets',
     Models: 'models',
-    Defaults: 'defaults',
     PullRequests: 'pull-requests',
     Sandbox: 'sandbox',
     Members: 'members',
@@ -42,6 +40,8 @@ const slugToProfileTab: Record<string, ProfileTab> = {
     usage: 'Usage',
     // notifications is a section of Account now, so old links land there
     notifications: 'Account',
+    // the Defaults page is removed: the prompt box has every choice it had
+    defaults: 'Account',
     analytics: 'Usage',
     connections: 'Connections',
     integrations: 'Connections',

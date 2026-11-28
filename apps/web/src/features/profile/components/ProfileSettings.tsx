@@ -1,3 +1,4 @@
+import { useMutation } from '@tanstack/react-query'
 import {
     ChevronLeft,
     UserCircle,
@@ -10,7 +11,6 @@ import {
     Lock,
     MessageSquare,
     Plus,
-    Settings2,
     LayoutDashboard,
     Box,
     Users,
@@ -23,7 +23,6 @@ import { useProfileSettingsController } from '../hooks/useProfileSettingsControl
 import { SettingsTopBarContext, type SettingsTopBarAction } from '../lib/settingsTopBar'
 
 import { ProfileBillingSettings } from './ProfileBillingSettings'
-import { ProfileDefaultsSettings } from './ProfileDefaultsSettings'
 import { ProfileDeleteAccountModal } from './ProfileDeleteAccountModal'
 import { ProfileFeedbackModal } from './ProfileFeedbackModal'
 import { ProfileMembersSettings } from './ProfileMembersSettings'
@@ -49,6 +48,7 @@ import {
     MobileIconButton,
     MobileTopBar,
 } from '@/features/navigation/components/MobileTopBar'
+import { profileAPI } from '@/features/profile/api/profile'
 import { isTeamsEnabled } from '@/features/profile/lib/teams'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Icons } from '@/shared/components/ui/Icons'
@@ -58,6 +58,9 @@ import { useIsPhone } from '@/shared/lib/useIsPhone'
 import { cn } from '@/shared/lib/utils'
 
 const navIconClass = 'w-[18px] h-[18px]'
+
+const actionErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error && error.message ? error.message : fallback
 
 const navItemClass = (active: boolean) =>
     cn(
@@ -82,10 +85,10 @@ const NAV_ITEMS: SettingsNavItem[] = [
         icon: <UserCircle className={navIconClass} strokeWidth={1.5} />,
     },
     {
-        label: 'Defaults',
-        to: `/settings/${getSlugForProfileTab('Defaults')}`,
-        tabs: ['Defaults'],
-        icon: <Settings2 className={navIconClass} strokeWidth={1.5} />,
+        label: 'Connections',
+        to: CONNECTIONS_BASE_PATH,
+        tabs: ['Connections'],
+        icon: <Icons.Connections className={navIconClass} strokeWidth={1.5} />,
     },
     {
         label: 'Repositories',
@@ -105,12 +108,6 @@ const NAV_ITEMS: SettingsNavItem[] = [
         to: `/settings/${getSlugForProfileTab('Sandbox')}`,
         tabs: ['Sandbox'],
         icon: <Box className={navIconClass} strokeWidth={1.5} />,
-    },
-    {
-        label: 'Connections',
-        to: CONNECTIONS_BASE_PATH,
-        tabs: ['Connections'],
-        icon: <Icons.Connections className={navIconClass} strokeWidth={1.5} />,
     },
     {
         label: 'Secrets',
@@ -232,6 +229,21 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
     }, [navigate])
     const [deleteAccountModalOpen, setDeleteAccountModalOpen] = React.useState(false)
     const [signOutAllSessionsModalOpen, setSignOutAllSessionsModalOpen] = React.useState(false)
+    // both sign this browser out when they work; an error stays in the modal
+    const deleteAccount = useMutation({
+        mutationFn: profileAPI.deleteAccount,
+        onSuccess: () => {
+            setDeleteAccountModalOpen(false)
+            onSignOut()
+        },
+    })
+    const signOutAll = useMutation({
+        mutationFn: profileAPI.signoutAll,
+        onSuccess: () => {
+            setSignOutAllSessionsModalOpen(false)
+            onSignOut()
+        },
+    })
     const [feedbackModalOpen, setFeedbackModalOpen] = React.useState(false)
     // only the admin gets a path: everyone else never sees the link
     const adminPath = useAdminPath()
@@ -266,8 +278,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
               : null)
 
     const renderTabContent = () => {
-        // these pages keep their values in the browser, so they do not wait for the profile
-        if (activeTab === 'Defaults') return <ProfileDefaultsSettings />
+        // these pages load their own data, so they do not wait for the profile here
         if (activeTab === 'PullRequests') return <ProfilePullRequestSettings />
         if (activeTab === 'Sandbox') return <ProfileSandboxSettings />
         if (activeTab === 'Members' && isTeamsEnabled()) {
@@ -503,32 +514,35 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onSignOut, onB
 
                 <ProfileDeleteAccountModal
                     isOpen={deleteAccountModalOpen}
-                    onClose={() => setDeleteAccountModalOpen(false)}
-                    onConfirm={async () => {
-                        try {
-                            const { profileAPI } = await import('@/features/profile/api/profile')
-                            await profileAPI.deleteAccount()
-                            setDeleteAccountModalOpen(false)
-                            onSignOut()
-                        } catch (error) {
-                            console.error('Failed to delete account', error)
-                        }
+                    isPending={deleteAccount.isPending}
+                    description={
+                        deleteAccount.error
+                            ? actionErrorMessage(
+                                  deleteAccount.error,
+                                  'Could not delete the account'
+                              )
+                            : undefined
+                    }
+                    onClose={() => {
+                        setDeleteAccountModalOpen(false)
+                        deleteAccount.reset()
                     }}
+                    onConfirm={() => deleteAccount.mutate()}
                 />
 
                 <ProfileSignOutAllSessionsModal
                     isOpen={signOutAllSessionsModalOpen}
-                    onClose={() => setSignOutAllSessionsModalOpen(false)}
-                    onConfirm={async () => {
-                        try {
-                            const { profileAPI } = await import('@/features/profile/api/profile')
-                            await profileAPI.signoutAll()
-                            setSignOutAllSessionsModalOpen(false)
-                            onSignOut()
-                        } catch (error) {
-                            console.error('Failed to sign out of all sessions', error)
-                        }
+                    isPending={signOutAll.isPending}
+                    errorMessage={
+                        signOutAll.error
+                            ? actionErrorMessage(signOutAll.error, 'Could not sign out everywhere')
+                            : undefined
+                    }
+                    onClose={() => {
+                        setSignOutAllSessionsModalOpen(false)
+                        signOutAll.reset()
                     }}
+                    onConfirm={() => signOutAll.mutate()}
                 />
 
                 <ProfileFeedbackModal

@@ -20,12 +20,12 @@ interface ProfileSettingsSkeletonProps {
 }
 
 const REPO_SKELETON_ITEMS = [
-    { nameW: 'w-36', descW: 'w-[90%]', langW: 'w-14', starsW: 'w-10' },
-    { nameW: 'w-44', descW: 'w-[75%]', langW: 'w-16', starsW: 'w-12' },
-    { nameW: 'w-28', descW: 'w-[85%]', langW: 'w-12', starsW: 'w-8' },
-    { nameW: 'w-40', descW: 'w-[65%]', langW: 'w-14', starsW: 'w-10' },
-    { nameW: 'w-32', descW: 'w-[80%]', langW: 'w-11', starsW: 'w-14' },
-    { nameW: 'w-48', descW: 'w-[70%]', langW: 'w-16', starsW: 'w-10' },
+    { nameW: 'w-36', descW: 'w-[90%]', branchW: 'w-10' },
+    { nameW: 'w-44', descW: 'w-[75%]', branchW: 'w-12' },
+    { nameW: 'w-28', descW: 'w-[85%]', branchW: 'w-8' },
+    { nameW: 'w-40', descW: 'w-[65%]', branchW: 'w-10' },
+    { nameW: 'w-32', descW: 'w-[80%]', branchW: 'w-14' },
+    { nameW: 'w-48', descW: 'w-[70%]', branchW: 'w-10' },
 ]
 
 export const ProfileRepositoriesSkeleton: React.FC = () => (
@@ -43,13 +43,9 @@ export const ProfileRepositoriesSkeleton: React.FC = () => (
                     <Skeleton className="h-4 w-12 rounded bg-white/[0.03] shrink-0" />
                 </div>
                 <Skeleton className={`h-3 ${item.descW} bg-white/[0.025] rounded`} />
-                <div className="flex items-center gap-3 pt-1">
-                    <div className="flex items-center gap-1.5">
-                        <Skeleton className="w-2 h-2 rounded-full bg-white/[0.03]" />
-                        <Skeleton className={`h-3 ${item.langW} bg-white/[0.02] rounded`} />
-                    </div>
-                    <Skeleton className={`h-3 ${item.starsW} bg-white/[0.02] rounded`} />
-                    <Skeleton className="h-3 w-16 bg-white/[0.02] rounded" />
+                <div className="flex items-center gap-3.5 pt-1">
+                    <Skeleton className={`h-3 ${item.branchW} bg-white/[0.02] rounded`} />
+                    <Skeleton className="h-3 w-12 bg-white/[0.02] rounded" />
                 </div>
             </div>
         ))}
@@ -494,11 +490,11 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                     <div className="flex flex-col gap-4">
                         {/* Top Control Bar */}
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                            <div className="relative w-full max-w-full sm:max-w-[340px]">
+                            <div className="relative w-full max-w-full sm:max-w-[280px]">
                                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7B7A79]" />
                                 <input
                                     type="text"
-                                    placeholder="Search repositories..."
+                                    placeholder="Search repositories"
                                     readOnly
                                     className="w-full pl-9 pr-3 py-1.5 bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg text-[13px] text-[#D6D5C9] placeholder-[#7B7A79] focus:outline-none"
                                 />
@@ -513,10 +509,9 @@ export const ProfileSettingsSkeleton: React.FC<ProfileSettingsSkeletonProps> = (
                                 </button>
                                 <button
                                     type="button"
-                                    className={`${blueButtonClass} flex-1 sm:flex-initial flex items-center justify-center gap-1.5`}
+                                    className={`${outlineButtonClass} flex-1 sm:flex-initial`}
                                 >
-                                    <Plus className="w-3.5 h-3.5" />
-                                    <span>Connect GitHub</span>
+                                    Add from GitHub
                                 </button>
                             </div>
                         </div>

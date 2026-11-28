@@ -1,6 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 import {
     PAGE_SUBTITLES,
@@ -12,11 +11,10 @@ import {
 import { SettingsPage } from './SettingsUi'
 import { UsageSummary } from './UsageSummary'
 
-import type { UsageBillingSource, UsageEvent } from '@/features/billing/api/billing'
+import type { UsageEvent } from '@/features/billing/api/billing'
 
-import { useCreditsHistory, useBillingOverview } from '@/features/billing/hooks/useBillingData'
+import { useCreditsHistory } from '@/features/billing/hooks/useBillingData'
 import { ChoiceGroup } from '@/features/connections/components/ConnectionsUi'
-import { profileAPI } from '@/features/profile/api/profile'
 import { ErrorAlert } from '@/shared/components/ui/ErrorAlert'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import { isSkeletonPreviewActive } from '@/shared/lib/skeletonPreview'
@@ -32,20 +30,8 @@ const RANGES = ['1d', '7d', '30d', '90d'].map((range) => ({ value: range, label:
 
 const HOUR_MS = 60 * 60 * 1000
 
-type UsageSource = 'all' | 'credits' | 'keys'
-
-const SOURCES: { value: UsageSource; label: string }[] = [
-    { value: 'all', label: 'All' },
-    { value: 'credits', label: 'Credits' },
-    { value: 'keys', label: 'Your keys' },
-]
-
-// what the "paid with" control sends. "all" sends nothing
-const BILLING_SOURCE: Record<UsageSource, UsageBillingSource | undefined> = {
-    all: undefined,
-    credits: 'CREDITS',
-    keys: 'OWN_KEY',
-}
+// the range moves with the clock: a new hour or day starts a new first bar
+const CLOCK_TICK_MS = 60 * 1000
 
 const NO_TOTALS = { costInCents: 0, totalTokens: 0, sessions: 0 }
 
@@ -60,19 +46,17 @@ const browserTimezone = (): string | undefined => {
 }
 
 export const ProfileUsageSettings: React.FC = () => {
-    const { data: profile } = useQuery({
-        queryKey: ['profile'],
-        queryFn: profileAPI.getProfile,
-    })
-
-    const { data: overview, isLoading: isOverviewLoading } = useBillingOverview()
-
     const [limit, setLimit] = useState(10)
     const [offset, setOffset] = useState(0)
 
     const [timeRange, setTimeRange] = useState<string>('30d')
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-    const [source, setSource] = useState<UsageSource>('all')
+    const [now, setNow] = useState(() => Date.now())
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(Date.now()), CLOCK_TICK_MS)
+        return () => clearInterval(timer)
+    }, [])
 
     const formatRowDate = (dateStr: string) => {
         const date = new Date(dateStr)
@@ -123,22 +107,19 @@ export const ProfileUsageSettings: React.FC = () => {
         }
     }
 
-    // a new range or a new source starts at its first page
+    // a new range starts at its first page
     const handleRangeChange = (range: string) => {
         setTimeRange(range)
         setOffset(0)
     }
 
-    const handleSourceChange = (next: UsageSource) => {
-        setSource(next)
-        setOffset(0)
-    }
-
     // the range of the quick filter, in whole bars of the chart: 1d is the hour that runs
-    // now and the 23 hours before it, and 7d is today and the 6 days before it
+    // now and the 23 hours before it, and 7d is today and the 6 days before it. there is no
+    // end: the server ends the range at the time of each fetch, so new usage shows on a
+    // refetch. the start only changes when a new hour or day starts, so the query key
+    // stays the same between those times
     const activeDateRange = React.useMemo(() => {
-        const end = new Date()
-        let start = new Date(end)
+        let start = new Date(now)
         if (timeRange === '1d') {
             start.setMinutes(0, 0, 0)
             start = new Date(start.getTime() - 23 * HOUR_MS)
@@ -150,10 +131,9 @@ export const ProfileUsageSettings: React.FC = () => {
 
         return {
             start: start.toISOString(),
-            end: end.toISOString(),
             timezone: browserTimezone(),
         }
-    }, [timeRange])
+    }, [timeRange, now])
 
     // fetch credits history with server-side pagination
     const {
@@ -164,8 +144,6 @@ export const ProfileUsageSettings: React.FC = () => {
         limit,
         offset,
         periodStart: activeDateRange.start,
-        periodEnd: activeDateRange.end,
-        billingSource: BILLING_SOURCE[source],
         timezone: activeDateRange.timezone,
     })
 
@@ -177,7 +155,10 @@ export const ProfileUsageSettings: React.FC = () => {
     const currentPage = Math.floor(offset / limit) + 1
     const totalPages = Math.max(Math.ceil(totalEvents / limit), 1)
 
-    const isLoading = isOverviewLoading || isHistoryLoading || isSkeletonPreviewActive()
+    const isLoading = isHistoryLoading || isSkeletonPreviewActive()
+    // nothing in the range: the empty chart says so and offers a start, so no empty table
+    const showsEmptyChart =
+        totalEvents === 0 && totals.totalTokens === 0 && (history?.days?.length ?? 0) > 0
 
     return (
         <SettingsPage title="Usage" subtitle={PAGE_SUBTITLES.usage}>
@@ -191,12 +172,6 @@ export const ProfileUsageSettings: React.FC = () => {
                             options={RANGES}
                             value={timeRange}
                             onChange={handleRangeChange}
-                        />
-                        <ChoiceGroup
-                            label="Paid with"
-                            options={SOURCES}
-                            value={source}
-                            onChange={handleSourceChange}
                         />
                     </div>
 
@@ -217,7 +192,16 @@ export const ProfileUsageSettings: React.FC = () => {
                 </div>
 
                 {!isLoading && !error && history && (
-                    <UsageSummary totals={totals} days={history.days ?? []} hours={history.hours} />
+                    <UsageSummary
+                        totals={totals}
+                        days={history.days ?? []}
+                        hours={history.hours}
+                        title={
+                            timeRange === '1d'
+                                ? 'Last 24 hours'
+                                : `Last ${timeRange.replace('d', '')} days`
+                        }
+                    />
                 )}
 
                 {/* table / loader / error */}
@@ -281,7 +265,7 @@ export const ProfileUsageSettings: React.FC = () => {
                         </p>
                         <ErrorAlert message={(error as any)?.message || 'Usage did not load'} />
                     </>
-                ) : (
+                ) : showsEmptyChart ? null : (
                     <div className={listBoxClass}>
                         {/* Table Header: the same band as the Secrets list */}
                         <div className={listHeaderClass}>
@@ -313,7 +297,6 @@ export const ProfileUsageSettings: React.FC = () => {
                                             <div className="flex items-center justify-between gap-2">
                                                 <span className="font-medium text-[#D6D5C9] truncate">
                                                     {row.session?.title ||
-                                                        row.project?.name ||
                                                         usageEventLabel(row) ||
                                                         'Workspace event'}
                                                 </span>
@@ -341,10 +324,7 @@ export const ProfileUsageSettings: React.FC = () => {
                                                 {formatRowDate(row.createdAt)}
                                             </div>
                                             <div className="text-[#D6D5C9] truncate pr-2 font-medium">
-                                                {row.session?.title ||
-                                                    row.project?.name ||
-                                                    usageEventLabel(row) ||
-                                                    '-'}
+                                                {row.session?.title || usageEventLabel(row) || '-'}
                                             </div>
                                             <div className="text-[#7B7A79] truncate pr-2">
                                                 {formatModelName(row.model)}

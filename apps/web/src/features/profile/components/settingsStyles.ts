@@ -55,7 +55,6 @@ export const blueButtonClass =
 /** the one grey line under each page heading */
 export const PAGE_SUBTITLES = {
     account: 'Manage your profile, preferences and sign-in.',
-    defaults: 'Set what a new session starts with.',
     pullRequests: 'Set how December opens, answers and reviews pull requests.',
     sandbox: 'See what runs now, and set when it stops.',
     yourKeys: 'Add your own API keys. Runs on them use no December credits.',

@@ -6,7 +6,13 @@ import app from '../../src/app'
 import { ensureStorageBucket } from '../../src/config/s3'
 import { attachmentService } from '../../src/modules/attachment/attachment.service'
 import { sessionService } from '../../src/modules/session/session.service'
-import { getBinaryFile } from '../../src/shared/project-storage'
+import {
+    getBinaryFile,
+    getTextFile,
+    putTextFile,
+    sessionAssetKey,
+    sessionWorkspaceKey,
+} from '../../src/shared/project-storage'
 import { cleanupTestUser, createSignedInUser, getRandomIP } from '../helpers'
 
 // the smallest files that pass the checks of the bytes
@@ -526,20 +532,50 @@ describe('prompt attachments', () => {
             expect(await getBinaryFile(kept.key)).not.toBeNull()
         })
 
-        it('the daily sweep removes the files of sessions older than its date', async () => {
-            const old = await sessionWithFile(
-                owner.token,
-                owner.userId,
-                new Date('2026-01-01T00:00:00.000Z')
-            )
+        it('the daily sweep deletes old sessions with all their files, and keeps recent ones', async () => {
+            const oldDate = new Date('2026-01-01T00:00:00.000Z')
+            const old = await sessionWithFile(owner.token, owner.userId, oldDate)
             const recent = await sessionWithFile(owner.token, owner.userId)
+            // files outside attachments: the workspace and the assets of the session
+            const workspaceKey = sessionWorkspaceKey(old.id, 'src/app.ts')
+            const assetKey = sessionAssetKey(old.id, 'logo.png')
+            await putTextFile({ key: workspaceKey, content: 'export {}' })
+            await putTextFile({ key: assetKey, content: 'png' })
+            const recentWorkspace = sessionWorkspaceKey(recent.id, 'src/app.ts')
+            await putTextFile({ key: recentWorkspace, content: 'export {}' })
+            // the upload may touch the row: put the old date back
+            await prisma.session.update({ where: { id: old.id }, data: { updatedAt: oldDate } })
 
-            await attachmentService.purgeExpiredSessionFiles({
+            const result = await sessionService.purgeExpiredSessions({
                 before: new Date('2026-02-01T00:00:00.000Z'),
             })
 
+            expect(result.deleted).toBeGreaterThanOrEqual(1)
+            expect(await prisma.session.findUnique({ where: { id: old.id } })).toBeNull()
             expect(await getBinaryFile(old.key)).toBeNull()
+            expect(await getTextFile(workspaceKey)).toBeNull()
+            expect(await getTextFile(assetKey)).toBeNull()
+
+            expect(await prisma.session.findUnique({ where: { id: recent.id } })).not.toBeNull()
             expect(await getBinaryFile(recent.key)).not.toBeNull()
+            expect(await getTextFile(recentWorkspace)).not.toBeNull()
+        })
+
+        it('the daily sweep works in batches', async () => {
+            const oldDate = new Date('2026-01-02T00:00:00.000Z')
+            const ids: string[] = []
+            for (let i = 0; i < 5; i += 1) {
+                const session = await prisma.session.create({
+                    data: { userId: owner.userId, title: `old ${i}`, updatedAt: oldDate },
+                })
+                ids.push(session.id)
+            }
+            const result = await sessionService.purgeExpiredSessions({
+                before: new Date('2026-02-01T00:00:00.000Z'),
+                batchSize: 2,
+            })
+            expect(result.deleted).toBeGreaterThanOrEqual(5)
+            expect(await prisma.session.count({ where: { id: { in: ids } } })).toBe(0)
         })
     })
 })

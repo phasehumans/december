@@ -1,12 +1,10 @@
-import { prisma } from '@december/database'
 import { Worker, Queue } from 'bullmq'
 import Redis from 'ioredis'
 
 import { env } from './env'
-import { attachmentService } from './modules/attachment/attachment.service'
 import { authService } from './modules/auth/auth.service'
 import { createEmailWorker } from './modules/email/email.worker'
-import { DATA_EXPORT_QUEUE, isLastDataExportAttempt } from './modules/setting/setting.queue'
+import { sessionService } from './modules/session/session.service'
 import { settingService } from './modules/setting/setting.service'
 import { fetchLiveModelRates } from './modules/usage/usage.rates'
 import { deletePrefix } from './shared/project-storage'
@@ -61,9 +59,21 @@ const sweepWorker = new Worker(
             await authService.purgeExpiredAndRevokedSessions().catch((err) => {
                 console.error('[Background] Failed to purge expired sessions:', err)
             })
-            // data export files whose emailed link has ended (#636)
-            await settingService.purgeDataExports({}).catch((err) => {
-                console.error('[Background] Failed to purge data exports:', err)
+            // accounts deleted more than 90 days ago go for good; payment rows stay
+            await authService
+                .purgeDeletedAccounts({})
+                .then((result) => {
+                    if (result.purged > 0) {
+                        console.log(`[Background] Purged ${result.purged} deleted accounts`)
+                    }
+                })
+                .catch((err) => {
+                    console.error('[Background] Failed to purge deleted accounts:', err)
+                })
+            // zips left from the removed data export. their links no longer work, so they go.
+            // remove this after 2026-12-31, when the bucket has no exports/ files
+            await deletePrefix('exports/').catch((err) => {
+                console.error('[Background] Failed to delete old data export files:', err)
             })
             // archive (not delete) the old sessions of users who set "archive after" (#637).
             // it keeps updatedAt, so the delete below still counts from the last real update
@@ -77,22 +87,17 @@ const sweepWorker = new Worker(
                 .catch((err) => {
                     console.error('[Background] Failed to archive old sessions:', err)
                 })
-            const sessionCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-            // the files sent with prompts in those sessions (#634): the rows go with the
-            // sessions below, the stored files go here
-            await attachmentService
-                .purgeExpiredSessionFiles({ before: sessionCutoff })
-                .catch((err) => {
-                    console.error('[Background] Failed to purge attachment files:', err)
+            // sessions not changed for 30 days go, with all their stored files
+            await sessionService
+                .purgeExpiredSessions({ before: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) })
+                .then((result) => {
+                    if (result.deleted > 0) {
+                        console.log(`[Background] Deleted ${result.deleted} old sessions`)
+                    }
                 })
-            // cleanup sessions older than 30 days or orphaned db records
-            await prisma.session.deleteMany({
-                where: {
-                    updatedAt: {
-                        lt: sessionCutoff,
-                    },
-                },
-            })
+                .catch((err) => {
+                    console.error('[Background] Failed to delete old sessions:', err)
+                })
         } else if (job.name === 'refresh_model_rates') {
             console.log(`[Background] Refreshing live OpenRouter model rates catalog`)
             await fetchLiveModelRates(true).catch((err) => {
@@ -106,22 +111,6 @@ const sweepWorker = new Worker(
     },
     { connection: redisConnection as any }
 )
-
-// setup data export worker (#636): builds the zip and emails the link. a failed attempt
-// runs again; the user is told only when the last attempt fails
-const dataExportWorker = new Worker(
-    DATA_EXPORT_QUEUE,
-    async (job) =>
-        settingService.processDataExport({
-            exportId: job.data.exportId,
-            isLastAttempt: isLastDataExportAttempt(job),
-        }),
-    { connection: redisConnection as any, concurrency: 2 }
-)
-
-dataExportWorker.on('failed', (job, err) => {
-    console.error(`[Background] Data export job ${job?.id} failed: ${err.message}`)
-})
 
 // setup email worker
 const emailWorker = createEmailWorker(redisConnection as any)

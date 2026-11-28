@@ -3,7 +3,6 @@ import { asyncHandler } from '../../shared/asyncHandler'
 import { sendSuccess } from '../../shared/response'
 
 import {
-    checkRepoBranchQuerySchema,
     createGithubRepoSchema,
     listReposQuerySchema,
     syncGithubRepoSchema,
@@ -19,9 +18,7 @@ const getUserGithubRepos = asyncHandler(async (req: Request, res: Response) => {
         throw new AppError('unauthorized', 401)
     }
 
-    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 30
-    const search = req.query.search as string | undefined
+    const { page, limit, search } = listReposQuerySchema.parse(req.query)
 
     const result = await platformService.getUserGithubRepos({
         userId,
@@ -45,25 +42,6 @@ const getUserGitlabRepos = asyncHandler(async (req: Request, res: Response) => {
     const result = await platformService.getUserGitlabRepos({ userId, page, limit, search })
 
     return sendSuccess(res, 'gitlab repositories fetched successfully', result)
-})
-
-const checkRepoBranch = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const { provider, repository, branch } = checkRepoBranchQuerySchema.parse(req.query)
-
-    const result = await platformService.checkRepoBranch({
-        userId,
-        gitProvider: provider,
-        repository,
-        branch,
-    })
-
-    return sendSuccess(res, 'branch checked successfully', result)
 })
 
 const createRepo = asyncHandler(async (req: Request, res: Response) => {
@@ -133,7 +111,6 @@ const unlinkGithubRepo = asyncHandler(async (req: Request, res: Response) => {
 export const platformController = {
     getUserGithubRepos,
     getUserGitlabRepos,
-    checkRepoBranch,
     createRepo,
     updateRepo,
     unlinkGithubRepo,

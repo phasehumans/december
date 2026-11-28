@@ -31,18 +31,11 @@ export type UpdateModelSource = {
     defaultModelSource: 'CREDITS' | 'OWN_KEY'
 }
 
+// "save as default" in the prompt box: plan first and open pull request
 export type UpdateSessionDefaults = {
     userId: string
     defaultPlanFirst?: boolean
-    defaultEffort?: 'fast' | 'deep'
     defaultOpenPullRequest?: boolean
-    // the model of the user's own key (#637). null for both: no default
-    defaultOwnKeyProvider?: string | null
-    defaultOwnKeyModel?: string | null
-    // 'last-used' or a repository full name
-    defaultRepository?: string
-    // 'default' or a branch name
-    defaultBaseBranch?: string
 }
 
 export type GetToolDenyRules = {
@@ -114,49 +107,6 @@ export type Preferences = {
 export type UpdatePreferences = {
     userId: string
     preferences: Partial<Preferences>
-}
-
-export type DataExportStatus = 'PENDING' | 'READY' | 'FAILED'
-
-export type DataExportJobData = {
-    exportId: string
-}
-
-export type RequestDataExport = {
-    userId: string
-}
-
-export type GetDataExport = {
-    userId: string
-}
-
-export type ProcessDataExport = {
-    exportId: string
-    // false while the queue will run the job again after a failure. default: true
-    isLastAttempt?: boolean
-}
-
-export type TellDataExportFailed = {
-    userId: string
-}
-
-export type PurgeDataExports = {
-    now?: Date
-}
-
-export type DownloadDataExport = {
-    exportId: string
-    token: string
-}
-
-/** the latest export, for the account page */
-export type DataExportState = {
-    id: string
-    status: DataExportStatus
-    createdAt: Date
-    expiresAt: Date | null
-    // the next time the user can ask for a new export
-    nextAllowedAt: Date
 }
 
 /** the setup commands of one repository: they run after the clone in a new sandbox (#637) */

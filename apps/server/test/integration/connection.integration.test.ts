@@ -802,7 +802,8 @@ describe('Connections: skills and mcp servers (#632)', () => {
             expect(res.status).toBe(201)
             expect(await savedConfig(res.body.data.session.id)).toEqual({
                 planFirst: false,
-                effort: 'deep',
+                // no speed sent: a new session starts on fast
+                effort: 'fast',
                 openPullRequest: true,
                 disabledMcps: ['sentry'],
             })

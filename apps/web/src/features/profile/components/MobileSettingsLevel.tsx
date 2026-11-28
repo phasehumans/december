@@ -12,11 +12,10 @@ import { getWebUrl } from '@/shared/config/env'
 
 const SETTINGS_ROWS: { slug: string; label: string }[] = [
     { slug: 'account', label: 'Account' },
-    { slug: 'defaults', label: 'Defaults' },
+    { slug: 'connections', label: 'Connections' },
     { slug: 'repositories', label: 'Repositories' },
     { slug: 'pull-requests', label: 'Pull requests' },
     { slug: 'sandbox', label: 'Sandbox' },
-    { slug: 'connections', label: 'Connections' },
     { slug: 'secrets', label: 'Secrets' },
     { slug: 'models', label: 'API keys' },
     { slug: 'billing', label: 'Billing' },
@@ -25,7 +24,9 @@ const SETTINGS_ROWS: { slug: string; label: string }[] = [
     ...(isTeamsEnabled() ? [{ slug: 'members', label: 'Members' }] : []),
 ]
 
+// the same outside links as the desktop settings sidebar, in the same order
 const EXTERNAL_ROWS = [
+    { label: 'Changelog', path: '/docs/changelog' },
     { label: 'Privacy Policy', path: '/privacy' },
     { label: 'Terms of Service', path: '/terms' },
 ]

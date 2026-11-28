@@ -148,3 +148,6 @@ export const describeUserAgent = (
     const browser = firstMatch(value, BROWSERS) ?? 'Browser'
     return { kind: 'web', label: system ? `${browser} on ${system}` : browser }
 }
+
+/** a deleted account is purged for good this long after the delete */
+export const ACCOUNT_PURGE_AFTER_MS = 90 * 24 * 60 * 60 * 1000

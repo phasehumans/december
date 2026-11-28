@@ -138,6 +138,24 @@ const findUserIdByGithubId = async (githubId: string) => {
     return user?.id ?? null
 }
 
+// saves the github id a user proved during an install, only when they have none and no
+// other account holds it (the column is unique). false when it was not saved
+const saveUserGithubId = async (data: { userId: string; githubId: string }) => {
+    const { userId, githubId } = data
+    const holder = await prisma.user.findFirst({ where: { githubId }, select: { id: true } })
+    if (holder) return false
+    try {
+        const result = await prisma.user.updateMany({
+            where: { id: userId, githubId: null },
+            data: { githubId },
+        })
+        return result.count > 0
+    } catch {
+        // Intentionally swallowed: another request saved the same id first (unique column)
+        return false
+    }
+}
+
 // the session whose pull request this is (December saves prNumber on the session)
 const findSessionByPullRequest = async (data: {
     repoId?: string
@@ -247,6 +265,7 @@ export const githubAppRepository = {
     findByInstallationId,
     findUserGithubId,
     findUserIdByGithubId,
+    saveUserGithubId,
     findSessionByPullRequest,
     findUserGithubUsername,
     hasUnreadNotification,

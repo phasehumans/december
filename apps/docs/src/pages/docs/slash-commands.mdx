@@ -275,19 +275,19 @@ You can write a new message while December works on a run. Open **Settings > Acc
 
 If you stop a run, the queued messages stay. Select **Send** on a message to send it.
 
-### Defaults for new sessions
+### Start values of a new session
 
-Open **Settings > Defaults** to set what a new session starts with. The prompt box starts from these values, and you can change them for each prompt.
+A new session starts on **Fast**, on December credits, and with no repository. You can change each value in the prompt box before you send the prompt.
 
-| Setting             | What it does                                                                |
-| :------------------ | :-------------------------------------------------------------------------- |
-| Model source        | Start on December credits or on your own keys.                              |
-| Model for your keys | The model a new session uses on your own keys. Shows after you add a key.   |
-| Speed               | Start on Fast or Deep.                                                      |
-| Plan first          | December writes a plan and waits for your approval before it changes files. |
-| Open a pull request | Turn it off to get a branch and commits only.                               |
-| Repository          | The repository a new session starts in. **Last used** keeps your last one.  |
-| Base branch         | The branch December starts from. Leave it empty to use the default branch.  |
+| Value               | How to change it                                                                                                       |
+| :------------------ | :--------------------------------------------------------------------------------------------------------------------- |
+| Speed               | Select **Fast** or **Deep** in the prompt box.                                                                         |
+| Model source        | Select December credits or your keys in the prompt box. To start on your keys, open **Settings > API keys** and set **Model source**. Runs from GitHub also use this value. |
+| Plan first          | Turn it on in the prompt box menu. December writes a plan and waits for your approval before it changes files.         |
+| Open a pull request | Turn it off in the prompt box menu to get a branch and commits only.                                                   |
+| Repository          | Type `@repo` in the prompt box and select a repository. December starts from the default branch of the repository.     |
+
+To keep **Plan first** and **Open a pull request** for new sessions, select **Set as default** in the prompt box menu.
 
 ## Session titles
 

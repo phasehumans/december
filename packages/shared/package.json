@@ -11,7 +11,8 @@
         "./git": "./src/git/index.ts",
         "./commands": "./src/commands/index.ts",
         "./review": "./src/review-prompt.ts",
-        "./attachments": "./src/attachments.ts"
+        "./attachments": "./src/attachments.ts",
+        "./pull-request-settings": "./src/pull-request-settings.ts"
     },
     "private": true,
     "scripts": {

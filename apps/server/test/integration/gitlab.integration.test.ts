@@ -266,9 +266,10 @@ describe('GitLab connection (#627)', () => {
             .set('Authorization', alice.auth)
 
         expect(res.status).toBe(200)
-        expect(res.body.data).toEqual([
+        expect(res.body.data.repos).toEqual([
             expect.objectContaining({ id: 5, fullName: 'acme/app', provider: 'GITLAB' }),
         ])
+        expect(res.body.data.truncated).toBe(false)
         const headers = gitlabCalls[0]?.init?.headers as Record<string, string>
         expect(headers.Authorization).toBe('Bearer gl-access-1')
     })
@@ -306,12 +307,53 @@ describe('GitLab connection (#627)', () => {
         ).toBe('gl-refresh-2')
     })
 
-    it('answers 401 for the gitlab repo list when gitlab is not connected', async () => {
+    // 409, not 401: a 401 would make the web client renew its sign-in for nothing (B9)
+    it('answers 409 for the gitlab repo list when gitlab is not connected', async () => {
         const res = await request(app)
             .get('/api/v1/platform/gitlab/repos')
             .set('x-forwarded-for', getRandomIP())
             .set('Authorization', bob.auth)
-        expect(res.status).toBe(401)
+        expect(res.status).toBe(409)
+        expect(res.body.message).toBe('GitLab needs to be connected again')
+    })
+
+    it('asks gitlab for every page of 100 when no page is given, and hides its error text', async () => {
+        stubGitlab((url) => {
+            if (url.includes('page=2')) return new Response('secret upstream body', { status: 500 })
+            return json(
+                Array.from({ length: 100 }, (_, i) => ({
+                    id: i + 1,
+                    name: `p${i}`,
+                    path_with_namespace: `acme/p${i}`,
+                    visibility: 'private',
+                    default_branch: 'main',
+                    web_url: `https://gitlab.com/acme/p${i}`,
+                    http_url_to_repo: `https://gitlab.com/acme/p${i}.git`,
+                    namespace: { full_path: 'acme' },
+                }))
+            )
+        })
+
+        const res = await request(app)
+            .get('/api/v1/platform/gitlab/repos')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', alice.auth)
+
+        const projectCalls = gitlabCalls.filter((c) => c.url.includes('/projects'))
+        expect(projectCalls[0]?.url).toContain('per_page=100')
+        expect(projectCalls[0]?.url).toContain('page=1')
+        expect(projectCalls.length).toBe(2)
+        expect(res.status).toBe(502)
+        expect(res.body.message).toBe('GitLab repositories could not load')
+        expect(JSON.stringify(res.body)).not.toContain('secret upstream body')
+    })
+
+    it('refuses a page size over 100', async () => {
+        const res = await request(app)
+            .get('/api/v1/platform/gitlab/repos?limit=5000')
+            .set('x-forwarded-for', getRandomIP())
+            .set('Authorization', alice.auth)
+        expect(res.status).toBe(400)
     })
 
     it('starts a session on a gitlab repo as a gitlab session', async () => {

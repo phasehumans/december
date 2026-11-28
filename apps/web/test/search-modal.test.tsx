@@ -89,7 +89,8 @@ describe('SearchModal component', () => {
         expect(screen.getByText('Sessions')).toBeDefined()
         expect(screen.getAllByText('Pull requests').length).toBeGreaterThanOrEqual(1)
         expect(screen.getByText('Documentation')).toBeDefined()
-        expect(screen.getByText('Defaults')).toBeDefined()
+        // the Defaults page is removed
+        expect(screen.queryByText('Defaults')).toBeNull()
         expect(screen.getByText('Sandbox')).toBeDefined()
         expect(screen.getByText('GitHub repositories')).toBeDefined()
 

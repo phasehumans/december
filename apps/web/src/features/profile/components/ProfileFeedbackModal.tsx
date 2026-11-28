@@ -86,6 +86,8 @@ export const ProfileFeedbackModal: React.FC<ProfileFeedbackModalProps> = ({ isOp
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <textarea
                         value={feedback}
+                        // the server takes at most 5000 characters
+                        maxLength={5000}
                         onChange={(e) => setFeedback(e.target.value)}
                         className="w-full bg-white/[0.03] border border-[#2B2A27] hover:border-[#383736] rounded-lg p-3.5 text-[13px] text-white outline-none resize-none h-[110px] transition-[border-color,box-shadow] duration-200 placeholder:text-[#4A4948]"
                         placeholder="Your feedback..."

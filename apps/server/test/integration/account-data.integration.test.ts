@@ -1,38 +1,12 @@
-import zlib from 'zlib'
-
 import { prisma } from '@december/database'
 import { setAgentQueue } from '@december/shared/queue'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 import request from 'supertest'
 
 import app from '../../src/app'
-import { ensureStorageBucket, s3 } from '../../src/config/s3'
-import { emailService } from '../../src/modules/email/email.service'
-import {
-    isLastDataExportAttempt,
-    setDataExportQueue,
-} from '../../src/modules/setting/setting.queue'
-import { settingService } from '../../src/modules/setting/setting.service'
-import { getBinaryFile } from '../../src/shared/project-storage'
+import { ensureStorageBucket } from '../../src/config/s3'
+import { authService } from '../../src/modules/auth/auth.service'
 import { cleanupTestUser, createSignedInUser, getRandomIP } from '../helpers'
-
-/** the files of a zip made by buildZip, read from the local headers */
-const readZip = (zip: Buffer): Record<string, string> => {
-    const files: Record<string, string> = {}
-    let offset = 0
-    while (zip.readUInt32LE(offset) === 0x04034b50) {
-        const compressedSize = zip.readUInt32LE(offset + 18)
-        const nameLength = zip.readUInt16LE(offset + 26)
-        const extraLength = zip.readUInt16LE(offset + 28)
-        const nameStart = offset + 30
-        const dataStart = nameStart + nameLength + extraLength
-        const name = zip.subarray(nameStart, nameStart + nameLength).toString('utf8')
-        const data = zip.subarray(dataStart, dataStart + compressedSize)
-        files[name] = zlib.inflateRawSync(data).toString('utf8')
-        offset = dataStart + compressedSize
-    }
-    return files
-}
 
 const authed = (token: string) => ({
     get: (path: string) =>
@@ -40,12 +14,6 @@ const authed = (token: string) => ({
             .get(`/api/v1${path}`)
             .set('x-forwarded-for', getRandomIP())
             .set('Authorization', `Bearer ${token}`),
-    post: (path: string, body: object = {}) =>
-        request(app)
-            .post(`/api/v1${path}`)
-            .set('x-forwarded-for', getRandomIP())
-            .set('Authorization', `Bearer ${token}`)
-            .send(body),
     delete: (path: string, body?: object) => {
         const req = request(app)
             .delete(`/api/v1${path}`)
@@ -55,338 +23,44 @@ const authed = (token: string) => ({
     },
 })
 
-/** the path and query of the download link in the export's inbox item */
-const linkFrom = (body: string) => {
-    const match = body.match(/https?:\/\/\S+\/api\/v1(\/setting\/export\/\S+)/)
-    if (!match?.[1]) throw new Error(`no download link in: ${body}`)
-    return match[1]
-}
+const recordJobs = (queuedJobs: Array<{ name: string; data: any }>) =>
+    setAgentQueue({
+        add: async (name: string, data: any) => {
+            queuedJobs.push({ name, data })
+            return { id: `job-${queuedJobs.length}` }
+        },
+    } as any)
 
-// #636 part 3: data export and delete all sessions
+const failJobs = () =>
+    setAgentQueue({
+        add: async () => {
+            throw new Error('redis is down')
+        },
+    } as any)
+
+// #636 part 3: delete all sessions, delete account and the 90-day purge
 describe('account data api', () => {
     const stamp = Date.now()
-    const savedSendMessage = emailService.sendMessageEmail
-    const sentEmails: Array<{ to: string; subject: string; body: string }> = []
-    const queuedExports: string[] = []
     const queuedJobs: Array<{ name: string; data: any }> = []
     const userIds: string[] = []
 
-    beforeAll(async () => {
-        await ensureStorageBucket()
-        emailService.sendMessageEmail = (async (data: {
-            to: string
-            subject: string
-            body: string
-        }) => {
-            sentEmails.push(data)
-            return { id: `email-${sentEmails.length}` }
-        }) as any
-        setDataExportQueue({
-            add: async (_name: string, data: { exportId: string }) => {
-                queuedExports.push(data.exportId)
-                return { id: `export-${queuedExports.length}` }
-            },
-        } as any)
-        setAgentQueue({
-            add: async (name: string, data: any) => {
-                queuedJobs.push({ name, data })
-                return { id: `job-${queuedJobs.length}` }
-            },
-        } as any)
+    beforeAll(() => {
+        recordJobs(queuedJobs)
     })
 
     afterAll(async () => {
-        emailService.sendMessageEmail = savedSendMessage
-        setDataExportQueue(null)
         setAgentQueue(null)
-        await prisma.dataExport.deleteMany({ where: { userId: { in: userIds } } })
         await prisma.session.deleteMany({ where: { userId: { in: userIds } } })
         for (const id of userIds) {
             await cleanupTestUser({ id })
         }
     })
 
-    describe('data export', () => {
-        let user: { userId: string; token: string }
-        let exportId: string
-        let downloadPath: string
-
-        beforeAll(async () => {
-            user = await createSignedInUser({
-                email: `export-${stamp}@example.com`,
-                name: 'Export User',
-            })
-            userIds.push(user.userId)
-            await prisma.session.create({
-                data: {
-                    userId: user.userId,
-                    title: 'Fix the login page',
-                    vmId: 'sandbox-secret-id',
-                    createdAt: new Date(Date.now() - 60_000),
-                    messages: {
-                        create: [
-                            { role: 'USER', content: 'the login page is blank', sequence: 1 },
-                            { role: 'ASSISTANT', content: 'fixed the css', sequence: 2 },
-                        ],
-                    },
-                },
-            })
-            await prisma.session.create({ data: { userId: user.userId, title: null } })
-        })
-
-        it('GET /setting/export is empty before the first export', async () => {
-            const res = await authed(user.token).get('/setting/export')
-            expect(res.status).toBe(200)
-            expect(res.body.data.export).toBeNull()
-        })
-
-        it('POST /setting/export queues an export', async () => {
-            const res = await authed(user.token).post('/setting/export')
-
-            expect(res.status).toBe(202)
-            exportId = res.body.data.export.id
-            expect(res.body.data.export.status).toBe('PENDING')
-            expect(queuedExports).toContain(exportId)
-
-            const state = await authed(user.token).get('/setting/export')
-            expect(state.body.data.export.id).toBe(exportId)
-            const nextAllowed = new Date(state.body.data.export.nextAllowedAt).getTime()
-            expect(nextAllowed).toBeGreaterThan(Date.now() + 23 * 60 * 60 * 1000)
-        })
-
-        it('allows one export a day', async () => {
-            const res = await authed(user.token).post('/setting/export')
-            expect(res.status).toBe(429)
-            expect(await prisma.dataExport.count({ where: { userId: user.userId } })).toBe(1)
-        })
-
-        it('the job builds the zip, stores it and puts the link in the inbox (no mail)', async () => {
-            const result = await settingService.processDataExport({ exportId })
-            expect(result).toMatchObject({ status: 'READY', sessions: 2 })
-
-            const row = await prisma.dataExport.findUnique({ where: { id: exportId } })
-            expect(row?.status).toBe('READY')
-            expect(row?.fileKey).toBe(`exports/${user.userId}/${exportId}.zip`)
-            expect(row?.expiresAt?.getTime()).toBeGreaterThan(Date.now() + 6 * 24 * 3600 * 1000)
-
-            expect(sentEmails.filter((sent) => sent.to === `export-${stamp}@example.com`)).toEqual(
-                []
-            )
-            const notice = await prisma.notification.findFirst({
-                where: { userId: user.userId, title: 'Your data export is ready' },
-            })
-            downloadPath = linkFrom(notice!.link!)
-
-            // a second run of the same job does nothing
-            const again = await settingService.processDataExport({ exportId })
-            expect(again).toEqual({ status: 'READY' })
-        })
-
-        it('the link downloads the zip without signing in', async () => {
-            const res = await request(app)
-                .get(`/api/v1${downloadPath}`)
-                .set('x-forwarded-for', getRandomIP())
-                .buffer(true)
-                .parse((response, callback) => {
-                    const chunks: Buffer[] = []
-                    response.on('data', (chunk: Buffer) => chunks.push(chunk))
-                    response.on('end', () => callback(null, Buffer.concat(chunks)))
-                })
-
-            expect(res.status).toBe(200)
-            expect(res.headers['content-type']).toBe('application/zip')
-            expect(res.headers['content-disposition']).toMatch(
-                /attachment; filename="december-export-\d{4}-\d{2}-\d{2}\.zip"/
-            )
-
-            const files = readZip(res.body as Buffer)
-            expect(Object.keys(files).sort()).toEqual([
-                'account.json',
-                'sessions/0001-fix-the-login-page.json',
-                'sessions/0002-session.json',
-            ])
-            const account = JSON.parse(files['account.json']!)
-            expect(account.email).toBe(`export-${stamp}@example.com`)
-            expect(account.otpHash).toBeUndefined()
-
-            const session = JSON.parse(files['sessions/0001-fix-the-login-page.json']!)
-            expect(session.title).toBe('Fix the login page')
-            expect(session.messages.map((m: { content: string }) => m.content)).toEqual([
-                'the login page is blank',
-                'fixed the css',
-            ])
-            // sandbox internals are not part of the export
-            expect(session.vmId).toBeUndefined()
-        })
-
-        it('a wrong token gets a small page, not the file', async () => {
-            const res = await request(app)
-                .get(`/api/v1/setting/export/${exportId}/download?t=wrong`)
-                .set('x-forwarded-for', getRandomIP())
-            expect(res.status).toBe(404)
-            expect(res.headers['content-type']).toContain('text/html')
-            expect(res.text).toContain('This download link is not valid')
-        })
-
-        it('the link ends when the export expires, and the sweep removes the file', async () => {
-            await prisma.dataExport.update({
-                where: { id: exportId },
-                data: { expiresAt: new Date(Date.now() - 1000) },
-            })
-            const res = await request(app)
-                .get(`/api/v1${downloadPath}`)
-                .set('x-forwarded-for', getRandomIP())
-            expect(res.status).toBe(410)
-
-            const { deleted } = await settingService.purgeDataExports({})
-            expect(deleted).toBeGreaterThanOrEqual(1)
-            expect(await prisma.dataExport.findUnique({ where: { id: exportId } })).toBeNull()
-            expect(await getBinaryFile(`exports/${user.userId}/${exportId}.zip`)).toBeNull()
-        })
-
-        it('a failed export does not count toward the daily limit', async () => {
-            const failed = await prisma.dataExport.create({
-                data: { userId: user.userId, status: 'FAILED', error: 'storage was down' },
-            })
-            const state = await authed(user.token).get('/setting/export')
-            expect(state.body.data.export.id).toBe(failed.id)
-            expect(new Date(state.body.data.export.nextAllowedAt).getTime()).toBeLessThanOrEqual(
-                Date.now()
-            )
-
-            const res = await authed(user.token).post('/setting/export')
-            expect(res.status).toBe(202)
-        })
-
-        it('when the job cannot be queued, nothing is saved and the user can try again', async () => {
-            const other = await createSignedInUser({ email: `export-fail-${stamp}@example.com` })
-            userIds.push(other.userId)
-            setDataExportQueue({
-                add: async () => {
-                    throw new Error('redis is down')
-                },
-            } as any)
-
-            const res = await authed(other.token).post('/setting/export')
-            expect(res.status).toBe(503)
-            expect(await prisma.dataExport.count({ where: { userId: other.userId } })).toBe(0)
-
-            setDataExportQueue({
-                add: async (_name: string, data: { exportId: string }) => {
-                    queuedExports.push(data.exportId)
-                    return { id: 'export-retry' }
-                },
-            } as any)
-            const retry = await authed(other.token).post('/setting/export')
-            expect(retry.status).toBe(202)
-        })
-    })
-
-    describe('a data export that fails', () => {
-        const realSend = s3.send.bind(s3)
-        let storageDown = false
-        let count = 0
-
-        /** a new user (one export a day), with an export in the queue */
-        const queuedExport = async () => {
-            count += 1
-            const email = `export-retry-${count}-${stamp}@example.com`
-            const user = await createSignedInUser({ email })
-            userIds.push(user.userId)
-            const res = await authed(user.token).post('/setting/export')
-            expect(res.status).toBe(202)
-            return { ...user, email, exportId: res.body.data.export.id as string }
-        }
-        const statusOf = async (token: string) =>
-            (await authed(token).get('/setting/export')).body.data.export.status
-        const inboxOf = async (token: string) =>
-            (await authed(token).get('/notification')).body.data.notifications as Array<{
-                title: string
-                message: string
-                type: string
-                link: string | null
-            }>
-        const subjectsTo = (email: string) =>
-            sentEmails.filter((sent) => sent.to === email).map((sent) => sent.subject)
-
-        beforeAll(() => {
-            // the file store is an outside service: it fails while storageDown is set
-            s3.send = ((...args: unknown[]) =>
-                storageDown
-                    ? Promise.reject(new Error('storage is down'))
-                    : (realSend as (...rest: unknown[]) => unknown)(...args)) as typeof s3.send
-        })
-
-        afterAll(async () => {
-            s3.send = realSend as typeof s3.send
-            await prisma.notification.deleteMany({ where: { userId: { in: userIds } } })
-        })
-
-        beforeEach(() => {
-            storageDown = false
-        })
-
-        it('the retry after a failed attempt builds the file and puts the link in the inbox', async () => {
-            const user = await queuedExport()
-
-            storageDown = true
-            await expect(
-                settingService.processDataExport({ exportId: user.exportId, isLastAttempt: false })
-            ).rejects.toThrow('storage is down')
-            // the queue tries again, so the export is not failed and the user hears nothing yet
-            expect(await statusOf(user.token)).toBe('PENDING')
-            expect(await inboxOf(user.token)).toEqual([])
-            expect(subjectsTo(user.email)).toEqual([])
-
-            storageDown = false
-            const retry = await settingService.processDataExport({
-                exportId: user.exportId,
-                isLastAttempt: true,
-            })
-            expect(retry).toMatchObject({ status: 'READY', sessions: 0 })
-            expect(await statusOf(user.token)).toBe('READY')
-            // no mail: the inbox has the link (inbox review, round 2)
-            expect(subjectsTo(user.email)).toEqual([])
-            const inbox = await inboxOf(user.token)
-            expect(inbox).toHaveLength(1)
-            expect(inbox[0]).toMatchObject({ title: 'Your data export is ready', type: 'SUCCESS' })
-            expect(inbox[0].link).toContain(`/api/v1/setting/export/${user.exportId}/download?t=`)
-        })
-
-        it('tells the user in the inbox (no mail) when the last attempt fails', async () => {
-            const user = await queuedExport()
-
-            storageDown = true
-            await expect(
-                settingService.processDataExport({ exportId: user.exportId, isLastAttempt: false })
-            ).rejects.toThrow('storage is down')
-            await expect(
-                settingService.processDataExport({ exportId: user.exportId, isLastAttempt: true })
-            ).rejects.toThrow('storage is down')
-
-            expect(await statusOf(user.token)).toBe('FAILED')
-            const inbox = await inboxOf(user.token)
-            expect(inbox).toHaveLength(1)
-            expect(inbox[0]).toMatchObject({
-                title: 'Your data export failed',
-                message: 'We could not build your data export. You can ask for it again now.',
-                type: 'ERROR',
-                link: '/settings/account',
-            })
-            expect(subjectsTo(user.email)).toEqual([])
-
-            // a failed export does not count for the day
-            storageDown = false
-            const again = await authed(user.token).post('/setting/export')
-            expect(again.status).toBe(202)
-        })
-
-        it('knows the last attempt of the queue job', () => {
-            // the queue gives a job 2 attempts (setting.queue.ts)
-            expect(isLastDataExportAttempt({ attemptsMade: 0, opts: { attempts: 2 } })).toBe(false)
-            expect(isLastDataExportAttempt({ attemptsMade: 1, opts: { attempts: 2 } })).toBe(true)
-            expect(isLastDataExportAttempt({ attemptsMade: 0, opts: {} })).toBe(true)
-        })
+    it('the data export routes are gone', async () => {
+        const user = await createSignedInUser({ email: `no-export-${stamp}@example.com` })
+        userIds.push(user.userId)
+        const res = await authed(user.token).get('/setting/export')
+        expect(res.status).toBe(404)
     })
 
     describe('delete all sessions', () => {
@@ -466,22 +140,13 @@ describe('account data api', () => {
         })
 
         it('deletes nothing when the sandbox stops cannot be queued', async () => {
-            setAgentQueue({
-                add: async () => {
-                    throw new Error('redis is down')
-                },
-            } as any)
+            failJobs()
             try {
                 const res = await authed(user.token).delete('/session', { confirm: 'delete' })
                 expect(res.status).toBe(503)
                 expect(await prisma.session.count({ where: { userId: user.userId } })).toBe(3)
             } finally {
-                setAgentQueue({
-                    add: async (name: string, data: any) => {
-                        queuedJobs.push({ name, data })
-                        return { id: `job-${queuedJobs.length}` }
-                    },
-                } as any)
+                recordJobs(queuedJobs)
             }
         })
 
@@ -490,6 +155,161 @@ describe('account data api', () => {
             const res = await authed(user.token).delete('/session', { confirm: 'delete' })
             expect(res.status).toBe(200)
             expect(res.body.data).toEqual({ deleted: 0, sandboxesStopped: 0 })
+        })
+    })
+
+    describe('delete account', () => {
+        it('stops live sandboxes and removes secrets and mcp servers', async () => {
+            const user = await createSignedInUser({ email: `delete-account-${stamp}@example.com` })
+            userIds.push(user.userId)
+            queuedJobs.length = 0
+            const running = await prisma.session.create({
+                data: {
+                    userId: user.userId,
+                    title: 'running',
+                    vmId: 'sbx-account',
+                    sandboxStatus: 'RUNNING',
+                },
+            })
+            await prisma.secret.create({
+                data: { userId: user.userId, name: 'API_TOKEN', value: 'encrypted' },
+            })
+            await prisma.userMcpServer.create({
+                data: {
+                    userId: user.userId,
+                    name: 'docs',
+                    url: 'https://mcp.example.com',
+                    encryptedHeaders: 'encrypted',
+                },
+            })
+
+            const res = await authed(user.token).delete('/auth/account')
+
+            expect(res.status).toBe(200)
+            expect(queuedJobs).toEqual([
+                {
+                    name: 'sandbox_control',
+                    data: {
+                        taskType: 'sandbox_control',
+                        action: 'stop',
+                        sessionId: running.id,
+                        sandboxId: 'sbx-account',
+                    },
+                },
+            ])
+            expect(await prisma.secret.count({ where: { userId: user.userId } })).toBe(0)
+            expect(await prisma.userMcpServer.count({ where: { userId: user.userId } })).toBe(0)
+            const saved = await prisma.user.findUnique({ where: { id: user.userId } })
+            expect(saved?.isDeleted).toBe(true)
+        })
+
+        it('keeps the account when the sandbox stops cannot be queued', async () => {
+            const user = await createSignedInUser({
+                email: `delete-account-down-${stamp}@example.com`,
+            })
+            userIds.push(user.userId)
+            await prisma.session.create({
+                data: {
+                    userId: user.userId,
+                    title: 'running',
+                    vmId: 'sbx-account-down',
+                    sandboxStatus: 'RUNNING',
+                },
+            })
+            await prisma.secret.create({
+                data: { userId: user.userId, name: 'API_TOKEN', value: 'encrypted' },
+            })
+
+            failJobs()
+            try {
+                const res = await authed(user.token).delete('/auth/account')
+                expect(res.status).toBe(503)
+            } finally {
+                recordJobs(queuedJobs)
+            }
+
+            const saved = await prisma.user.findUnique({ where: { id: user.userId } })
+            expect(saved?.isDeleted).toBe(false)
+            expect(await prisma.secret.count({ where: { userId: user.userId } })).toBe(1)
+        })
+    })
+
+    describe('the 90-day purge', () => {
+        const DAY = 24 * 60 * 60 * 1000
+
+        beforeAll(async () => {
+            await ensureStorageBucket()
+        })
+
+        const deletedUser = async (label: string, daysAgo: number) => {
+            const user = await createSignedInUser({ email: `purge-${label}-${stamp}@example.com` })
+            userIds.push(user.userId)
+            await prisma.user.update({
+                where: { id: user.userId },
+                data: { isDeleted: true, deletedAt: new Date(Date.now() - daysAgo * DAY) },
+            })
+            return user
+        }
+
+        it('purges an account deleted more than 90 days ago and keeps its payments', async () => {
+            const old = await deletedUser('old', 91)
+            const session = await prisma.session.create({
+                data: {
+                    userId: old.userId,
+                    title: 'old work',
+                    messages: { create: [{ role: 'USER', content: 'hi', sequence: 1 }] },
+                },
+            })
+            const payment = await prisma.walletTransaction.create({
+                data: {
+                    userId: old.userId,
+                    amountInCents: 500,
+                    provider: 'RAZORPAY',
+                    providerOrderId: `order_purge_${stamp}`,
+                    status: 'SUCCESS',
+                },
+            })
+            await prisma.notification.create({
+                data: { userId: old.userId, title: 'hello', message: 'hello', type: 'INFO' },
+            })
+
+            const result = await authService.purgeDeletedAccounts({})
+
+            expect(result.purged).toBeGreaterThanOrEqual(1)
+            expect(await prisma.user.findUnique({ where: { id: old.userId } })).toBeNull()
+            expect(await prisma.session.findUnique({ where: { id: session.id } })).toBeNull()
+            expect(await prisma.message.count({ where: { sessionId: session.id } })).toBe(0)
+            expect(await prisma.notification.count({ where: { userId: old.userId } })).toBe(0)
+            // the payment row stays for revenue and accounting, with no link to the person
+            const kept = await prisma.walletTransaction.findUnique({ where: { id: payment.id } })
+            expect(kept?.userId).toBeNull()
+            expect(kept?.amountInCents).toBe(500)
+            await prisma.walletTransaction.delete({ where: { id: payment.id } })
+        })
+
+        it('keeps an account deleted less than 90 days ago, and a live account', async () => {
+            const recent = await deletedUser('recent', 89)
+            const live = await createSignedInUser({ email: `purge-live-${stamp}@example.com` })
+            userIds.push(live.userId)
+
+            await authService.purgeDeletedAccounts({})
+
+            expect(await prisma.user.findUnique({ where: { id: recent.userId } })).not.toBeNull()
+            expect(await prisma.user.findUnique({ where: { id: live.userId } })).not.toBeNull()
+        })
+
+        it('the email of a purged account can sign up again', async () => {
+            const email = `purge-again-${stamp}@example.com`
+            const old = await createSignedInUser({ email })
+            await prisma.user.update({
+                where: { id: old.userId },
+                data: { isDeleted: true, deletedAt: new Date(Date.now() - 91 * DAY) },
+            })
+            await authService.purgeDeletedAccounts({})
+
+            const again = await createSignedInUser({ email })
+            userIds.push(again.userId)
+            expect(again.userId).not.toBe(old.userId)
         })
     })
 })

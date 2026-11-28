@@ -20,7 +20,7 @@ import type { BackendSession, BackendSessionDetail } from '@/features/sessions/a
 
 import { useAppStore } from '@/app/store'
 import { requestHomePrefill } from '@/features/home/prefill'
-import { profileAPI } from '@/features/profile/api/profile'
+import { profileAPI, toRepoList } from '@/features/profile/api/profile'
 import { sessionAPI } from '@/features/sessions/api/session'
 import { useSessions } from '@/features/sessions/hooks/useSessions'
 import { getWebUrl } from '@/shared/config/env'
@@ -104,6 +104,7 @@ export const useSearchModel = (options: SearchModelOptions) => {
         enabled: Boolean(isOpen && isAuthenticated),
         staleTime: 5 * 60_000,
         retry: false,
+        select: (data) => toRepoList(data).repos,
     })
 
     const startNewSession = useMemo(

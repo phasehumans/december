@@ -220,6 +220,25 @@ export async function findSessionOwner(sessionId: string) {
 }
 
 // every session of a user, with what is needed to stop its sandbox first (#636)
+/** a batch of the sessions last changed before the date, the oldest first */
+export async function findSessionIdsUpdatedBefore(before: Date, take: number) {
+    const rows = await prisma.session.findMany({
+        where: { updatedAt: { lt: before } },
+        select: { id: true },
+        orderBy: { updatedAt: 'asc' },
+        take,
+    })
+    return rows.map((row) => row.id)
+}
+
+/** these sessions, when they are still not changed since the date (a new message keeps one) */
+export async function deleteSessionsUpdatedBefore(data: { sessionIds: string[]; before: Date }) {
+    const { sessionIds, before } = data
+    return prisma.session.deleteMany({
+        where: { id: { in: sessionIds }, updatedAt: { lt: before } },
+    })
+}
+
 export async function findSessionsForDeleteAll(userId: string) {
     return prisma.session.findMany({
         where: { userId },
@@ -869,9 +888,8 @@ export async function updatePullRequestFields(
 const PR_WRITE_ATTEMPTS = 3
 
 /**
- * "Archive the session when the pull request merges" (#637): archives the given sessions,
- * but not those of a user who turned the setting off (no saved row means on) and not a
- * session that works right now, like "Archive merged". returns the archived ids
+ * A session is archived when its pull request merges (#637): archives the given sessions,
+ * but not a session that works right now, like "Archive merged". returns the archived ids
  */
 export async function archiveSessionsOnMerge(sessionIds: string[]) {
     if (sessionIds.length === 0) return []
@@ -881,12 +899,6 @@ export async function archiveSessionsOnMerge(sessionIds: string[]) {
                 id: { in: sessionIds },
                 isArchived: false,
                 vmStatus: { notIn: [...ACTIVE_VM_STATUSES] },
-                user: {
-                    OR: [
-                        { pullRequestSettings: { is: null } },
-                        { pullRequestSettings: { is: { archiveOnMerge: true } } },
-                    ],
-                },
             },
             select: { id: true },
         })
@@ -957,16 +969,13 @@ export async function findUserPreferences(userId: string) {
     return user?.preferences ?? null
 }
 
-/** the user's defaults for a new session (#632, #637) */
+/** the user's saved defaults for a new session: plan first and open pull request */
 export async function findUserRunDefaults(userId: string) {
     return prisma.user.findUnique({
         where: { id: userId },
         select: {
             defaultPlanFirst: true,
-            defaultEffort: true,
             defaultOpenPullRequest: true,
-            defaultOwnKeyProvider: true,
-            defaultOwnKeyModel: true,
         },
     })
 }
@@ -1005,6 +1014,8 @@ export const sessionRepository = {
     saveUserPrompt,
     findUserPreferences,
     findSessionsForDeleteAll,
+    findSessionIdsUpdatedBefore,
+    deleteSessionsUpdatedBefore,
     deleteSessionsByIds,
     findPullRequests,
     countOpenPullRequests,

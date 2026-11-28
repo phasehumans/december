@@ -10,7 +10,6 @@ import {
     updateSessionDefaultsSchema,
     updateToolDenyRulesSchema,
     updatePreferencesSchema,
-    dataExportDownloadSchema,
     updatePullRequestSettingsSchema,
     updateSandboxSettingsSchema,
     updateSetupCommandsSchema,
@@ -88,24 +87,11 @@ const updateSessionDefaults = asyncHandler(async (req: Request, res: Response) =
         throw new AppError('unauthorized', 401)
     }
 
-    const {
-        defaultPlanFirst,
-        defaultEffort,
-        defaultOpenPullRequest,
-        defaultOwnKeyProvider,
-        defaultOwnKeyModel,
-        defaultRepository,
-        defaultBaseBranch,
-    } = updateSessionDefaultsSchema.parse(req.body)
+    const { defaultPlanFirst, defaultOpenPullRequest } = updateSessionDefaultsSchema.parse(req.body)
     const result = await settingService.updateSessionDefaults({
         userId,
         defaultPlanFirst,
-        defaultEffort,
         defaultOpenPullRequest,
-        defaultOwnKeyProvider,
-        defaultOwnKeyModel,
-        defaultRepository,
-        defaultBaseBranch,
     })
     return sendSuccess(res, 'session defaults updated', result)
 })
@@ -120,28 +106,6 @@ const updatePreferences = asyncHandler(async (req: Request, res: Response) => {
     const preferences = updatePreferencesSchema.parse(req.body)
     const result = await settingService.updatePreferences({ userId, preferences })
     return sendSuccess(res, 'preferences updated', result)
-})
-
-const getDataExport = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const result = await settingService.getDataExport({ userId })
-    return sendSuccess(res, 'data export fetched', result)
-})
-
-const requestDataExport = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.userId as string | undefined
-
-    if (!userId) {
-        throw new AppError('unauthorized', 401)
-    }
-
-    const result = await settingService.requestDataExport({ userId })
-    return sendSuccess(res, 'data export requested, a link will be emailed', result, 202)
 })
 
 const getToolDenyRules = asyncHandler(async (req: Request, res: Response) => {
@@ -306,43 +270,7 @@ const unsubscribe = asyncHandler(async (req: Request, res: Response) => {
         .send(unsubscribePage('<p>You will not get product emails from December anymore.</p>'))
 })
 
-// the link in the export email: a browser opens it, so errors are a small page, not json
-const downloadDataExport = asyncHandler(async (req: Request, res: Response) => {
-    try {
-        const { id, t } = dataExportDownloadSchema.parse({ id: req.params.id, t: req.query.t })
-        const { body, fileName } = await settingService.downloadDataExport({
-            exportId: id,
-            token: t,
-        })
-        res.setHeader('Content-Type', 'application/zip')
-        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
-        res.setHeader('Cache-Control', 'no-store')
-        return res.status(200).send(Buffer.from(body))
-    } catch (error) {
-        const status = error instanceof AppError ? error.statusCode : 404
-        const message =
-            error instanceof AppError && status < 500
-                ? error.message
-                : 'this download link is not valid'
-        if (!(error instanceof AppError)) {
-            console.error('[Setting] data export download failed:', error)
-        }
-        res.setHeader('Content-Type', 'text/html; charset=utf-8')
-        return res
-            .status(status >= 500 ? 404 : status)
-            .send(
-                simplePage(
-                    'Data export',
-                    `<p>${message.charAt(0).toUpperCase()}${message.slice(1)}. Ask for a new export on the Account page.</p>`
-                )
-            )
-    }
-})
-
 export const settingController = {
-    getDataExport,
-    requestDataExport,
-    downloadDataExport,
     showUnsubscribe,
     unsubscribe,
     getMe,

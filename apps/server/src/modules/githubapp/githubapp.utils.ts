@@ -1,3 +1,4 @@
+import { isAuthorizedGithubSender } from '@december/shared'
 import jwt from 'jsonwebtoken'
 
 import { env } from '../../env'
@@ -111,6 +112,7 @@ export const toLocalCallbackUrl = (data: ToLocalCallbackUrl): string | null => {
         installationId,
         setupAction,
         state,
+        code,
         isProduction = env.NODE_ENV === 'production',
     } = data
     if (!isProduction || !/^https?:\/\//i.test(returnUrl)) return null
@@ -123,6 +125,7 @@ export const toLocalCallbackUrl = (data: ToLocalCallbackUrl): string | null => {
         if (installationId) target.searchParams.set('installation_id', installationId)
         if (setupAction) target.searchParams.set('setup_action', setupAction)
         if (state) target.searchParams.set('state', state)
+        if (code) target.searchParams.set('code', code)
         return target.toString()
     } catch {
         // Intentionally swallowed: an invalid url is handled here like any other return url
@@ -149,18 +152,20 @@ export const withInstallProblem = (url: string, problem: InstallProblem | null):
     }
 }
 
-// An installation we cannot tie to the user by github id can only be claimed
-// right after it was created, so an old unclaimed one cannot be taken later.
-const CLAIM_WINDOW_MS = 60 * 60 * 1000
-
 // The install callback URL can be called by anyone with any installation_id,
-// so linking needs proof that the signed-in user owns the installation.
+// so linking needs proof that the signed-in user owns the installation:
+// - GitHub says the user can see the install (the app asks the user to authorize it during
+//   the install, and the callback then carries a code: userHasAccess), or
+// - a personal install on the GitHub account saved on this user.
+// There is no time window: a new install with neither proof is refused (V1).
 export const canClaimInstallation = (data: CanClaimInstallation): ClaimInstallationResult => {
-    const { existingUserId, userId, userGithubId, details, now = new Date() } = data
+    const { existingUserId, userId, userGithubId, details, userHasAccess } = data
 
     const existingOwner = existingUserId && existingUserId !== 'system' ? existingUserId : null
     if (existingOwner === userId) return { linked: true, reason: 'already_owned' }
     if (existingOwner) return { linked: false, reason: 'owned_by_other_user' }
+
+    if (userHasAccess) return { linked: true, reason: 'user_has_access' }
 
     if (!details) return { linked: false, reason: 'unverified' }
 
@@ -171,15 +176,7 @@ export const canClaimInstallation = (data: CanClaimInstallation): ClaimInstallat
             : { linked: false, reason: 'account_mismatch' }
     }
 
-    // organisation installs, or users who signed up without github
-    const createdAt = details.created_at ? Date.parse(details.created_at) : NaN
-    const isRecent =
-        Number.isFinite(createdAt) &&
-        now.getTime() - createdAt <= CLAIM_WINDOW_MS &&
-        createdAt <= now.getTime() + 60 * 1000
-    return isRecent
-        ? { linked: true, reason: 'recent_unclaimed' }
-        : { linked: false, reason: 'stale_unclaimed' }
+    return { linked: false, reason: 'unverified' }
 }
 
 // December's own app account (comments it writes must not notify anyone)
@@ -322,25 +319,29 @@ const clip = (text: string, max = MAX_BODY) =>
 
 /**
  * Whether a pull request event starts an automatic review. "asked" never does: a review
- * then needs "@trydecember review". Drafts, December's own pull requests and bots are skipped.
+ * then needs "@trydecember review". A pull request is reviewed once, when it opens or is
+ * ready for review; a new push needs "@trydecember review". Drafts, bots, December's own
+ * pull requests and authors who are not owners, members or collaborators are skipped, so a
+ * stranger cannot start runs on the owner's account.
  */
 export const shouldAutoReview = (data: ShouldAutoReview): boolean => {
-    const { settings, action, draft, authorLogin, authorType, ownerGithubLogin, repoFullName } =
-        data
+    const {
+        settings,
+        action,
+        draft,
+        authorLogin,
+        authorType,
+        authorAssociation,
+        ownerGithubLogin,
+    } = data
 
     if (settings.autoReview === 'asked' || !settings.githubCommentsEnabled) return false
-    if (!['opened', 'ready_for_review', 'synchronize'].includes(action)) return false
-    if (action === 'synchronize' && settings.reviewCadence !== 'push') return false
+    if (!['opened', 'ready_for_review'].includes(action)) return false
     if (draft) return false
     if (authorType === 'Bot' || isDecemberBotLogin(authorLogin) || authorLogin.endsWith('[bot]')) {
         return false
     }
-    if (
-        settings.reviewRepos.length > 0 &&
-        !settings.reviewRepos.includes(repoFullName.toLowerCase())
-    ) {
-        return false
-    }
+    if (!isAuthorizedGithubSender(authorAssociation ?? 'NONE')) return false
     if (settings.autoReview === 'mine') {
         return Boolean(
             ownerGithubLogin && ownerGithubLogin.toLowerCase() === authorLogin.toLowerCase()

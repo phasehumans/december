@@ -153,6 +153,8 @@ export type ListArtKind =
     | 'noResults'
     | 'loadError'
     | 'inbox'
+    | 'usage'
+    | 'repositories'
 
 const circlePath = (cx: number, cy: number, r: number) =>
     `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`
@@ -166,6 +168,8 @@ interface ListArtShapes {
     lines: string[]
     /** small filled shapes, like the buttons of a window */
     dots?: string[]
+    /** drawn as dashed strokes, for something that is not there yet */
+    dashed?: string[]
     /** lines that cut through what is behind them: a gap in the page colour, then the line */
     cuts?: string[]
 }
@@ -207,12 +211,28 @@ const LIST_ART: Record<ListArtKind, ListArtShapes> = {
             'M103 77l19 19',
         ],
     },
+    // connected, but no repositories (D2-A): the repository book with a bookmark
+    repositories: {
+        lines: [
+            roundRectPath(30, 10, 70, 80, 8),
+            'M44 10V90',
+            'M30 76H100',
+            'M60 90v16l8-6 8 6V90',
+        ],
+    },
     // an empty inbox (D1): an inbox tray with nothing in it
     inbox: {
         lines: [
             'M14 62L32 22H96L114 62V92a10 10 0 0 1-10 10H24a10 10 0 0 1-10-10Z',
             'M14 62H44q3 16 20 16t20-16H114',
         ],
+    },
+    // no usage yet: a chart with its line flat on the floor, and a dashed line for the
+    // usage it could show
+    usage: {
+        lines: ['M14 12V96H118', 'M28 80H104'],
+        dashed: ['M28 66L50 48 70 56 104 20'],
+        dots: [circlePath(104, 80, 3.6)],
     },
     // the list could not load: a cloud with a line through it
     loadError: {
@@ -269,6 +289,9 @@ export const ListArt: React.FC<{ kind: ListArtKind; strokePx?: number; widthPx?:
             <g filter={`url(#${filterId})`}>
                 {art.lines.map((d) => (
                     <path key={d} d={d} />
+                ))}
+                {art.dashed?.map((d) => (
+                    <path key={d} d={d} strokeDasharray="5 6" />
                 ))}
                 {art.dots?.map((d) => (
                     <path key={d} d={d} fill="currentColor" stroke="none" />

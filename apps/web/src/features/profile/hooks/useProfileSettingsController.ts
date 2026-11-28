@@ -49,13 +49,9 @@ export const useProfileSettingsController = () => {
         updateNotificationMutation.mutate(settings)
     }
 
-    const redirectToIntegration = (getUrl: (userId: string) => string) => {
-        setProfileActionError(null)
-        window.location.href = getUrl(profile?.id || '')
-    }
-
     const connectGithub = () => {
-        redirectToIntegration(profileAPI.getGithubConnectUrl)
+        setProfileActionError(null)
+        window.location.href = profileAPI.getGithubConnectUrl()
     }
 
     return {

@@ -82,7 +82,8 @@ describe('Profile Settings Notifications Tab Placement', () => {
         expect(
             screen.queryByRole('switch', { name: 'Let December support open my sessions' })
         ).toBeNull()
-        expect(screen.getByText('Export my data')).toBeDefined()
+        // the data export is removed: data has delete rows only
+        expect(screen.queryByText('Export my data')).toBeNull()
         expect(screen.getByText('Delete all sessions')).toBeDefined()
 
         // Account header: name and email, with no username or password rows

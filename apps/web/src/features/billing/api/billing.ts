@@ -88,7 +88,6 @@ export interface VerifyRazorpayPaymentResponse {
 
 export interface UsageEvent {
     id: string
-    userId: string
     model: string
     inputTokens: number
     outputTokens: number
@@ -96,14 +95,10 @@ export interface UsageEvent {
     // For own-key runs this is an estimate of the provider cost: December did not charge it
     costInCents: number
     billingSource?: 'CREDITS' | 'OWN_KEY'
-    projectId: string | null
-    chatId: string | null
-    externalRequestId: string | null
     periodStart: string
     periodEnd: string
     metadata: any
     createdAt: string
-    project?: { name: string } | null
     session?: { title: string | null } | null
 }
 
@@ -121,6 +116,8 @@ export interface UsageDay {
     date: string
     costInCents: number
     totalTokens: number
+    // the part of totalTokens that ran on the user's own keys
+    ownKeyTokens: number
 }
 
 /** one hour of the day (0 to 23), in time order. only a range of one day has hours */
@@ -128,6 +125,7 @@ export interface UsageHour {
     hour: number
     costInCents: number
     totalTokens: number
+    ownKeyTokens: number
 }
 
 export interface CreditsHistoryParams {

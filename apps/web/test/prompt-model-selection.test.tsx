@@ -45,14 +45,14 @@ describe('Speed, model and provider routing', () => {
             { wrapper }
         )
 
-        // credits are the default, and Deep is the default speed
+        // credits are the default, and Fast is the default speed
         expect(result.current.selectedSource).toBe('CREDITS')
-        expect(result.current.selectedSpeed).toBe('deep')
+        expect(result.current.selectedSpeed).toBe('fast')
 
         act(() => {
-            result.current.handleSelectSpeed('fast')
+            result.current.handleSelectSpeed('deep')
         })
-        expect(result.current.selectedSpeed).toBe('fast')
+        expect(result.current.selectedSpeed).toBe('deep')
 
         act(() => {
             result.current.handleInputChange('Analyze code architecture')
@@ -72,7 +72,7 @@ describe('Speed, model and provider routing', () => {
             model: undefined,
             provider: undefined,
             billingSource: 'CREDITS',
-            runConfig: { planFirst: false, effort: 'fast', openPullRequest: true },
+            runConfig: { planFirst: false, effort: 'deep', openPullRequest: true },
         })
     })
 

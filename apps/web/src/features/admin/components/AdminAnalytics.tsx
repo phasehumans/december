@@ -407,7 +407,7 @@ const Page: React.FC<{ data: AnalyticsData }> = ({ data }) => {
                             { label: 'Skills', value: features.skills },
                             { label: 'MCP servers', value: features.mcp },
                             { label: 'Plan first', value: features.planFirst },
-                            { label: 'Fast mode', value: features.fast },
+                            { label: 'Deep mode', value: features.deep },
                         ]}
                     />
                 </ChartBox>

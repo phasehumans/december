@@ -9,8 +9,6 @@ const settingRouter = Router()
 // public: the link in announcement emails carries a signed token instead of a session
 settingRouter.get('/unsubscribe', settingController.showUnsubscribe)
 settingRouter.post('/unsubscribe', settingController.unsubscribe)
-// public: the link in the data export email carries a signed token (#636)
-settingRouter.get('/export/:id/download', settingController.downloadDataExport)
 
 settingRouter.use(authMiddleware)
 
@@ -23,8 +21,6 @@ settingRouter.patch('/defaults', settingController.updateSessionDefaults)
 settingRouter.get('/permissions', settingController.getToolDenyRules)
 settingRouter.put('/permissions', settingController.updateToolDenyRules)
 settingRouter.patch('/preferences', settingController.updatePreferences)
-settingRouter.get('/export', settingController.getDataExport)
-settingRouter.post('/export', settingController.requestDataExport)
 settingRouter.get('/pull-requests', settingController.getPullRequestSettings)
 settingRouter.patch('/pull-requests', settingController.updatePullRequestSettings)
 settingRouter.get('/sandbox', settingController.getSandboxSettings)

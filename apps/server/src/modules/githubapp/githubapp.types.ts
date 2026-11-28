@@ -30,6 +30,19 @@ export type ProcessInstallation = {
 export type ClaimInstallation = {
     installationId: string
     userId: string
+    /** the user authorization code github sends with the install (V1) */
+    code?: string
+}
+
+export type VerifyInstallationAccess = {
+    code: string
+    installationId: string
+}
+
+export type InstallationAccess = {
+    hasAccess: boolean
+    /** the github id of the user who authorized, when github answered */
+    githubId: string | null
 }
 
 export type ClaimInstallationReason =
@@ -38,8 +51,7 @@ export type ClaimInstallationReason =
     | 'unverified'
     | 'account_matches'
     | 'account_mismatch'
-    | 'recent_unclaimed'
-    | 'stale_unclaimed'
+    | 'user_has_access'
 
 export type ClaimInstallationResult = {
     linked: boolean
@@ -57,7 +69,8 @@ export type CanClaimInstallation = {
         created_at?: string
         account?: { id?: number | string; type?: string }
     } | null
-    now?: Date
+    /** github listed this install among the ones the authorizing user can see */
+    userHasAccess?: boolean
 }
 
 export type FindInstallationOwner = {
@@ -71,6 +84,8 @@ export type ToLocalCallbackUrl = {
     installationId?: string
     setupAction?: string
     state?: string
+    /** the user authorization code of the install, for the local server to check */
+    code?: string
     isProduction?: boolean
 }
 
@@ -115,6 +130,12 @@ export type GetUserInstallationStatus = {
 }
 
 export type GithubInstallationRepo = GitRepo
+
+export type InstallationRepoList = {
+    repos: GithubInstallationRepo[]
+    /** the accounts whose install could not be read (removed or suspended on github) */
+    unavailable: string[]
+}
 
 export type InstallationStatusResponse = {
     installed: boolean
@@ -185,6 +206,8 @@ export type HandlePullRequestEvent = {
             login: string
             type?: string
         }
+        // the author's role in the repository: OWNER, MEMBER, COLLABORATOR, NONE, ...
+        authorAssociation?: string | null
     }
 }
 
@@ -268,8 +291,9 @@ export type ShouldAutoReview = {
     draft: boolean
     authorLogin: string
     authorType?: string
+    // the author's role in the repository; only owners, members and collaborators count
+    authorAssociation?: string | null
     ownerGithubLogin?: string | null
-    repoFullName: string
 }
 
 export type BuildGithubRunPrompt = {

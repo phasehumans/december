@@ -88,9 +88,9 @@ describe('Skeleton UI Standards & Preview Mode', () => {
         expect(container.textContent).toContain('Use a repository in a prompt as @repos:name.')
 
         // Real search input and button
-        const searchInput = container.querySelector('input[placeholder="Search repositories..."]')
+        const searchInput = container.querySelector('input[placeholder="Search repositories"]')
         expect(searchInput).not.toBeNull()
-        expect(container.textContent).toContain('Connect GitHub')
+        expect(container.textContent).toContain('Add from GitHub')
 
         // Skeletons only for repository cards without harsh card borders
         const cardGrid = container.querySelector('.grid.grid-cols-1.md\\:grid-cols-2')
@@ -239,7 +239,7 @@ describe('Skeleton UI Standards & Preview Mode', () => {
             <QueryClientProvider client={queryClient}>
                 <MemoryRouter>
                     <ProfileRepositoriesSettings
-                        isGithubConnected={false}
+                        isGithubConnected={true}
                         onConnectGithub={() => {}}
                     />
                 </MemoryRouter>
@@ -248,10 +248,8 @@ describe('Skeleton UI Standards & Preview Mode', () => {
 
         expect(container.textContent).toContain('Repositories')
         expect(container.textContent).toContain('Use a repository in a prompt as @repos:name.')
-        expect(
-            container.querySelector('input[placeholder="Search repositories..."]')
-        ).not.toBeNull()
-        expect(container.textContent).toContain('Connect GitHub')
+        expect(container.querySelector('input[placeholder="Search repositories"]')).not.toBeNull()
+        expect(container.textContent).toContain('Add from GitHub')
 
         const cardGrid = container.querySelector('.grid.grid-cols-1.md\\:grid-cols-2')
         expect(cardGrid).not.toBeNull()

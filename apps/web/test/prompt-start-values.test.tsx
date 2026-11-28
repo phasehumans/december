@@ -32,12 +32,11 @@ const repo = (name: string, defaultBranch = 'main') => ({
     provider: 'GITHUB' as const,
 })
 
-// issue 637: a new prompt box starts from the defaults saved on the account
-describe('the prompt box starts from the account defaults (#637)', () => {
+// a new prompt box starts on fast and december credits; plan first and open pull request
+// come from "save as default" in the box. the Defaults page and its other values are gone
+describe('the prompt box start values', () => {
     let queryClient: QueryClient
     let account: Partial<Profile>
-    let branchChecks: { repository: string; branch: string }[]
-    let branchesOnHost: string[]
 
     beforeEach(() => {
         // the stores are shared across tests in one bun process
@@ -45,23 +44,18 @@ describe('the prompt box starts from the account defaults (#637)', () => {
         usePromptConfig.setState({ values: BASE_PROMPT_CONFIG, defaults: BASE_PROMPT_CONFIG })
         queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
         account = { id: 'user-1', githubConnected: true }
-        branchChecks = []
-        branchesOnHost = []
 
         spyOn(profileAPI, 'getProfile').mockImplementation(async () => account as Profile)
-        spyOn(profileAPI, 'getGithubRepos').mockImplementation(async () => [
-            repo('web'),
-            repo('api', 'trunk'),
-        ])
+        spyOn(profileAPI, 'getGithubRepos').mockImplementation(async () => ({
+            repos: [repo('web'), repo('api', 'trunk')],
+            unavailable: [],
+            truncated: false,
+        }))
         spyOn(profileAPI, 'getGitlabStatus').mockImplementation(async () => ({
             available: false,
             connected: false,
             username: null,
         }))
-        spyOn(profileAPI, 'checkRepoBranch').mockImplementation(async (data) => {
-            branchChecks.push({ repository: data.repository, branch: data.branch })
-            return { exists: branchesOnHost.includes(data.branch) }
-        })
         spyOn(byokAPI, 'list').mockImplementation(async () => ({
             providers: [
                 { id: 'openai', name: 'OpenAI', keyUrl: '' },
@@ -102,37 +96,40 @@ describe('the prompt box starts from the account defaults (#637)', () => {
             { wrapper }
         )
 
-    it('starts on Fast when the account default is fast', async () => {
-        account = { ...account, defaultEffort: 'fast' }
+    it('starts on Fast and December credits, and sends fast', async () => {
         const onSubmit = mock((_prompt: string, _options?: any) => {})
         const { result } = openBox(onSubmit)
 
-        await waitFor(() => expect(result.current.selectedSpeed).toBe('fast'))
+        await waitFor(() => expect(profileAPI.getProfile).toHaveBeenCalled())
+        expect(result.current.selectedSpeed).toBe('fast')
+        expect(result.current.selectedSource).toBe('CREDITS')
 
         act(() => result.current.handleInputChange('add a login page'))
         act(() => result.current.handleSubmit())
         expect(onSubmit.mock.calls[0][1].runConfig.effort).toBe('fast')
     })
 
-    it('stays on Deep when the account default is deep', async () => {
-        account = { ...account, defaultEffort: 'deep', defaultPlanFirst: true }
-        const { result } = openBox()
-
-        // plan first comes from the same profile answer, so the defaults are applied by now
-        await waitFor(() => expect(usePromptConfig.getState().values.planFirst).toBe(true))
-        expect(result.current.selectedSpeed).toBe('deep')
-    })
-
-    it('keeps the speed the user picked in the box', async () => {
-        account = { ...account, defaultEffort: 'fast', defaultPlanFirst: true }
-        const { result } = openBox()
+    it('the user can switch to Deep in the box', async () => {
+        const onSubmit = mock((_prompt: string, _options?: any) => {})
+        const { result } = openBox(onSubmit)
         act(() => result.current.handleSelectSpeed('deep'))
-
-        await waitFor(() => expect(usePromptConfig.getState().values.planFirst).toBe(true))
         expect(result.current.selectedSpeed).toBe('deep')
+
+        act(() => result.current.handleInputChange('a hard refactor'))
+        act(() => result.current.handleSubmit())
+        expect(onSubmit.mock.calls[0][1].runConfig.effort).toBe('deep')
     })
 
-    it('starts on plan first and no pull request from the account', async () => {
+    it('an old saved speed of deep no longer applies: the box starts on Fast', async () => {
+        // the Defaults page is gone; a value saved there before stays in the database
+        account = { ...account, defaultPlanFirst: true, defaultEffort: 'deep' } as any
+        const { result } = openBox()
+
+        await waitFor(() => expect(usePromptConfig.getState().values.planFirst).toBe(true))
+        expect(result.current.selectedSpeed).toBe('fast')
+    })
+
+    it('starts on plan first and no pull request from "save as default"', async () => {
         account = { ...account, defaultPlanFirst: true, defaultOpenPullRequest: false }
         const onSubmit = mock((_prompt: string, _options?: any) => {})
         const { result } = openBox(onSubmit)
@@ -147,32 +144,29 @@ describe('the prompt box starts from the account defaults (#637)', () => {
         act(() => result.current.handleSubmit())
         expect(onSubmit.mock.calls[0][1].runConfig).toEqual({
             planFirst: true,
-            effort: 'deep',
+            effort: 'fast',
             openPullRequest: false,
         })
     })
 
-    it('starts on the default model of your keys when the source is your keys', async () => {
+    it('stays on credits with saved keys while the model source is credits', async () => {
+        account = { ...account, defaultModelSource: 'CREDITS', defaultPlanFirst: true }
+        const { result } = openBox()
+
+        await waitFor(() => expect(usePromptConfig.getState().values.planFirst).toBe(true))
+        await waitFor(() => expect(byokAPI.list).toHaveBeenCalled())
+        expect(result.current.selectedSource).toBe('CREDITS')
+        expect(result.current.selectedModel).toBe('')
+    })
+
+    it('starts on the first key and its default model when the model source is your keys', async () => {
+        // an old saved own-key model is ignored: the key's own default is used
         account = {
             ...account,
             defaultModelSource: 'OWN_KEY',
             defaultOwnKeyProvider: 'groq',
             defaultOwnKeyModel: 'qwen-qwq-32b',
-        }
-        const { result } = openBox()
-
-        await waitFor(() => expect(result.current.selectedSource).toBe('OWN_KEY'))
-        expect(result.current.selectedProvider).toBe('groq')
-        expect(result.current.selectedModel).toBe('qwen-qwq-32b')
-    })
-
-    it('starts on the first key when the key of the default model is gone', async () => {
-        account = {
-            ...account,
-            defaultModelSource: 'OWN_KEY',
-            defaultOwnKeyProvider: 'anthropic',
-            defaultOwnKeyModel: 'claude-sonnet-4-5',
-        }
+        } as any
         const { result } = openBox()
 
         await waitFor(() => expect(result.current.selectedSource).toBe('OWN_KEY'))
@@ -180,26 +174,13 @@ describe('the prompt box starts from the account defaults (#637)', () => {
         expect(result.current.selectedModel).toBe('gpt-5')
     })
 
-    it('on credits, a switch to your keys picks the default model', async () => {
+    it('starts with no repository and does not load the list, even with an old saved repo', async () => {
         account = {
             ...account,
-            defaultModelSource: 'CREDITS',
-            defaultOwnKeyProvider: 'groq',
-            defaultOwnKeyModel: 'qwen-qwq-32b',
-        }
-        const { result } = openBox()
-
-        await waitFor(() =>
-            expect(useModelSelection.getState().lastOwnKey).toEqual({
-                provider: 'groq',
-                model: 'qwen-qwq-32b',
-            })
-        )
-        expect(result.current.selectedSource).toBe('CREDITS')
-    })
-
-    it('starts with no repository on "last used"', async () => {
-        account = { ...account, defaultRepository: 'last-used', defaultPlanFirst: true }
+            defaultPlanFirst: true,
+            defaultRepository: 'acme/api',
+            defaultBaseBranch: 'develop',
+        } as any
         const { result } = openBox()
 
         await waitFor(() => expect(usePromptConfig.getState().values.planFirst).toBe(true))
@@ -208,15 +189,14 @@ describe('the prompt box starts from the account defaults (#637)', () => {
         expect(profileAPI.getGithubRepos).not.toHaveBeenCalled()
     })
 
-    it('starts on the default repository and its default branch', async () => {
-        account = { ...account, defaultRepository: 'acme/api', defaultBaseBranch: 'default' }
+    it('a repository picked by hand starts on its default branch', async () => {
+        account = { ...account, defaultBaseBranch: 'develop' } as any
         const onSubmit = mock((_prompt: string, _options?: any) => {})
         const { result } = openBox(onSubmit)
 
-        await waitFor(() => expect(result.current.selectedRepos.length).toBe(1))
+        act(() => result.current.handleSelectRepo(repo('api', 'trunk')))
         expect(result.current.selectedRepos[0].fullName).toBe('acme/api')
         expect(result.current.selectedBranch).toBe('trunk')
-        expect(branchChecks).toEqual([])
 
         act(() => result.current.handleInputChange('fix the tests'))
         act(() => result.current.handleSubmit())
@@ -226,50 +206,9 @@ describe('the prompt box starts from the account defaults (#637)', () => {
         })
     })
 
-    it('starts on the default base branch when the repository has it', async () => {
-        account = { ...account, defaultRepository: 'acme/web', defaultBaseBranch: 'develop' }
-        branchesOnHost = ['develop']
+    it('a repository with no default branch starts on main', async () => {
         const { result } = openBox()
-
-        await waitFor(() => expect(result.current.selectedBranch).toBe('develop'))
-        expect(result.current.selectedRepos[0].fullName).toBe('acme/web')
-        expect(branchChecks).toEqual([{ repository: 'acme/web', branch: 'develop' }])
-    })
-
-    it('uses the default branch of the repository when it has no such branch', async () => {
-        account = { ...account, defaultRepository: 'acme/web', defaultBaseBranch: 'develop' }
-        const { result } = openBox()
-
-        await waitFor(() =>
-            expect(branchChecks).toEqual([{ repository: 'acme/web', branch: 'develop' }])
-        )
-        // the answer of the check is in by the next tick
-        await act(async () => {
-            await Promise.resolve()
-        })
+        act(() => result.current.handleSelectRepo({ ...repo('web'), defaultBranch: '' }))
         expect(result.current.selectedBranch).toBe('main')
-    })
-
-    it('a repository picked by hand also starts on the default base branch', async () => {
-        account = { ...account, defaultBaseBranch: 'develop', defaultPlanFirst: true }
-        branchesOnHost = ['develop']
-        const { result } = openBox()
-        await waitFor(() => expect(usePromptConfig.getState().values.planFirst).toBe(true))
-
-        act(() => result.current.handleSelectRepo(repo('api', 'trunk')))
-        expect(result.current.selectedBranch).toBe('trunk')
-        await waitFor(() => expect(result.current.selectedBranch).toBe('develop'))
-        expect(branchChecks).toEqual([{ repository: 'acme/api', branch: 'develop' }])
-    })
-
-    it('does not put the default repository back after the user removes it', async () => {
-        account = { ...account, defaultRepository: 'acme/web' }
-        const { result } = openBox()
-
-        await waitFor(() => expect(result.current.selectedRepos.length).toBe(1))
-        act(() => result.current.handleRemoveRepo(0))
-        expect(result.current.selectedRepos).toEqual([])
-        act(() => result.current.handleInputChange('no repository this time'))
-        expect(result.current.selectedRepos).toEqual([])
     })
 })

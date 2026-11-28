@@ -29,6 +29,17 @@ const formatRedirect = (path: string) => `${appBaseUrl}${path.startsWith('/') ? 
 const isSafePath = (path: string) => /^\/(?![/\\])[^\\\u0000-\u001f\u007f]*$/.test(path)
 
 const connectGithub = asyncHandler(async (req: Request, res: Response) => {
+    // github sends an install with user authorization (V1) to the app's callback url: hand
+    // it to the install callback with the same query
+    if (typeof req.query.installation_id === 'string') {
+        const query = new URLSearchParams()
+        for (const key of ['installation_id', 'setup_action', 'state', 'code']) {
+            const value = req.query[key]
+            if (typeof value === 'string') query.set(key, value)
+        }
+        return res.redirect(`/api/v1/githubapp/callback?${query.toString()}`)
+    }
+
     const { code, state } = connectOAuthQuerySchema.parse(req.query)
 
     // login states are `auth` or `auth.<nonce>`: hand the code and state to the web callback
@@ -37,21 +48,10 @@ const connectGithub = asyncHandler(async (req: Request, res: Response) => {
         return res.redirect(formatRedirect(`/github/callback?${params.toString()}`))
     }
 
-    // Link the GitHub account only to the signed-in user (the auth cookie comes with GitHub's
-    // redirect back). Anyone can write a state, so a user id in it is never trusted: the state
-    // only carries the page to return to, as `<anything>:<path>`.
-    const userId = req.user?.userId
-    const statePath = state.includes(':') ? state.split(':').slice(1).join(':') : ''
-    const redirectPath = isSafePath(statePath) ? statePath : '/settings/repositories'
-
-    if (!userId) {
-        const params = new URLSearchParams({ redirect: redirectPath })
-        return res.redirect(formatRedirect(`/login?${params.toString()}`))
-    }
-
-    await integrationsService.handleGitHubOAuth({ code, userId })
-
-    return res.redirect(formatRedirect(redirectPath))
+    // anything else is not a December sign-in (V2): the app connects GitHub through the
+    // GitHub App install, so an OAuth code here is never linked to the signed-in account.
+    // a link someone else wrote could otherwise attach their GitHub to this account
+    return res.redirect(formatRedirect('/settings/repositories'))
 })
 
 const DEFAULT_GITLAB_RETURN = '/settings/repositories'

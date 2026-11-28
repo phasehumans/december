@@ -331,7 +331,7 @@ const productStats = async (since: Date) =>
                 skills: number
                 mcp: number
                 planFirst: number
-                fast: number
+                deep: number
             }>
         >`
             WITH active AS (
@@ -353,7 +353,11 @@ const productStats = async (since: Date) =>
                 COUNT(*) FILTER (WHERE EXISTS (
                     SELECT 1 FROM "UserMcpServer" m WHERE m."userId" = a.id))::int AS mcp,
                 COUNT(*) FILTER (WHERE u."defaultPlanFirst")::int AS "planFirst",
-                COUNT(*) FILTER (WHERE u."defaultEffort" = 'fast')::int AS fast
+                -- a new session starts on fast: who picked deep for a session
+                COUNT(*) FILTER (WHERE EXISTS (
+                    SELECT 1 FROM "Session" s JOIN "SessionSettings" ss ON ss."sessionId" = s.id
+                    WHERE s."userId" = a.id AND s."createdAt" >= ${since}
+                        AND ss.config->>'effort' = 'deep'))::int AS deep
             FROM active a
             JOIN "User" u ON u.id = a.id
         `

@@ -14,7 +14,8 @@ export const SPEEDS: readonly Speed[] = ['fast', 'deep']
 
 export const SPEED_LABELS: Record<Speed, string> = { fast: 'Fast', deep: 'Deep' }
 
-export const DEFAULT_SPEED: Speed = 'deep'
+// a new prompt starts on fast; the user switches to deep in the prompt box
+export const DEFAULT_SPEED: Speed = 'fast'
 
 /** december credits. the model and the provider are set only on the user's own key */
 export const DEFAULT_SELECTION = {
@@ -33,17 +34,11 @@ interface ModelSelectionState extends ModelChoice {
     speed: Speed
     /** true once the user picked a model; a saved default never overrides that */
     userChosen: boolean
-    /** true once the user picked a speed in a prompt box; the account default then stays out */
-    speedChosen: boolean
     /** the last model used on a key, so the switch back from credits restores it */
     lastOwnKey: { model: string; provider: string } | null
     select: (selection: ModelChoice) => void
     setSpeed: (speed: Speed) => void
     applyDefault: (selection: ModelChoice) => void
-    /** the speed saved on the account (#637), until the user picks one */
-    applyDefaultSpeed: (speed: Speed) => void
-    /** the model of the user's keys saved on the account: the switch to "Your keys" uses it */
-    applyDefaultOwnKey: (choice: { model: string; provider: string }) => void
     reset: () => void
 }
 
@@ -66,28 +61,16 @@ export const useModelSelection = create<ModelSelectionState>()((set) => ({
     ...DEFAULT_SELECTION,
     speed: DEFAULT_SPEED,
     userChosen: false,
-    speedChosen: false,
     lastOwnKey: null,
     select: (selection) => set({ ...toChoice(selection), userChosen: true }),
-    setSpeed: (speed) => set({ speed, speedChosen: true }),
+    setSpeed: (speed) => set({ speed }),
     applyDefault: (selection) =>
         set((state) => (state.userChosen ? state : { ...state, ...toChoice(selection) })),
-    applyDefaultSpeed: (speed) =>
-        set((state) => (state.speedChosen || state.speed === speed ? state : { ...state, speed })),
-    applyDefaultOwnKey: (choice) =>
-        set((state) =>
-            state.userChosen ||
-            (state.lastOwnKey?.model === choice.model &&
-                state.lastOwnKey?.provider === choice.provider)
-                ? state
-                : { ...state, lastOwnKey: choice }
-        ),
     reset: () =>
         set({
             ...DEFAULT_SELECTION,
             speed: DEFAULT_SPEED,
             userChosen: false,
-            speedChosen: false,
             lastOwnKey: null,
         }),
 }))

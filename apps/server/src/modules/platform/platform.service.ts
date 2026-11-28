@@ -1,6 +1,6 @@
-import { splitRepoFullName } from '@december/shared'
 import {
     GitProviderError,
+    MAX_REPO_LIST_SIZE,
     getGitProvider,
     githubProvider,
     gitlabProvider,
@@ -16,12 +16,10 @@ import { executeSandboxCommand } from './platform.utils'
 import type {
     ListGithubRepos,
     ListGitlabRepos,
-    GithubRepo,
-    GitlabRepo,
+    RepoList,
     CreateRepo,
     UpdateRepo,
     ResolveRepoToken,
-    CheckRepoBranch,
 } from './platform.types'
 
 const resolveUserGithubToken = async (userId: string, owner?: string): Promise<string> => {
@@ -50,7 +48,17 @@ const resolveRepoToken = async (data: ResolveRepoToken): Promise<string> => {
         : resolveUserGithubToken(userId, owner)
 }
 
-const getUserGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> => {
+// a git host refused the token: the page shows "Reconnect" (409, so the web client does not
+// read it as a signed-out browser). the host's own text stays in the log
+const toRepoListError = (error: GitProviderError, host: 'GitHub' | 'GitLab') => {
+    console.error(`[platform] ${host} repository list failed (${error.status}):`, error.message)
+    if (error.status === 401) {
+        return new AppError(`${host} needs to be connected again`, 409)
+    }
+    return new AppError(`${host} repositories could not load`, 502)
+}
+
+const getUserGithubRepos = async (data: ListGithubRepos): Promise<RepoList> => {
     const { userId, page: requestedPage, limit: requestedLimit, search } = data
 
     try {
@@ -60,8 +68,11 @@ const getUserGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> 
             limit: requestedLimit,
             search,
         })
-        if (appRepos && appRepos.length > 0) {
-            return appRepos
+        if (appRepos.repos.length > 0 || appRepos.unavailable.length > 0) {
+            return {
+                ...appRepos,
+                truncated: appRepos.repos.length >= MAX_REPO_LIST_SIZE,
+            }
         }
     } catch {
         // Intentionally swallowed: fallback to user token below if app repos not found
@@ -74,61 +85,49 @@ const getUserGithubRepos = async (data: ListGithubRepos): Promise<GithubRepo[]> 
     }
 
     if (user.githubConnected === false && !user.githubAppInstall) {
-        throw new AppError('github is not connected', 401)
+        throw new AppError('github is not connected', 400)
     }
 
     if (!user.githubToken) {
-        return []
+        return { repos: [], unavailable: [], truncated: false }
     }
 
     try {
-        return await githubProvider.listRepos({
+        const repos = await githubProvider.listRepos({
             token: user.githubToken,
             page: requestedPage,
             limit: requestedLimit,
             search,
         })
+        return { repos, unavailable: [], truncated: repos.length >= MAX_REPO_LIST_SIZE }
     } catch (error) {
         if (error instanceof GitProviderError) {
-            throw new AppError(error.message, 401)
+            throw toRepoListError(error, 'GitHub')
         }
         throw error
     }
 }
 
-const getUserGitlabRepos = async (data: ListGitlabRepos): Promise<GitlabRepo[]> => {
+const getUserGitlabRepos = async (data: ListGitlabRepos): Promise<RepoList> => {
     const { userId, page, limit, search } = data
-    const token = await integrationsService.getGitlabAccessToken({ userId })
 
+    let token: string
     try {
-        return await gitlabProvider.listRepos({ token, page, limit, search })
+        token = await integrationsService.getGitlabAccessToken({ userId })
     } catch (error) {
-        if (error instanceof GitProviderError) {
-            throw new AppError(error.message, 401)
+        // not connected, or the sign-in could not be renewed
+        if (error instanceof AppError && error.statusCode === 401) {
+            throw new AppError('GitLab needs to be connected again', 409)
         }
         throw error
     }
-}
-
-/** does the repository have this branch. the prompt box asks before it uses a default (#637) */
-const checkRepoBranch = async (data: CheckRepoBranch): Promise<{ exists: boolean }> => {
-    const { userId, gitProvider, repository, branch } = data
-    const token = await resolveRepoToken({
-        userId,
-        gitProvider,
-        owner: splitRepoFullName(repository)?.owner ?? '',
-    })
 
     try {
-        const exists = await getGitProvider(gitProvider).hasBranch({
-            token,
-            repoPath: repository,
-            branch,
-        })
-        return { exists }
+        const repos = await gitlabProvider.listRepos({ token, page, limit, search })
+        return { repos, unavailable: [], truncated: repos.length >= MAX_REPO_LIST_SIZE }
     } catch (error) {
         if (error instanceof GitProviderError) {
-            throw new AppError(error.message, 502)
+            throw toRepoListError(error, 'GitLab')
         }
         throw error
     }
@@ -273,7 +272,6 @@ export const platformService = {
     resolveRepoToken,
     getUserGithubRepos,
     getUserGitlabRepos,
-    checkRepoBranch,
     createRepo,
     updateRepo,
     unlinkGithubRepo,

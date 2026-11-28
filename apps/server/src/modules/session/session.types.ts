@@ -353,6 +353,21 @@ export type DeleteAllSessions = {
     userId: string
 }
 
+export type StopAllSessions = {
+    userId: string
+}
+
+export type PurgeExpiredSessions = {
+    // sessions last changed before this date go
+    before: Date
+    // how many sessions one batch takes
+    batchSize?: number
+}
+
+export type QueueSandboxStops = {
+    sessions: Array<{ id: string; vmId: string | null; sandboxStatus: string | null }>
+}
+
 export type EndSessionRuns = {
     sessionIds: string[]
 }

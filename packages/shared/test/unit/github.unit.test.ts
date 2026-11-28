@@ -310,9 +310,18 @@ describe('github app helpers (#568)', () => {
         const { toPullRequestSettings, PULL_REQUEST_SETTING_DEFAULTS } =
             await import('../../src/pull-request-settings')
         expect(toPullRequestSettings(null)).toEqual(PULL_REQUEST_SETTING_DEFAULTS)
-        const s = toPullRequestSettings({ autoReview: 'always', reviewRepos: ['a/b', 3] })
+        const s = toPullRequestSettings({ autoReview: 'always', prDraft: 'yes' } as any)
         expect(s.autoReview).toBe('asked')
-        expect(s.reviewRepos).toEqual(['a/b'])
+        expect(s.prDraft).toBe(false)
+        // a saved row still has the removed columns: they are not read
+        const row = toPullRequestSettings({
+            archiveOnMerge: false,
+            replyToBots: true,
+            reviewCadence: 'push',
+            reviewRepos: ['a/b'],
+            prCreate: 'ask',
+        } as any)
+        expect(row).toEqual(PULL_REQUEST_SETTING_DEFAULTS)
     })
 
     it('createGithubAppJwt signs an RS256 token GitHub can verify', async () => {

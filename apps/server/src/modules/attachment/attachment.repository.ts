@@ -94,16 +94,6 @@ async function findSentBySession(sessionId: string) {
     })
 }
 
-/** the sessions with files, among sessions last changed before the date */
-async function findSessionIdsWithFilesBefore(before: Date) {
-    const rows = await prisma.messageAttachment.findMany({
-        where: { session: { updatedAt: { lt: before } } },
-        select: { sessionId: true },
-        distinct: ['sessionId'],
-    })
-    return rows.map((row) => row.sessionId)
-}
-
 export const attachmentRepository = {
     findOwnedSession,
     sumSessionBytes,
@@ -113,5 +103,4 @@ export const attachmentRepository = {
     findOwnedUserMessage,
     claimForMessage,
     findSentBySession,
-    findSessionIdsWithFilesBefore,
 }

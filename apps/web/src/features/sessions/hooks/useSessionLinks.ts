@@ -1,9 +1,9 @@
 import { QueryClientContext } from '@tanstack/react-query'
 import React from 'react'
 
-import type { GithubRepo } from '@/features/profile/api/profile'
 import type { BackendSession } from '@/features/sessions/api/session'
 
+import { toRepoList } from '@/features/profile/api/profile'
 import { pullRequestUrlOf } from '@/features/pullrequests/lib/pullRequests'
 import {
     openExternal,
@@ -30,7 +30,7 @@ export const useSessionLinks = () => {
             const prUrl = pullRequestUrlOf(session)
             const repo = repoOfSession(
                 session,
-                queryClient?.getQueryData<GithubRepo[]>(['github-repos'])
+                toRepoList(queryClient?.getQueryData(['github-repos'])).repos
             )
             return {
                 onOpenPullRequest: prUrl ? () => openExternal(prUrl) : undefined,
